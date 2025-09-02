@@ -149,23 +149,17 @@ OutPin ledy_pin(LEDY_PIN);
 OutPin ledg_pin(LEDG_PIN);
 OutPin ledb_pin(LEDB_PIN);
 
-// Set up servo
-// Servo servo;
-
-void processMessage(byte* data, int length);
+//void processMessage(byte* data, int length);
 void stop_all();
 void fault();
 
 void setup(){
     Serial.begin(115200);
     Serial.flush();
-    // Wire.begin();
-    // servo.attach(SERVO_PIN); //THIS LINE BREAKS THE MOTORS
-    // servo.write(0);
-    ledr_pin.write(1);
-    ledy_pin.write(1);
-    ledg_pin.write(0);
-    ledb_pin.write(0);
+    //ledr_pin.write(1);
+    //ledy_pin.write(1);
+    //ledg_pin.write(0);
+    //ledb_pin.write(0);
 
     for (int i = 0; i < 10; i++) {
         aL_pos = act_left.update_pos();
@@ -196,6 +190,7 @@ void loop() {
     // }
 
         // --- Non-blocking serial receive ---
+        /*
     while (Serial.available() > 0) {
         byte b = Serial.read();
         if (!receiving_message) {
@@ -222,7 +217,7 @@ void loop() {
                 }
             }
         }
-    }
+    }*/
 
     if (current_time - last_message_time > estop_timeout) {
         emergency_stop = true;
@@ -304,17 +299,10 @@ void loop() {
                 act_right.vel_ctrl(aR_speed + factor);
             }
 
-            if (aB_tgt >= 0) {
-                act_bucket.tgt_ctrl(aB_tgt);
-            } else if((aB_speed >0 && aB_pos < bucket_max) || (aB_speed <0 && aB_pos > bucket_min)){
-                act_bucket.vel_ctrl(aB_speed);
-            }else{
-                act_bucket.stop();
-            }
-            
+            if (aB_tgt >= 0) act_bucket.tgt_ctrl(aB_tgt);
+            else if((aB_speed >0 && aB_pos < bucket_max) || (aB_speed <0 && aB_pos > bucket_min))act_bucket.vel_ctrl(aB_speed);
+            elseact_bucket.stop();
         
-            
-
             motor_left.motor_ctrl(mL_speed);
             motor_right.motor_ctrl(mR_speed);
         } else {
@@ -332,9 +320,7 @@ void loop() {
     if (current_time - last_feedback_time >= 1000 / feedback_rate) {
         last_feedback_time = current_time;
 
-        if (emergency_stop) {
-            Serial.println("Estopped");
-        }
+        if (emergency_stop) Serial.println("Estopped");
         Serial.println("<F," + String(aL_pos) + "," + String(aR_pos) + "," + String(aB_pos)
             + "," + String(aL_speed) + "," + String(aR_speed) + ',' + String(aLR_tgt)
             + "," + String(mL_speed) + "," + String(mR_speed) + ">");
@@ -349,7 +335,11 @@ void loop() {
     }
 }
 
-void processMessage(byte* data, int length) {
+void processRcControlData(){
+
+}
+
+/*void processMessage(byte* data, int length) {
     char type = data[0];
     if (debug_mode) {
         Serial.print("Received message of type: ");
@@ -423,7 +413,7 @@ void processMessage(byte* data, int length) {
             Serial.println("Unknown message type");
             break;
     }
-}
+}*/
 
 void stop_all() {
     act_left.stop();
