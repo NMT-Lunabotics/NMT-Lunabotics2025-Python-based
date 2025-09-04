@@ -35,16 +35,16 @@ void setMotor(int speed) {
 }
 
 void loop() {
-  val = analogRead(ACT1_POT); 
-  Serial.println(val);          
+  //val = analogRead(ACT1_POT); 
+  //Serial.println(val);          
 
 
-  setMotor(250);    // Forward half speed
-  delay(2000);
+  setMotor(-255);    // Forward half speed
+  //delay(2000);
   
   //setMotor(-255);   // Full reverse
   //delay(2000);
   
-  setMotor(0);      // Stop
-  delay(500);
+  //setMotor(0);      // Stop
+  //delay(500);
 }
