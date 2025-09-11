@@ -90,10 +90,11 @@ docker exec -it $CONTAINER_ID bash -c "\
     echo 'Pulling latest Git changes...'; \
     git config --global --add safe.directory /workspace; \
     cd /workspace; \
-    git reset --hard; \
-    git clean -fd; \
+    git fetch origin; \
     git checkout $GIT_BRANCH; \
-    git pull origin $GIT_BRANCH; \
+    git reset --hard origin/$GIT_BRANCH; \
+    git clean -fd; \
+    git pull origin $GIT_BRANCH;
     echo 'Building workspace...'; \
     cd ros/ros2_ws; \
     colcon build; \
