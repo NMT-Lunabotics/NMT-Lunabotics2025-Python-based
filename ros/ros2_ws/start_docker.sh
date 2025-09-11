@@ -1,20 +1,25 @@
 #!/bin/bash
 set -e
 
-# Sets the default values for running the container from the env_file list of variables.
+# Sets the default values for running the containor from the env_file list of variables.
 ROS_DISTRO="humble"
 ROS_DOMAIN_ID=42
 IMAGE_NAME="luna/ros2:$ROS_DISTRO"
 PI_WS="/home/masterpi/NMT-Lunabotics2025-Python-based"
 REPO_ROOT="/home/masterpi/NMT-Lunabotics2025-Python-based"
 GIT_BRANCH="benjaminstestbranch"
-GIT_REPO="git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git"
 
-# Variables set by flags
+#Variables set by flags
 DISPLAY_ENABLED=false
 BUILD_IMAGE=false
 
-# Check flags that were set, and update variables. 
+
+
+
+
+
+
+#Check flags that were set, and update variables. 
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
         -d|-display) DISPLAY_ENABLED=true; shift ;;
@@ -23,21 +28,18 @@ while [[ "$#" -gt 0 ]]; do
     esac
 done
 
-# Run flags that docker container needs.
+#Run flags that docker containor needs.
 DOCKER_RUN_FLAGS=(
     --privileged 
     --net=host
-    --volume=/home/masterpi/.ssh:/root/.ssh:ro 
+    --volume=/home/masterpi/.ssh:/root/.ssh
     -w /workspace
-)
-
-# Mount the repository directory into the container
-DOCKER_RUN_FLAGS+=("--volume=$PI_WS:/workspace")
+    )
 
 # Enable X11 display if DISPLAY is set
 if [ "$DISPLAY_ENABLED" = true ]; then
+    echo "DISPLAY=$DISPLAY" >> $ENV_FILE
     DOCKER_RUN_FLAGS+=("--volume=/tmp/.X11-unix:/tmp/.X11-unix:rw")
-    DOCKER_RUN_FLAGS+=("-e DISPLAY=$DISPLAY")
     xhost +local:docker
 fi
 
@@ -79,46 +81,21 @@ if [ "$RUNNING" = false ]; then
     CONTAINER_ID=$(docker ps -q -f ancestor=$IMAGE_NAME)
 fi
 
-# Fix SSH permissions inside the container
-docker exec $CONTAINER_ID bash -c "\
-    chmod 600 /root/.ssh/id_ed25519 2>/dev/null || true; \
-    chmod 644 /root/.ssh/known_hosts 2>/dev/null || true; \
-    chmod 644 /root/.ssh/config 2>/dev/null || true; \
-    chmod 700 /root/.ssh 2>/dev/null || true"
-
-# Test SSH connection first
-docker exec $CONTAINER_ID bash -c "\
-    echo 'Testing SSH connection to GitHub...'; \
-    ssh -T git@github.com 2>&1 | grep -q 'successfully authenticated' && echo 'SSH connection successful' || echo 'SSH connection test completed'"
-
 # Exec into the container with bash
 docker exec -it $CONTAINER_ID bash -c "\
     set -e; \
     echo 'Starting SSH agent and adding key...'; \
     eval \"\$(ssh-agent -s)\"; \
     ssh-add /root/.ssh/id_ed25519; \
-    echo 'Checking if Git repository exists...'; \
-    if [ ! -d /workspace/.git ]; then \
-        echo 'Git repository not found. Cloning repository...'; \
-        cd /; \
-        rm -rf /workspace_temp 2>/dev/null || true; \
-        git clone $GIT_REPO /workspace_temp; \
-        cd /workspace_temp; \
-        git checkout $GIT_BRANCH; \
-        echo 'Copying repository to mounted volume...'; \
-        cp -r . /workspace/; \
-        cd /workspace; \
-        rm -rf /workspace_temp; \
-    else \
-        echo 'Pulling latest Git changes...'; \
-        cd /workspace; \
-        git config --global --add safe.directory /workspace; \
-        git fetch origin; \
-        git checkout $GIT_BRANCH; \
-        git reset --hard origin/$GIT_BRANCH; \
-        git clean -fd; \
-        git pull origin $GIT_BRANCH; \
-    fi; \
+    echo 'Pulling latest Git changes...'; \
+    git config --global --add safe.directory /workspace; \
+    cd /workspace; \
+    git remote set-url origin git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git; \
+    git fetch origin; \
+    git checkout $GIT_BRANCH; \
+    git reset --hard origin/$GIT_BRANCH; \
+    git clean -fd; \
+    git pull origin $GIT_BRANCH; \
     echo 'Building workspace...'; \
     cd ros/ros2_ws; \
     colcon build; \
@@ -126,6 +103,6 @@ docker exec -it $CONTAINER_ID bash -c "\
     cd /workspace; \
     git add .; \
     git commit -m 'Auto-sync: updated workspace after build' || echo 'Nothing to commit'; \
-    git push origin $GIT_BRANCH || echo 'Push failed or nothing to push'; \
+    git push origin $GIT_BRANCH || echo 'Push failed'; \
     echo 'Build complete. Dropping into shell...'; \
     bash"
