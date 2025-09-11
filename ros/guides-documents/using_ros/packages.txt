@@ -1,0 +1,3 @@
+mkdir -p src
+cd src
+ros2 pkg create package_name --build-type ament_python --dependencies rclpy std_msgs

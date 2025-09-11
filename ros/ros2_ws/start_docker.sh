@@ -5,8 +5,9 @@ set -e
 ROS_DISTRO="humble"
 ROS_DOMAIN_ID=42
 IMAGE_NAME="luna/ros2:$ROS_DISTRO"
-
-
+PI_WS="/home/masterpi/NMT-Lunabotics2025-Python-based/ros/ros2_ws"
+REPO_ROOT="/home/masterpi/NMT-Lunabotics2025-Python-based"
+GIT_BRANCH="benjaminstestbranch"
 
 #Variables set by flags
 DISPLAY_ENABLED=false
@@ -31,7 +32,7 @@ done
 DOCKER_RUN_FLAGS=(
     --privileged 
     --net=host
-    --volume=/home/benjamin/Desktop/ros2_ws:/ros2_ws
+    --volume=/home/masterpi/NMT-Lunabotics2025-Python-based/ros/ros2_ws:/ros2_ws
     -w /ros2_ws 
     )
 
@@ -81,4 +82,18 @@ if [ "$RUNNING" = false ]; then
 fi
 
 # Exec into the container with bash
-docker exec -it $CONTAINER_ID /entrypoint.sh bash
+docker exec -it $CONTAINER_ID bash -c "\
+    set -e; \
+    echo 'Pulling latest Git changes...'; \
+    cd /ros2_ws; \
+    git checkout benjaminstestbranch; \
+    git pull origin benjaminstestbranch; \
+    echo 'Building workspace...'; \
+    colcon build; \
+    echo 'Committing any new changes...'; \
+    cd /ros2_ws/../..; \
+    git add .; \
+    git commit -m 'Auto-sync: updated workspace after build' || echo 'Nothing to commit'; \
+    git push origin benjaminstestbranch || echo 'Push failed'; \
+    echo 'Build complete. Dropping into shell...'; \
+    bash"
