@@ -86,6 +86,8 @@ docker exec -it $CONTAINER_ID bash -c "\
     set -e; \
     echo 'Pulling latest Git changes...'; \
     git config --global --add safe.directory /workspace; \
+    git config --global user.email "benjamin.peterson@student.nmt.edu"
+    git config --global user.name "benjamin-p15"
     cd /workspace; \
     git reset --hard; \
     git clean -fd; \
