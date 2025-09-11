@@ -1,7 +1,7 @@
 (linux) 1. Pick the device you would like to run ros on. 
 Either find the IP adrress and username of your hosting device i.e. (raspberry pi) and ssh into it, or open a terminal on your pc.
 ----------------------------------------------------------------------
-ssh masterpi@129.138.168.63
+ssh masterpi@129.138.174.18
 
 
 

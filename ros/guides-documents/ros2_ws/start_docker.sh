@@ -28,7 +28,12 @@ while [[ "$#" -gt 0 ]]; do
 done
 
 #Run flags that docker containor needs.
-DOCKER_RUN_FLAGS=("--privileged" "--net=host" "--volume=/dev:/dev:rw")
+DOCKER_RUN_FLAGS=(
+    --privileged 
+    --net=host
+    --volume=/home/benjamin/Desktop/ros2_ws:/ros2_ws
+    -w /ros2_ws 
+    )
 
 # Enable X11 display if DISPLAY is set
 if [ "$DISPLAY_ENABLED" = true ]; then
@@ -64,10 +69,16 @@ fi
 
 # Start container if not running
 if [ "$RUNNING" = false ]; then
+    # Remove old containers from this image
+    OLD_CONTAINERS=$(docker ps -aq -f ancestor=$IMAGE_NAME)
+    if [ -n "$OLD_CONTAINERS" ]; then
+        echo "Removing old containers..."
+        docker rm -f $OLD_CONTAINERS
+    fi
     echo "Starting Docker container..."
-    docker run -dit --env-file $ENV_FILE "${DOCKER_RUN_FLAGS[@]}" $IMAGE_NAME bash
+    docker run -dit "${DOCKER_RUN_FLAGS[@]}" $IMAGE_NAME bash
     CONTAINER_ID=$(docker ps -q -f ancestor=$IMAGE_NAME)
 fi
 
 # Exec into the container with bash
-docker exec -it --env-file $ENV_FILE $CONTAINER_ID /entrypoint.sh bash
+docker exec -it $CONTAINER_ID /entrypoint.sh bash

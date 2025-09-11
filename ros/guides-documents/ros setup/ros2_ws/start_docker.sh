@@ -29,10 +29,10 @@ done
 
 #Run flags that docker containor needs.
 DOCKER_RUN_FLAGS=(
-    "--privileged" 
-    "--net=host" 
-    "--volume=/home/benjamin/Desktop/ros2_ws:/ros2_ws"
-    "-w" "/ros2_ws" 
+    --privileged 
+    --net=host
+    --volume=/home/benjamin/Desktop/ros2_ws:/ros2_ws
+    -w /ros2_ws 
     )
 
 # Enable X11 display if DISPLAY is set
