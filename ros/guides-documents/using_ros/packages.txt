@@ -5,13 +5,14 @@ ros2 pkg create package_name --build-type ament_python --dependencies rclpy std_
 
 
 
-# List all running containers
-docker ps -q
-docker rm -f $(docker ps -aq)
+docker ps -aq | xargs -r docker rm -f
+sudo rm -rf /home/masterpi/NMT-Lunabotics2025-Python-based
+mkdir -p /home/masterpi/NMT-Lunabotics2025-Python-based
 cd /home/masterpi/NMT-Lunabotics2025-Python-based
+git clone -b benjaminstestbranch git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git .
 git fetch origin
 git checkout benjaminstestbranch
-git reset --hard origin/benjaminstestbranch   # discard any local changes
-git clean -fd                                 # remove untracked files
-git pull origin benjaminstestbranch           # update branch to latest from GitHub
-cd /home/masterpi/NMT-Lunabotics2025-Python-based/ros/ros2_ws
+git reset --hard origin/benjaminstestbranch
+git clean -fd
+git pull origin benjaminstestbranch
+cd ros/ros2_ws
