@@ -5,9 +5,8 @@ set -e
 ROS_DISTRO="humble"
 ROS_DOMAIN_ID=42
 IMAGE_NAME="luna/ros2:$ROS_DISTRO"
-PI_WS="/home/masterpi/NMT-Lunabotics2025-Python-based"
-REPO_ROOT="/home/masterpi/NMT-Lunabotics2025-Python-based"
-GIT_BRANCH="benjaminstestbranch"
+
+
 
 #Variables set by flags
 DISPLAY_ENABLED=false
@@ -32,12 +31,9 @@ done
 DOCKER_RUN_FLAGS=(
     --privileged 
     --net=host
-    --volume=$REPO_ROOT:/workspace
-    --volume=/home/masterpi/.ssh/id_ed25519:/root/.ssh/id_ed25519:ro
-    --volume=/home/masterpi/.ssh/known_hosts:/root/.ssh/known_hosts:ro
-    -w /workspace
-)
-
+    --volume=/home/benjamin/Desktop/ros2_ws:/ros2_ws
+    -w /ros2_ws 
+    )
 
 # Enable X11 display if DISPLAY is set
 if [ "$DISPLAY_ENABLED" = true ]; then
@@ -85,27 +81,4 @@ if [ "$RUNNING" = false ]; then
 fi
 
 # Exec into the container with bash
-docker exec -it $CONTAINER_ID bash -c "\
-set +e; \
-echo 'Starting SSH agent and adding key...'; \
-eval \"\$(ssh-agent -s)\"; \
-ssh-add /root/.ssh/id_ed25519; \
-echo 'Pulling latest Git changes...'; \
-git config --global --add safe.directory /workspace; \
-cd /workspace || exit 1; \
-git remote set-url origin git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git; \
-git fetch origin || true; \
-git checkout $GIT_BRANCH || true; \
-git reset --hard origin/$GIT_BRANCH || true; \
-git clean -fd || true; \
-git pull origin $GIT_BRANCH || true; \
-echo 'Building workspace...'; \
-cd ros/ros2_ws && colcon build || true; \
-echo 'Committing any new changes...'; \
-cd /workspace; \
-git add .; \
-git commit -m 'Auto-sync: updated workspace after build' || echo 'Nothing to commit'; \
-git push origin $GIT_BRANCH || echo 'Push failed'; \
-echo 'Build complete. Dropping into shell...'; \
-cd ros/ros2_ws; \
-exec bash" 
+docker exec -it $CONTAINER_ID /entrypoint.sh bash
