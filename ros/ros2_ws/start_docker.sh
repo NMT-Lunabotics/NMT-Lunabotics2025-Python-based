@@ -85,6 +85,7 @@ fi
 docker exec -it $CONTAINER_ID bash -c "\
     set -e; \
     echo 'Pulling latest Git changes...'; \
+    git config --global --add safe.directory /workspace; \
     cd /workspace; \
     git reset --hard; \
     git clean -fd; \
