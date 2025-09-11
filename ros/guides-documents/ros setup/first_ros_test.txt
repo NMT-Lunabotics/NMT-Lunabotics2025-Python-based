@@ -1,0 +1,9 @@
+1. Run this in one terminal
+----------------------------------------------------------------------
+ros2 topic pub /test std_msgs/String "data: 'hello from window 1'"
+
+
+
+2. Run this in a second terminal and you will see a topic message recived and sent them, this confirms that you have ros setup. 
+----------------------------------------------------------------------
+ros2 topic echo /test

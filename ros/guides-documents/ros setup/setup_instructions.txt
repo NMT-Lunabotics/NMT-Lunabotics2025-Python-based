@@ -1,0 +1,63 @@
+(linux) 1. Pick the device you would like to run ros on. 
+Either find the IP adrress and username of your hosting device i.e. (raspberry pi) and ssh into it, or open a terminal on your pc.
+----------------------------------------------------------------------
+ssh masterpi@129.138.168.63
+
+
+
+(linux) 1.5. If you are using a hosting device like a (raspberry pi) it maybe convenient to make a static IP adrress to more easly access it.
+Open file using nano and paste then paste those 4 lines of code.
+----------------------------------------------------------------------
+sudo nano /etc/dhcpcd.conf
+
+interface wlan0
+static ip_address=192.168.0.139/24
+static routers=192.168.0.1
+static domain_name_servers=192.168.0.1
+
+
+
+(linux) 2. Make sure that your device is fully up to date by updating/upgrading it.
+----------------------------------------------------------------------
+sudo apt update
+sudo apt upgrade -y
+
+
+
+(linux) 3. Download docker which you hosting device will host a "containor" which is isolated enverirment that is remotly accessed from your device of choice.
+The device also requires sudo permissions so we give it sudo access.
+----------------------------------------------------------------------
+sudo apt install docker.io
+sudo usermod -aG docker $USER
+newgrp docker
+
+
+
+(linux) 4. Setup your docker worksspace.
+If you want to create your a custom ros install copy the ros2_ws folder from this setup folder to your system for a fresh workspace.
+If you rather clone the lunabotics ros workspace run the following commands.
+Make sure to make the starter files executable and give them the correct permissions after copying the files.
+----------------------------------------------------------------------
+sudo apt install git -y
+cd ~
+git clone https://github.com/NMT-Lunabotics/NMT-Lunabotics2025-Python-based
+cd NMT-Lunabotics2025-Python-based
+
+cd /home/benjamin/Desktop/ros2_ws
+chmod +x start_docker.sh entrypoint.sh
+
+
+(linux) 5. CHange the volume directory in this line of code(31) in the start_docker.sh folder this will correctly sync your docker to your source folder.
+----------------------------------------------------------------------
+DOCKER_RUN_FLAGS=("--privileged" "--net=host" "--volume=/home/benjamin/Desktop/ros2_ws:/ros2_ws")
+
+
+
+(linux) 6. Now from your terminal on your pc that will talk to the docker, eneter your workspace folder and enter the docker.
+The -build flag is also set to true so your docker installs ros and the required packages.
+
+The -build flag should be set to true anytime you start your docker or make changes, (note this will close all other terminals).
+To use multiple terminals remove the build flag to enter docker with multiple terminals.
+----------------------------------------------------------------------
+cd /home/benjamin/Desktop/ros2_ws
+./start_docker.sh -build

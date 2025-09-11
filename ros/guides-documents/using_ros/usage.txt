@@ -1,0 +1,14 @@
+1. The following command starts ros with a set of optional (flags) which are added to the end of the command.
+By adding the flags you can enable diffrent docker aspects to enable your desiered setup for testing.
+----------------------------------------------------------------------
+./start_docker.sh [ --build (-b) ] [--display (-d)]
+
+--build (-b)                Build the Docker container (will stop the running container if any) Fully updates all large packages.
+--display (-d)              Enable display support (forward X11 display) Use if you need to use visual ros softwere. 
+
+
+
+2. For package updates that do not need a full build you can simply update while you are running the docker.
+----------------------------------------------------------------------
+source /opt/ros/humble/setup.bash
+colcon build
