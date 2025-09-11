@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-# Sets the default values for running the containor from the env_file list of variables.
+# Sets the default values for running the container from the env_file list of variables.
 ROS_DISTRO="humble"
 ROS_DOMAIN_ID=42
 IMAGE_NAME="luna/ros2:$ROS_DISTRO"
@@ -9,17 +9,11 @@ PI_WS="/home/masterpi/NMT-Lunabotics2025-Python-based"
 REPO_ROOT="/home/masterpi/NMT-Lunabotics2025-Python-based"
 GIT_BRANCH="benjaminstestbranch"
 
-#Variables set by flags
+# Variables set by flags
 DISPLAY_ENABLED=false
 BUILD_IMAGE=false
 
-
-
-
-
-
-
-#Check flags that were set, and update variables. 
+# Check flags that were set, and update variables. 
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
         -d|-display) DISPLAY_ENABLED=true; shift ;;
@@ -28,18 +22,21 @@ while [[ "$#" -gt 0 ]]; do
     esac
 done
 
-#Run flags that docker containor needs.
+# Run flags that docker container needs.
 DOCKER_RUN_FLAGS=(
     --privileged 
     --net=host
     --volume=/home/masterpi/.ssh:/root/.ssh:ro 
     -w /workspace
-    )
+)
+
+# Mount the repository directory into the container
+DOCKER_RUN_FLAGS+=("--volume=$PI_WS:/workspace")
 
 # Enable X11 display if DISPLAY is set
 if [ "$DISPLAY_ENABLED" = true ]; then
-    echo "DISPLAY=$DISPLAY" >> $ENV_FILE
     DOCKER_RUN_FLAGS+=("--volume=/tmp/.X11-unix:/tmp/.X11-unix:rw")
+    DOCKER_RUN_FLAGS+=("-e DISPLAY=$DISPLAY")
     xhost +local:docker
 fi
 
@@ -87,14 +84,28 @@ docker exec -it $CONTAINER_ID bash -c "\
     echo 'Starting SSH agent and adding key...'; \
     eval \"\$(ssh-agent -s)\"; \
     ssh-add /root/.ssh/id_ed25519; \
-    echo 'Pulling latest Git changes...'; \
-    git config --global --add safe.directory /workspace; \
-    cd /workspace; \
-    git fetch origin; \
-    git checkout $GIT_BRANCH; \
-    git reset --hard origin/$GIT_BRANCH; \
-    git clean -fd; \
-    git pull origin $GIT_BRANCH;
+    echo 'Checking if Git repository exists...'; \
+    if [ ! -d /workspace/.git ]; then \
+        echo 'Git repository not found. Cloning repository...'; \
+        cd /; \
+        rm -rf /workspace_temp; \
+        git clone git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git /workspace_temp; \
+        cd /workspace_temp; \
+        git checkout $GIT_BRANCH; \
+        echo 'Copying repository to mounted volume...'; \
+        cp -r . /workspace/; \
+        cd /workspace; \
+        rm -rf /workspace_temp; \
+    else \
+        echo 'Pulling latest Git changes...'; \
+        cd /workspace; \
+        git config --global --add safe.directory /workspace; \
+        git fetch origin; \
+        git checkout $GIT_BRANCH; \
+        git reset --hard origin/$GIT_BRANCH; \
+        git clean -fd; \
+        git pull origin $GIT_BRANCH; \
+    fi; \
     echo 'Building workspace...'; \
     cd ros/ros2_ws; \
     colcon build; \
@@ -102,6 +113,6 @@ docker exec -it $CONTAINER_ID bash -c "\
     cd /workspace; \
     git add .; \
     git commit -m 'Auto-sync: updated workspace after build' || echo 'Nothing to commit'; \
-    git push origin $GIT_BRANCH || echo 'Push failed'; \
+    git push origin $GIT_BRANCH || echo 'Push failed or nothing to push'; \
     echo 'Build complete. Dropping into shell...'; \
     bash"
