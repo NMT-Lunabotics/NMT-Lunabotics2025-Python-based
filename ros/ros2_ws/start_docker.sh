@@ -8,6 +8,7 @@ IMAGE_NAME="luna/ros2:$ROS_DISTRO"
 PI_WS="/home/masterpi/NMT-Lunabotics2025-Python-based"
 REPO_ROOT="/home/masterpi/NMT-Lunabotics2025-Python-based"
 GIT_BRANCH="benjaminstestbranch"
+GIT_REPO="git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git"
 
 # Variables set by flags
 DISPLAY_ENABLED=false
@@ -78,6 +79,18 @@ if [ "$RUNNING" = false ]; then
     CONTAINER_ID=$(docker ps -q -f ancestor=$IMAGE_NAME)
 fi
 
+# Fix SSH permissions inside the container
+docker exec $CONTAINER_ID bash -c "\
+    chmod 600 /root/.ssh/id_ed25519 2>/dev/null || true; \
+    chmod 644 /root/.ssh/known_hosts 2>/dev/null || true; \
+    chmod 644 /root/.ssh/config 2>/dev/null || true; \
+    chmod 700 /root/.ssh 2>/dev/null || true"
+
+# Test SSH connection first
+docker exec $CONTAINER_ID bash -c "\
+    echo 'Testing SSH connection to GitHub...'; \
+    ssh -T git@github.com 2>&1 | grep -q 'successfully authenticated' && echo 'SSH connection successful' || echo 'SSH connection test completed'"
+
 # Exec into the container with bash
 docker exec -it $CONTAINER_ID bash -c "\
     set -e; \
@@ -88,8 +101,8 @@ docker exec -it $CONTAINER_ID bash -c "\
     if [ ! -d /workspace/.git ]; then \
         echo 'Git repository not found. Cloning repository...'; \
         cd /; \
-        rm -rf /workspace_temp; \
-        git clone git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git /workspace_temp; \
+        rm -rf /workspace_temp 2>/dev/null || true; \
+        git clone $GIT_REPO /workspace_temp; \
         cd /workspace_temp; \
         git checkout $GIT_BRANCH; \
         echo 'Copying repository to mounted volume...'; \
