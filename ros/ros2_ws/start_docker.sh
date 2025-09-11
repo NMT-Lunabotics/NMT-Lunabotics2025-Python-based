@@ -86,26 +86,26 @@ fi
 
 # Exec into the container with bash
 docker exec -it $CONTAINER_ID bash -c "\
-set -e; \
+set +e; \
 echo 'Starting SSH agent and adding key...'; \
-eval "$(ssh-agent -s)"; \
+eval \"\$(ssh-agent -s)\"; \
 ssh-add /root/.ssh/id_ed25519; \
 echo 'Pulling latest Git changes...'; \
 git config --global --add safe.directory /workspace; \
-cd /workspace; \
+cd /workspace || exit 1; \
 git remote set-url origin git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git; \
-git fetch origin; \
-git checkout $GIT_BRANCH; \
-git reset --hard origin/$GIT_BRANCH; \
-git clean -fd; \
-git pull origin $GIT_BRANCH; \
+git fetch origin || true; \
+git checkout $GIT_BRANCH || true; \
+git reset --hard origin/$GIT_BRANCH || true; \
+git clean -fd || true; \
+git pull origin $GIT_BRANCH || true; \
 echo 'Building workspace...'; \
-cd ros/ros2_ws; \
-colcon build; \
+cd ros/ros2_ws && colcon build || true; \
 echo 'Committing any new changes...'; \
 cd /workspace; \
 git add .; \
 git commit -m 'Auto-sync: updated workspace after build' || echo 'Nothing to commit'; \
 git push origin $GIT_BRANCH || echo 'Push failed'; \
 echo 'Build complete. Dropping into shell...'; \
-bash"
+exec bash"
+
