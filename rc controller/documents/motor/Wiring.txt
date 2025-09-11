@@ -1,0 +1,8 @@
+PWM input(DIN-)	Connect to adrunio pwm pins 
+PWM input(DIN+)	
+Voltage output(GND) Connect to motor driver ground terminal
+Voltage output(AO) Connect to motor driver terminal
+Power supply(12-30V) Connect to the main voltage supply power source
+Power supply(GND) Connect to the main voltage supply ground
+
+https://www.amazon.com/Converter-Module-Voltage-Adjustable-Digital/dp/B07SZ8CVKD?crid=38NKQI5BAFZBI&dib=eyJ2IjoiMSJ9.phhcLlvn0xfcFT66KQIcsOYbWBDqPcUGtqECgsJDOX9F9WcvTdcNv0FTK6jySDmaSB7u-LWrqQtqwbgHsEx8va3ryWGs92v0qo1d-NfubomphwMtjeWBDNLQuhy3ZwGaqSO6C0MkW2XXyPKz6yxnZDn8LwtcxkmABuNpfTj_AdhHSc3j3NpnhbaALJ4--9rhngbptI0UkyDb0WWsPJWEvjI8Dcd6zngSTmIGvVSuNPJkS3JBEeW-s9VtP5U68PDR_uI7MQ68sT17zf2b8hcL-MQXsHqraP3UgOlguPgNIK8.NYJzdcHng3YZUsj4jKEMtGPQbyHcZkhdTxLFjNVxErA&dib_tag=se&keywords=Converter+Module+Analog+Input+Voltage&qid=1757542538&s=industrial&sprefix=converter+module+analog+input+voltage%2Cindustrial%2C135&sr=1-6

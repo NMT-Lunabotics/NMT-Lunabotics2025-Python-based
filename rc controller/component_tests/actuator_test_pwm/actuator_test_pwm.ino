@@ -1,5 +1,5 @@
-#define SCL_PIN 9  // Direction
-#define SDA_PIN 8  // Speed (PWM)
+#define SCL_PIN 34  // Direction
+#define SDA_PIN 36  // Speed (PWM)
 #define ACT1_POT A0 //Actuator
 
 
@@ -28,9 +28,10 @@ void setMotor(int speed) {
     analogWrite(SDA_PIN, speed);   // 0-255 PWM
   } else if (speed < 0) {
     digitalWrite(SCL_PIN, LOW);    // backward
-    analogWrite(SDA_PIN, -speed);  // PWM magnitude
+    analogWrite(SDA_PIN, speed);  // PWM magnitude
   } else {
-    analogWrite(SDA_PIN, 0);       // stop
+    digitalWrite(SCL_PIN, LOW);    // stop
+    analogWrite(SDA_PIN, 0);      
   }
 }
 
@@ -39,11 +40,11 @@ void loop() {
   //Serial.println(val);          
 
 
-  setMotor(-255);    // Forward half speed
+  //setMotor(255);    // Forward half speed
   //delay(2000);
   
-  //setMotor(-255);   // Full reverse
-  //delay(2000);
+  setMotor(-255);   // Full reverse
+  delay(2000);
   
   //setMotor(0);      // Stop
   //delay(500);

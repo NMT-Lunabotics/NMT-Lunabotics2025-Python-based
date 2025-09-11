@@ -1,6 +1,8 @@
 #ifndef HELPERS_H
 #define HELPERS_H
 
+bool MD04_drivers = true;
+
 #include <Arduino.h>
 #include "arduino_lib.hpp"
 
@@ -85,6 +87,7 @@ public:
     : pwm_pin(pwm_pin), dir1_pin(dir1_pin), dir2_pin(dir2_pin), invert(invert) {}
 
   void set_speed(int speed) {
+    if(MD04_drivers==false){
     speed = constrain(speed, -255, 255);
     if (invert) {
       speed = -speed;
@@ -100,6 +103,20 @@ public:
       dir2_pin.write(0);
     }
     pwm_pin.write_pwm_raw(abs(speed));
+  }
+  else{
+    Serial.println(speed);
+    if (speed > 128) {
+      dir1_pin.write(1);
+      dir2_pin.write(speed);
+    } else if (speed < 128) {
+      dir1_pin.write(0);
+      dir2_pin.write(speed);
+    } else {
+      dir1_pin.write(0);
+      dir2_pin.write(0);
+    }
+  }
   }
 
   void stop() {
@@ -159,8 +176,10 @@ public:
   }
 
   void vel_ctrl(int speed) {
+    if(MD04_drivers==false){
     speed = constrain(speed, -act_max_vel, act_max_vel);
     speed = speed / act_max_vel * 255;
+    }
     pwm_driver.set_speed(speed);
   }
 

@@ -1,13 +1,16 @@
+#include <SoftwareSerial.h>
+SoftwareSerial mySerial(2, 3); // RX, TX
+const int ledPin = 13;
+
 void setup() {
-  Serial.begin(115200);
-  //Serial.flush();
+  mySerial.begin(115200);
+  pinMode(ledPin, OUTPUT);
 }
 
 void loop() {
-  Serial.println("Test");
-  delay(1000);
-    //if (Serial.available() > 0) {
-    //    String text = Serial.readStringUntil('\n');
-    //    Serial.println(text);
-    //}
+  if (mySerial.available()) {
+    char c = mySerial.read();
+    if (c == '1') digitalWrite(ledPin, HIGH);
+    else if (c == '0') digitalWrite(ledPin, LOW);
+  }
 }
