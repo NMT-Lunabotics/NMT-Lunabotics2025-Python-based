@@ -32,7 +32,7 @@ done
 DOCKER_RUN_FLAGS=(
     --privileged 
     --net=host
-    --volume=$REPO_ROOT:/workspace
+    --volume=/home/masterpi/.ssh:/root/.ssh:ro 
     -w /workspace
     )
 
