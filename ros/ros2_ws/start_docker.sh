@@ -85,15 +85,18 @@ fi
 docker exec -it $CONTAINER_ID bash -c "\
     set -e; \
     echo 'Pulling latest Git changes...'; \
-    cd /ros2_ws; \
-    git checkout benjaminstestbranch; \
-    git pull origin benjaminstestbranch; \
+    cd /workspace; \
+    git reset --hard; \
+    git clean -fd; \
+    git checkout $GIT_BRANCH; \
+    git pull origin $GIT_BRANCH; \
     echo 'Building workspace...'; \
+    cd ros/ros2_ws; \
     colcon build; \
     echo 'Committing any new changes...'; \
-    cd /ros2_ws/../..; \
+    cd /workspace; \
     git add .; \
     git commit -m 'Auto-sync: updated workspace after build' || echo 'Nothing to commit'; \
-    git push origin benjaminstestbranch || echo 'Push failed'; \
+    git push origin $GIT_BRANCH || echo 'Push failed'; \
     echo 'Build complete. Dropping into shell...'; \
     bash"
