@@ -32,10 +32,12 @@ done
 DOCKER_RUN_FLAGS=(
     --privileged 
     --net=host
-    --volume=/home/masterpi/.ssh:/root/.ssh
     --volume=$REPO_ROOT:/workspace
+    --volume=/home/masterpi/.ssh/id_ed25519:/root/.ssh/id_ed25519:ro
+    --volume=/home/masterpi/.ssh/known_hosts:/root/.ssh/known_hosts:ro
     -w /workspace
-    )
+)
+
 
 # Enable X11 display if DISPLAY is set
 if [ "$DISPLAY_ENABLED" = true ]; then
@@ -86,7 +88,7 @@ fi
 docker exec -it $CONTAINER_ID bash -c "\
 set -e; \
 echo 'Starting SSH agent and adding key...'; \
-eval \"\$(ssh-agent -s)\"; \
+eval "$(ssh-agent -s)"; \
 ssh-add /root/.ssh/id_ed25519; \
 echo 'Pulling latest Git changes...'; \
 git config --global --add safe.directory /workspace; \
