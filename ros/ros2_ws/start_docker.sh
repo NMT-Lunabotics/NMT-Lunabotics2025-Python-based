@@ -85,12 +85,12 @@ fi
 docker exec -it $CONTAINER_ID bash -c "\
     set -e; \
     echo 'Starting SSH agent and adding key...'; \
-    eval \"\$(ssh-agent -s)\"; \
-    ssh-add /root/.ssh/id_ed25519; \
+    eval "$(ssh-agent -s)"
+    ssh-add /root/.ssh/id_ed25519
     echo 'Pulling latest Git changes...'; \
     git config --global --add safe.directory /workspace; \
-    cd /workspace; \
-    git remote set-url origin git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git; \
+    cd /workspace
+    git remote set-url origin git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git
     git fetch origin; \
     git checkout $GIT_BRANCH; \
     git reset --hard origin/$GIT_BRANCH; \
