@@ -6,7 +6,7 @@ ROS_DISTRO="humble"
 ROS_DOMAIN_ID=42
 IMAGE_NAME="luna/ros2:$ROS_DISTRO"
 PI_WS="/home/masterpi/NMT-Lunabotics2025-Python-based"
-REPO_ROOT="$(dirname $(dirname $PI_WS))"
+REPO_ROOT="/home/masterpi/NMT-Lunabotics2025-Python-based"
 GIT_BRANCH="benjaminstestbranch"
 
 #Variables set by flags
@@ -33,7 +33,7 @@ DOCKER_RUN_FLAGS=(
     --privileged 
     --net=host
     --volume=$REPO_ROOT:/workspace
-    -w /ros2_ws 
+    -w /workspace
     )
 
 # Enable X11 display if DISPLAY is set
