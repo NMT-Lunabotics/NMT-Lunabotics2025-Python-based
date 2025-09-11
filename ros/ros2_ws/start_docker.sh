@@ -6,7 +6,7 @@ ROS_DISTRO="humble"
 ROS_DOMAIN_ID=42
 IMAGE_NAME="luna/ros2:$ROS_DISTRO"
 PI_WS="/home/masterpi/NMT-Lunabotics2025-Python-based/ros/ros2_ws"
-REPO_ROOT="/home/masterpi/NMT-Lunabotics2025-Python-based"
+REPO_ROOT="$(dirname $(dirname $PI_WS))"
 GIT_BRANCH="benjaminstestbranch"
 
 #Variables set by flags
@@ -32,7 +32,7 @@ done
 DOCKER_RUN_FLAGS=(
     --privileged 
     --net=host
-    --volume=/home/masterpi/NMT-Lunabotics2025-Python-based/ros/ros2_ws:/ros2_ws
+    --volume=$REPO_ROOT:/workspace
     -w /ros2_ws 
     )
 
