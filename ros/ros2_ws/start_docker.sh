@@ -81,6 +81,7 @@ if [ "$RUNNING" = false ]; then
     CONTAINER_ID=$(docker ps -q -f ancestor=$IMAGE_NAME)
 fi
 
+#test
 # Exec into the container with bash
 docker exec -it $CONTAINER_ID bash -c "\
     set -e; \
