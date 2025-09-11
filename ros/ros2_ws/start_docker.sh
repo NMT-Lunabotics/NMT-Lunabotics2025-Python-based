@@ -5,7 +5,7 @@ set -e
 ROS_DISTRO="humble"
 ROS_DOMAIN_ID=42
 IMAGE_NAME="luna/ros2:$ROS_DISTRO"
-PI_WS="/home/masterpi/NMT-Lunabotics2025-Python-based/ros/ros2_ws"
+PI_WS="/home/masterpi/NMT-Lunabotics2025-Python-based"
 REPO_ROOT="$(dirname $(dirname $PI_WS))"
 GIT_BRANCH="benjaminstestbranch"
 
