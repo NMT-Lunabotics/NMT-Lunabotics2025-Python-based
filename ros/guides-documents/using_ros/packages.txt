@@ -3,7 +3,7 @@ cd src
 ros2 pkg create package_name --build-type ament_python --dependencies rclpy std_msgs
 
 
-
+ssh masterpi@129.138.174.18
 
 docker ps -aq | xargs -r docker rm -f
 sudo rm -rf /home/masterpi/NMT-Lunabotics2025-Python-based

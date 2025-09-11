@@ -107,5 +107,5 @@ git add .; \
 git commit -m 'Auto-sync: updated workspace after build' || echo 'Nothing to commit'; \
 git push origin $GIT_BRANCH || echo 'Push failed'; \
 echo 'Build complete. Dropping into shell...'; \
-exec bash"
-
+cd ros/ros2_ws; \
+exec bash" 
