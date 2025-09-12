@@ -1,6 +1,6 @@
 mkdir -p src
 cd src
-ros2 pkg create package_name2 --build-type ament_python --dependencies rclpy std_msgs
+ros2 pkg create setup_package --build-type ament_python --dependencies rclpy std_msgs
 
 
 ssh masterpi@129.138.174.18
