@@ -1,15 +1,20 @@
 #!/bin/bash
 set -e
 
-# Where your repo lives
 WORKDIR="$HOME/ros2_ws"
+
+# Git config
+git config --global user.email "benjamin.peterson@student.nmt.edu"
+git config --global user.name "benjamin-p15"
 git config --global --add safe.directory "$WORKDIR"
 
-# Make sure GitHub host key is known (avoid first-time prompts)
+sudo chown -R $(id -u):$(id -g) /ros2_ws
+
+# Ensure SSH known hosts
 mkdir -p ~/.ssh
 ssh-keyscan github.com >> ~/.ssh/known_hosts 2>/dev/null || true
 
-# Clone if it doesn't exist
+# Clone repo if it doesn't exist
 if [ ! -d "$WORKDIR/.git" ]; then
     git clone -b benjaminstestbranch \
       git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git \
@@ -18,12 +23,11 @@ fi
 
 cd "$WORKDIR"
 
-# Pull latest changes
+# Ensure branch exists and matches remote
 git fetch origin
-git reset --hard origin/benjaminstestbranch
-git clean -fd
+git checkout -B benjaminstestbranch origin/benjaminstestbranch
 
-# Build project
+# Build project (adjust to your actual build folder)
 if [ -f Makefile ]; then
     make
 elif [ -f package.json ]; then
@@ -33,8 +37,9 @@ elif [ -f CMakeLists.txt ]; then
 else
     echo "No known build system found."
 fi
+cd "$WORKDIR"  # return to repo root
 
-# Commit & push any local changes
+# Commit & push changes
 git add -A
 git commit -m "Update ROS workspace" || echo "Nothing to commit"
 git push origin benjaminstestbranch
