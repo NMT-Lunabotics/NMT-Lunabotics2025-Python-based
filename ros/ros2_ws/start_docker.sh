@@ -30,8 +30,8 @@ done
 DOCKER_RUN_FLAGS=(
     --privileged 
     --net=host
-    --volume=/home/masterpi/NMT-Lunabotics2025-Python-based:/ros2_ws
-    -w /ros2_ws 
+    --volume=/home/masterpi/NMT-Lunabotics2025-Python-based:/project
+    -w /project/ros/ros2_ws
     )
 
 # Enable X11 display if DISPLAY is set
