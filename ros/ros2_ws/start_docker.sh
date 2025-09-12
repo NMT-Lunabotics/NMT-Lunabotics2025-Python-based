@@ -30,7 +30,7 @@ done
 DOCKER_RUN_FLAGS=(
     --privileged 
     --net=host
-    --volume=/home/masterpi/NMT-Lunabotics2025-Python-based/ros/ros2_ws:/ros2_ws
+    --volume=/home/masterpi/NMT-Lunabotics2025-Python-based:/ros2_ws
     -w /ros2_ws 
     )
 
@@ -80,4 +80,4 @@ if [ "$RUNNING" = false ]; then
 fi
 
 # Exec into the container with bash
-docker exec -it $CONTAINER_ID bash -c "source /ros2_ws/.env && /entrypoint.sh bash"
+docker exec -it $CONTAINER_ID bash -c "export \$(grep -v '^#' /ros2_ws/.env | xargs) && /entrypoint.sh bash"
