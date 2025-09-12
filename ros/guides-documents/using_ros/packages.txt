@@ -28,6 +28,7 @@ nano .env
 git remote add origin git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git
 git checkout -b benjaminstestbranch
 git fetch origin
+git merge origin/benjaminstestbranch
 git add -A
 git commit -m "Initial commit of ROS workspace"
 git push -u origin benjaminstestbranch
