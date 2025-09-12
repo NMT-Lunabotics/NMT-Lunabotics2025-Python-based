@@ -13,7 +13,8 @@ RUN apt-get update && apt-get install -y \
     ros-humble-rviz2 \ 
     #
     #
-    #                      
+    #        
+    nano \              
     python3-colcon-common-extensions \
     python3-rosdep \
     git \
