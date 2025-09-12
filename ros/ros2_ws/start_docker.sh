@@ -28,11 +28,9 @@ done
 
 #Run flags that docker containor needs.
 DOCKER_RUN_FLAGS=(
-    --user $(id -u):$(id -g) \
     --privileged 
     --net=host
     --volume=/home/masterpi/NMT-Lunabotics2025-Python-based/ros/ros2_ws:/ros2_ws
-    --volume=/home/masterpi/.ssh:/root/.ssh
     -w /ros2_ws 
     )
 
@@ -82,6 +80,4 @@ if [ "$RUNNING" = false ]; then
 fi
 
 # Exec into the container with bash
-docker exec -it \
---env-file /home/masterpi/NMT-Lunabotics2025-Python-based/ros/ros2_ws/.env \
-$CONTAINER_ID /entrypoint.sh bash
+docker exec -it $CONTAINER_ID bash -c "source /ros2_ws/.env && /entrypoint.sh bash"
