@@ -1,0 +1,12 @@
+package.xml
+setup.cfg
+setup.py
+package_name3/__init__.py
+package_name3.egg-info/PKG-INFO
+package_name3.egg-info/SOURCES.txt
+package_name3.egg-info/dependency_links.txt
+package_name3.egg-info/entry_points.txt
+package_name3.egg-info/requires.txt
+package_name3.egg-info/top_level.txt
+package_name3.egg-info/zip-safe
+resource/package_name3
