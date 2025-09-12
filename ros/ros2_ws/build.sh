@@ -35,7 +35,7 @@ fi
 
 
 # Sync code to branch
-if ["$build_project" = true || [ "$build_project" = false && "$sync_to_github" = false && "$push_to_github" = false ]]; then
+if [[ "$build_project" = true || ( "$build_project" = false && "$sync_to_github" = false && "$push_to_github" = false ) ]]; then
     # Source ROS 2
     source /opt/ros/humble/setup.bash
 
