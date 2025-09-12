@@ -1,0 +1,96 @@
+[0.000000] (-) TimerEvent: {}
+[0.000587] (package_name) JobQueued: {'identifier': 'package_name', 'dependencies': OrderedDict()}
+[0.000879] (package_name2) JobQueued: {'identifier': 'package_name2', 'dependencies': OrderedDict()}
+[0.000901] (package_name3) JobQueued: {'identifier': 'package_name3', 'dependencies': OrderedDict()}
+[0.000919] (package_name) JobStarted: {'identifier': 'package_name'}
+[0.011676] (package_name2) JobStarted: {'identifier': 'package_name2'}
+[0.016617] (package_name3) JobStarted: {'identifier': 'package_name3'}
+[0.099734] (-) TimerEvent: {}
+[0.200036] (-) TimerEvent: {}
+[0.300351] (-) TimerEvent: {}
+[0.400679] (-) TimerEvent: {}
+[0.500982] (-) TimerEvent: {}
+[0.601314] (-) TimerEvent: {}
+[0.701655] (-) TimerEvent: {}
+[0.802247] (-) TimerEvent: {}
+[0.905753] (-) TimerEvent: {}
+[1.006101] (-) TimerEvent: {}
+[1.106465] (-) TimerEvent: {}
+[1.189419] (package_name) Command: {'cmd': ['/usr/bin/python3', '-W', 'ignore:setup.py install is deprecated', '-W', 'ignore:easy_install command is deprecated', 'setup.py', 'develop', '--editable', '--build-directory', '/ros2_ws/build/package_name/build', '--no-deps', 'symlink_data'], 'cwd': '/ros2_ws/build/package_name', 'env': {'HOSTNAME': 'benjaminpraspberrypi', 'SHLVL': '2', 'LD_LIBRARY_PATH': '/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib', 'HOME': '/root', 'OLDPWD': '/ros2_ws/ros/ros2_ws', 'ROS_PYTHON_VERSION': '3', 'ROS_DISTRO': 'humble', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'TERM': 'xterm', 'ROS_LOCALHOST_ONLY': '0', 'PATH': '/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'LANG': 'C.UTF-8', 'LS_COLORS': 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:', 'AMENT_PREFIX_PATH': '/opt/ros/humble', 'PWD': '/ros2_ws/build/package_name', 'LC_ALL': 'C.UTF-8', 'PYTHONPATH': '/ros2_ws/build/package_name/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/ros2_ws/install/package_name/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages', 'COLCON': '1'}, 'shell': False}
+[1.194522] (package_name2) Command: {'cmd': ['/usr/bin/python3', '-W', 'ignore:setup.py install is deprecated', '-W', 'ignore:easy_install command is deprecated', 'setup.py', 'develop', '--editable', '--build-directory', '/ros2_ws/build/package_name2/build', '--no-deps', 'symlink_data'], 'cwd': '/ros2_ws/build/package_name2', 'env': {'HOSTNAME': 'benjaminpraspberrypi', 'SHLVL': '2', 'LD_LIBRARY_PATH': '/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib', 'HOME': '/root', 'OLDPWD': '/ros2_ws/ros/ros2_ws', 'ROS_PYTHON_VERSION': '3', 'ROS_DISTRO': 'humble', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'TERM': 'xterm', 'ROS_LOCALHOST_ONLY': '0', 'PATH': '/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'LANG': 'C.UTF-8', 'LS_COLORS': 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:', 'AMENT_PREFIX_PATH': '/opt/ros/humble', 'PWD': '/ros2_ws/build/package_name2', 'LC_ALL': 'C.UTF-8', 'PYTHONPATH': '/ros2_ws/build/package_name2/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/ros2_ws/install/package_name2/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages', 'COLCON': '1'}, 'shell': False}
+[1.197089] (package_name3) Command: {'cmd': ['/usr/bin/python3', '-W', 'ignore:setup.py install is deprecated', '-W', 'ignore:easy_install command is deprecated', 'setup.py', 'develop', '--editable', '--build-directory', '/ros2_ws/build/package_name3/build', '--no-deps', 'symlink_data'], 'cwd': '/ros2_ws/build/package_name3', 'env': {'HOSTNAME': 'benjaminpraspberrypi', 'SHLVL': '2', 'LD_LIBRARY_PATH': '/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/aarch64-linux-gnu:/opt/ros/humble/lib', 'HOME': '/root', 'OLDPWD': '/ros2_ws/ros/ros2_ws', 'ROS_PYTHON_VERSION': '3', 'ROS_DISTRO': 'humble', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'TERM': 'xterm', 'ROS_LOCALHOST_ONLY': '0', 'PATH': '/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'LANG': 'C.UTF-8', 'LS_COLORS': 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:', 'AMENT_PREFIX_PATH': '/opt/ros/humble', 'PWD': '/ros2_ws/build/package_name3', 'LC_ALL': 'C.UTF-8', 'PYTHONPATH': '/ros2_ws/build/package_name3/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/ros2_ws/install/package_name3/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages', 'COLCON': '1'}, 'shell': False}
+[1.209753] (-) TimerEvent: {}
+[1.310364] (-) TimerEvent: {}
+[1.411183] (-) TimerEvent: {}
+[1.444421] (package_name) StdoutLine: {'line': b'running develop\n'}
+[1.449138] (package_name3) StdoutLine: {'line': b'running develop\n'}
+[1.464559] (package_name2) StdoutLine: {'line': b'running develop\n'}
+[1.511278] (-) TimerEvent: {}
+[1.533451] (package_name) StdoutLine: {'line': b'running egg_info\n'}
+[1.533730] (package_name) StdoutLine: {'line': b'creating package_name.egg-info\n'}
+[1.533835] (package_name) StdoutLine: {'line': b'writing package_name.egg-info/PKG-INFO\n'}
+[1.534062] (package_name) StdoutLine: {'line': b'writing dependency_links to package_name.egg-info/dependency_links.txt\n'}
+[1.534194] (package_name) StdoutLine: {'line': b'writing entry points to package_name.egg-info/entry_points.txt\n'}
+[1.534307] (package_name) StdoutLine: {'line': b'writing requirements to package_name.egg-info/requires.txt\n'}
+[1.534413] (package_name) StdoutLine: {'line': b'writing top-level names to package_name.egg-info/top_level.txt\n'}
+[1.534582] (package_name) StdoutLine: {'line': b"writing manifest file 'package_name.egg-info/SOURCES.txt'\n"}
+[1.536466] (package_name) StdoutLine: {'line': b"reading manifest file 'package_name.egg-info/SOURCES.txt'\n"}
+[1.537127] (package_name) StdoutLine: {'line': b"writing manifest file 'package_name.egg-info/SOURCES.txt'\n"}
+[1.538187] (package_name3) StdoutLine: {'line': b'running egg_info\n'}
+[1.538867] (package_name) StdoutLine: {'line': b'running build_ext\n'}
+[1.539099] (package_name3) StdoutLine: {'line': b'creating package_name3.egg-info\n'}
+[1.539216] (package_name3) StdoutLine: {'line': b'writing package_name3.egg-info/PKG-INFO\n'}
+[1.539295] (package_name3) StdoutLine: {'line': b'writing dependency_links to package_name3.egg-info/dependency_links.txt\n'}
+[1.539360] (package_name3) StdoutLine: {'line': b'writing entry points to package_name3.egg-info/entry_points.txt\n'}
+[1.539423] (package_name3) StdoutLine: {'line': b'writing requirements to package_name3.egg-info/requires.txt\n'}
+[1.539487] (package_name3) StdoutLine: {'line': b'writing top-level names to package_name3.egg-info/top_level.txt\n'}
+[1.539592] (package_name) StdoutLine: {'line': b'Creating /ros2_ws/install/package_name/lib/python3.10/site-packages/package-name.egg-link (link to .)\n'}
+[1.539743] (package_name3) StdoutLine: {'line': b"writing manifest file 'package_name3.egg-info/SOURCES.txt'\n"}
+[1.540252] (package_name) StdoutLine: {'line': b'\n'}
+[1.540392] (package_name) StdoutLine: {'line': b'Installed /ros2_ws/build/package_name\n'}
+[1.540520] (package_name) StdoutLine: {'line': b'running symlink_data\n'}
+[1.540658] (package_name) StdoutLine: {'line': b'creating /ros2_ws/install/package_name/share/ament_index\n'}
+[1.540776] (package_name) StdoutLine: {'line': b'creating /ros2_ws/install/package_name/share/ament_index/resource_index\n'}
+[1.540877] (package_name) StdoutLine: {'line': b'creating /ros2_ws/install/package_name/share/ament_index/resource_index/packages\n'}
+[1.540959] (package_name) StdoutLine: {'line': b'symbolically linking /ros2_ws/build/package_name/resource/package_name -> /ros2_ws/install/package_name/share/ament_index/resource_index/packages\n'}
+[1.541063] (package_name) StdoutLine: {'line': b'symbolically linking /ros2_ws/build/package_name/package.xml -> /ros2_ws/install/package_name/share/package_name\n'}
+[1.545892] (package_name3) StdoutLine: {'line': b"reading manifest file 'package_name3.egg-info/SOURCES.txt'\n"}
+[1.554901] (package_name3) StdoutLine: {'line': b"writing manifest file 'package_name3.egg-info/SOURCES.txt'\n"}
+[1.555053] (package_name3) StdoutLine: {'line': b'running build_ext\n'}
+[1.555145] (package_name3) StdoutLine: {'line': b'Creating /ros2_ws/install/package_name3/lib/python3.10/site-packages/package-name3.egg-link (link to .)\n'}
+[1.555283] (package_name3) StdoutLine: {'line': b'\n'}
+[1.555395] (package_name3) StdoutLine: {'line': b'Installed /ros2_ws/build/package_name3\n'}
+[1.555493] (package_name3) StdoutLine: {'line': b'running symlink_data\n'}
+[1.555577] (package_name3) StdoutLine: {'line': b'creating /ros2_ws/install/package_name3/share/ament_index\n'}
+[1.555675] (package_name3) StdoutLine: {'line': b'creating /ros2_ws/install/package_name3/share/ament_index/resource_index\n'}
+[1.555762] (package_name3) StdoutLine: {'line': b'creating /ros2_ws/install/package_name3/share/ament_index/resource_index/packages\n'}
+[1.555858] (package_name3) StdoutLine: {'line': b'symbolically linking /ros2_ws/build/package_name3/resource/package_name3 -> /ros2_ws/install/package_name3/share/ament_index/resource_index/packages\n'}
+[1.555950] (package_name3) StdoutLine: {'line': b'symbolically linking /ros2_ws/build/package_name3/package.xml -> /ros2_ws/install/package_name3/share/package_name3\n'}
+[1.560878] (package_name2) StdoutLine: {'line': b'running egg_info\n'}
+[1.561320] (package_name2) StdoutLine: {'line': b'creating package_name2.egg-info\n'}
+[1.561719] (package_name2) StdoutLine: {'line': b'writing package_name2.egg-info/PKG-INFO\n'}
+[1.562385] (package_name2) StdoutLine: {'line': b'writing dependency_links to package_name2.egg-info/dependency_links.txt\n'}
+[1.562685] (package_name2) StdoutLine: {'line': b'writing entry points to package_name2.egg-info/entry_points.txt\n'}
+[1.563036] (package_name2) StdoutLine: {'line': b'writing requirements to package_name2.egg-info/requires.txt\n'}
+[1.563311] (package_name2) StdoutLine: {'line': b'writing top-level names to package_name2.egg-info/top_level.txt\n'}
+[1.563739] (package_name2) StdoutLine: {'line': b"writing manifest file 'package_name2.egg-info/SOURCES.txt'\n"}
+[1.567539] (package_name2) StdoutLine: {'line': b"reading manifest file 'package_name2.egg-info/SOURCES.txt'\n"}
+[1.568736] (package_name2) StdoutLine: {'line': b"writing manifest file 'package_name2.egg-info/SOURCES.txt'\n"}
+[1.571878] (package_name2) StdoutLine: {'line': b'running build_ext\n'}
+[1.572290] (package_name2) StdoutLine: {'line': b'Creating /ros2_ws/install/package_name2/lib/python3.10/site-packages/package-name2.egg-link (link to .)\n'}
+[1.574030] (package_name2) StdoutLine: {'line': b'\n'}
+[1.574286] (package_name2) StdoutLine: {'line': b'Installed /ros2_ws/build/package_name2\n'}
+[1.574400] (package_name2) StdoutLine: {'line': b'running symlink_data\n'}
+[1.574544] (package_name2) StdoutLine: {'line': b'creating /ros2_ws/install/package_name2/share/ament_index\n'}
+[1.574673] (package_name2) StdoutLine: {'line': b'creating /ros2_ws/install/package_name2/share/ament_index/resource_index\n'}
+[1.574800] (package_name2) StdoutLine: {'line': b'creating /ros2_ws/install/package_name2/share/ament_index/resource_index/packages\n'}
+[1.574887] (package_name2) StdoutLine: {'line': b'symbolically linking /ros2_ws/build/package_name2/resource/package_name2 -> /ros2_ws/install/package_name2/share/ament_index/resource_index/packages\n'}
+[1.574993] (package_name2) StdoutLine: {'line': b'symbolically linking /ros2_ws/build/package_name2/package.xml -> /ros2_ws/install/package_name2/share/package_name2\n'}
+[1.611435] (-) TimerEvent: {}
+[1.633603] (package_name) CommandEnded: {'returncode': 0}
+[1.654257] (package_name) JobEnded: {'identifier': 'package_name', 'rc': 0}
+[1.655815] (package_name3) CommandEnded: {'returncode': 0}
+[1.664572] (package_name3) JobEnded: {'identifier': 'package_name3', 'rc': 0}
+[1.665893] (package_name2) CommandEnded: {'returncode': 0}
+[1.673440] (package_name2) JobEnded: {'identifier': 'package_name2', 'rc': 0}
+[1.674478] (-) EventReactorShutdown: {}
