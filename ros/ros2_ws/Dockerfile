@@ -12,6 +12,7 @@ RUN apt-get update && apt-get install -y \
     python3-rosdep \
     nano \
     git \
+    v4l-utils \
     && rm -rf /var/lib/apt/lists/*
 
 ENV LANG=en_US.UTF-8
