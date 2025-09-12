@@ -31,7 +31,6 @@ DOCKER_RUN_FLAGS=(
     --privileged 
     --net=host
     --volume=/home/masterpi/NMT-Lunabotics2025-Python-based:/project
-    -w /project
     )
 
 # Enable X11 display if DISPLAY is set
