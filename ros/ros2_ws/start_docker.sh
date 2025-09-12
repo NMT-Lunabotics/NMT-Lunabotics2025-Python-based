@@ -31,6 +31,7 @@ DOCKER_RUN_FLAGS=(
     --privileged 
     --net=host
     --volume=/home/masterpi/NMT-Lunabotics2025-Python-based/ros/ros2_ws:/ros2_ws
+    --volume=$HOME/.ssh:/root/.ssh
     -w /ros2_ws 
     )
 
@@ -80,4 +81,4 @@ if [ "$RUNNING" = false ]; then
 fi
 
 # Exec into the container with bash
-docker exec -it $CONTAINER_ID bash -c "source /ros2_ws/.env && /entrypoint.sh bash"
+docker run -it "${DOCKER_RUN_FLAGS[@]}" $IMAGE_NAME bash
