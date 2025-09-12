@@ -31,6 +31,7 @@ DOCKER_RUN_FLAGS=(
     --privileged 
     --net=host
     --volume=/home/masterpi/NMT-Lunabotics2025-Python-based:/project
+    -w /project/ros/ros2_ws
     )
 
 # Enable X11 display if DISPLAY is set
@@ -79,4 +80,5 @@ if [ "$RUNNING" = false ]; then
 fi
 
 # Exec into the container with bash
-docker exec -it $CONTAINER_ID bash -c "export \$(grep -v '^#' /project/ros/ros2_ws/.env | xargs) && /entrypoint.sh bash"
+docker exec -it $CONTAINER_ID bash -c \
+"export \$(grep -v '^#' /project/ros/ros2_ws/.env | xargs) && /entrypoint.sh bash"
