@@ -10,7 +10,7 @@ IMAGE_NAME="luna/ros2:$ROS_DISTRO"
 #Variables set by flags
 DISPLAY_ENABLED=false
 BUILD_IMAGE=false
-
+DISPLAY=0
 
 
 
@@ -37,7 +37,7 @@ DOCKER_RUN_FLAGS=(
 
 # Enable X11 display if DISPLAY is set
 if [ "$DISPLAY_ENABLED" = true ]; then
-    echo "DISPLAY=$DISPLAY" >> $ENV_FILE
+    echo "DISPLAY=$DISPLAY" >> $DISPLAY
     DOCKER_RUN_FLAGS+=("--volume=/tmp/.X11-unix:/tmp/.X11-unix:rw")
     xhost +local:docker
 fi

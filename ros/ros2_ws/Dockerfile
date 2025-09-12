@@ -14,12 +14,22 @@ RUN apt-get update && apt-get install -y \
     #
     #
     #        
-    nano \              
+    python3-pip  \
+    python3-opencv \
+    nano \        
+    ros-humble-cv-bridge \
+    ros-humble-image-transport \     
     python3-colcon-common-extensions \
     python3-rosdep \
     openssh-client \
     git \
     && rm -rf /var/lib/apt/lists/*
+
+ENV LANG=en_US.UTF-8
+ENV LANGUAGE=en_US:en
+ENV LC_ALL=en_US.UTF-8
+
+ RUN pip3 install rpi-camera2
 
 # Create workspace
 WORKDIR /ros2_ws
