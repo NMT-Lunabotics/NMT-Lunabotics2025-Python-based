@@ -1,27 +1,16 @@
 FROM ros:humble-ros-base
 
-# Set up environment
 SHELL ["/bin/bash", "-c"]
 
-# Install extra packages if needed (example: colcon, git, build tools)
 RUN apt-get update && apt-get install -y \
-    #Packages that RVis2 requires.
-    ros-humble-rviz-common \
-    #Packages that RVis2 for visual display of robot elements.
-    ros-humble-rviz-default-plugins \
-    #RVis2 package.
-    ros-humble-rviz2 \ 
-    #
-    #
-    #        
-    python3-pip  \
-    python3-opencv \
-    nano \        
+    ros-humble-v4l2-camera \
     ros-humble-cv-bridge \
-    ros-humble-image-transport \     
+    ros-humble-image-transport \
+    ros-humble-rviz2 \
+    python3-opencv \
     python3-colcon-common-extensions \
     python3-rosdep \
-    openssh-client \
+    nano \
     git \
     && rm -rf /var/lib/apt/lists/*
 
@@ -29,16 +18,11 @@ ENV LANG=en_US.UTF-8
 ENV LANGUAGE=en_US:en
 ENV LC_ALL=en_US.UTF-8
 
- RUN pip3 install rpi-camera2
-
-# Create workspace
 WORKDIR /ros2_ws
 RUN mkdir -p src
 
-# Source ROS setup automatically
 RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
 
-# Default entrypoint
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
 
