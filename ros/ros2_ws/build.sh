@@ -11,9 +11,9 @@ build_project=false
 # Parse flags
 while [[ "$#" -gt 0 ]]; do
     case $1 in
-        -s|--sync) sync_to_github=true ;;
-        -p|--push) push_to_github=true ;;
-        -b|--build) build_project=true ;;
+        -s|-sync) sync_to_github=true ;;
+        -p|-push) push_to_github=true ;;
+        -b|-build) build_project=true ;;
         *) echo "Unknown flag: $1"; exit 1 ;;
     esac
     shift
