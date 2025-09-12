@@ -38,6 +38,7 @@ source /opt/ros/humble/setup.bash
 
 # Build workspace
 colcon build --symlink-install
+source install/setup.bash
 
 # Commit and push changes
 git add -A
