@@ -83,5 +83,5 @@ fi
 
 # Exec into the container with bash
 docker exec -it \
---env-file .env \
+--env-file /home/masterpi/NMT-Lunabotics2025-Python-based/ros/ros2_ws/.env \
 $CONTAINER_ID /entrypoint.sh bash

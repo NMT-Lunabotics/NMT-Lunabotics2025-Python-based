@@ -17,7 +17,7 @@ git clean -fd
 git pull origin benjaminstestbranch
 cd ros/ros2_ws
 chmod +x ./build.sh
-
+cp /home/masterpi/.env /home/masterpi/NMT-Lunabotics2025-Python-based/ros/ros2_ws
 
 
 touch .env
