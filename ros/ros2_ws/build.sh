@@ -22,6 +22,7 @@ done
 # Git setup
 git config --global user.email "benjamin.peterson@student.nmt.edu"
 git config --global user.name "benjamin-p15"
+git config --global --add safe.directory /ros2_ws
 git remote add origin git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git 2>/dev/null || true
 
 cd "$WORKDIR"
@@ -29,9 +30,11 @@ cd "$WORKDIR"
 # Sync code to branch
 if [ "$sync_to_github" = true ]; then
     git fetch origin
-    git checkout -B benjaminstestbranch origin/benjaminstestbranch
-    git merge origin/benjaminstestbranch || echo "Already up to date"
+    git checkout benjaminstestbranch 2>/dev/null || git checkout -b benjaminstestbranch
+    git reset --hard origin/benjaminstestbranch
+    git clean -fdx
 fi
+
 
 
 # Sync code to branch
@@ -50,3 +53,5 @@ if [ "$push_to_github" = true ]; then
     git commit -m "Update ROS workspace" || echo "Nothing to commit"
     git push origin benjaminstestbranch
 fi
+
+cd "ros/ros_ws"
