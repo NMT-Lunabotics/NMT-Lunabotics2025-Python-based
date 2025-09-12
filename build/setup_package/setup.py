@@ -1,1 +1,1 @@
-/ros2_ws/src/setup_package/setup.py
+/ros2_ws/ros/ros2_ws/src/setup_package/setup.py
