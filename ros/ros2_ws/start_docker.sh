@@ -31,7 +31,7 @@ done
 DOCKER_RUN_FLAGS=(
     --privileged 
     --net=host
-    --volume=/home/benjamin/Desktop/ros2_ws:/ros2_ws
+    --volume=/home/masterpi/NMT-Lunabotics2025-Python-based/ros/ros2_ws:/ros2_ws
     -w /ros2_ws 
     )
 
