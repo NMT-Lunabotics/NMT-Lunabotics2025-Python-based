@@ -16,3 +16,9 @@ git reset --hard origin/benjaminstestbranch
 git clean -fd
 git pull origin benjaminstestbranch
 cd ros/ros2_ws
+
+
+chmod +x ./build.sh
+
+touch .env
+nano .env
