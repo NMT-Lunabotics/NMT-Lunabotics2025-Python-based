@@ -1,3 +1,12 @@
+
+
+
+
+
+
+
+
+
 mkdir -p src
 cd src
 ros2 pkg create --build-type ament_python simple_chat

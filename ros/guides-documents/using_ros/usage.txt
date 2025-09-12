@@ -1,4 +1,4 @@
-1. The following command starts ros with a set of optional (flags) which are added to the end of the command.
+1. The following script starts ros with a set of optional (flags) which are added to the end of the command.
 By adding the flags you can enable diffrent docker aspects to enable your desiered setup for testing.
 ----------------------------------------------------------------------
 ./start_docker.sh [ --build (-b) ] [--display (-d)]
@@ -8,7 +8,11 @@ By adding the flags you can enable diffrent docker aspects to enable your desier
 
 
 
-2. For package updates that do not need a full build you can simply update while you are running the docker.
+2. The follow script allows you to do all manner of things related to build your packages 
+and keep github updated.
 ----------------------------------------------------------------------
-source /opt/ros/humble/setup.bash
-colcon build
+./build.sh [ --build (-b) ] [--sync (-s)] [--push (-p)]
+
+--build (-b)                Builds and sources the current docker containor.
+--sync (-s)                 Syncs/pulls data from github (NOTE this may overwite files)
+--push (-p)                 Push current code to github (Note to stay up to date, only work in 1 enveriment at a time .e.i docker or vscode)

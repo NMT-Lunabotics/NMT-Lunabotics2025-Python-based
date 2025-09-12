@@ -1,0 +1,35 @@
+To setup a github to run in the docker requires that github has access to an ssh key.
+To do these we will run the containor with thr right options and create a volume for both the file paths and ssh,
+ssh should be placed on host device(reaspberry pi) home ssh folder. The key can be generated using a command and given to github.
+
+DOCKER_RUN_FLAGS=(
+    --privileged 
+    --net=host
+    --volume=/home/masterpi/NMT-Lunabotics2025-Python-based/ros/ros2_ws:/ros2_ws
+    --volume=$HOME/.ssh:/root/.ssh
+    -w /ros2_ws 
+    )
+
+
+
+To actually run github you need to set your working directory
+
+WORKDIR="/ros2_ws"
+
+Configure a user name and password
+
+git config --global user.email "benjamin.peterson@student.nmt.edu"
+git config --global user.name "benjamin-p15"
+git remote add origin git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git 2>/dev/null || true
+
+Then to sync your repository you can do
+
+ git fetch origin
+    git checkout -B benjaminstestbranch origin/benjaminstestbranch
+    git merge origin/benjaminstestbranch || echo "Already up to date"
+
+And to Push to you can do 
+
+    git add -A
+    git commit -m "Update ROS workspace" || echo "Nothing to commit"
+    git push origin benjaminstestbranch
