@@ -1,6 +1,6 @@
 mkdir -p src
 cd src
-ros2 pkg create setup_package --build-type ament_python --dependencies rclpy std_msgs
+ros2 pkg create --build-type ament_python simple_chat
 
 
 ssh masterpi@129.138.174.18
@@ -32,3 +32,8 @@ git merge origin/benjaminstestbranch
 git add -A
 git commit -m "Initial commit of ROS workspace"
 git push -u origin benjaminstestbranch
+
+
+rm -rf folder_name
+
+mkdir folder_name

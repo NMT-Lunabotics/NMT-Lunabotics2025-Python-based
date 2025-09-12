@@ -4,12 +4,16 @@ set -e
 WORKDIR="/ros2_ws"
 
 # Default: do everything
-DO_SYNC_ONLY=false
+sync_to_github=false
+push_to_github=false
+build_project=false
 
 # Parse flags
 while [[ "$#" -gt 0 ]]; do
     case $1 in
-        -s|--sync) DO_SYNC_ONLY=true ;;
+        -s|--sync) sync_to_github=true ;;
+        -p|--push) push_to_github=true ;;
+        -b|--build) build_project=true ;;
         *) echo "Unknown flag: $1"; exit 1 ;;
     esac
     shift
@@ -22,25 +26,27 @@ git remote add origin git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-ba
 
 cd "$WORKDIR"
 
-# Sync branch
-git fetch origin
-git checkout -B benjaminstestbranch origin/benjaminstestbranch
-git merge origin/benjaminstestbranch || echo "Already up to date"
-
-# If only syncing, exit here
-if [ "$DO_SYNC_ONLY" = true ]; then
-    echo "Sync complete. Exiting."
-    exit 0
+# Sync code to branch
+if [ "$sync_to_github" = true ]; then
+    git fetch origin
+    git checkout -B benjaminstestbranch origin/benjaminstestbranch
+    git merge origin/benjaminstestbranch || echo "Already up to date"
 fi
 
-# Source ROS 2
-source /opt/ros/humble/setup.bash
 
-# Build workspace
-colcon build --symlink-install
-source install/setup.bash
+# Sync code to branch
+if ["$build_project" = true || [ "$build_project" = false && "$sync_to_github" = false && "$push_to_github" = false ]]; then
+    # Source ROS 2
+    source /opt/ros/humble/setup.bash
+
+    # Build workspace
+    colcon build --symlink-install
+    source install/setup.bash
+fi
 
 # Commit and push changes
-git add -A
-git commit -m "Update ROS workspace" || echo "Nothing to commit"
-git push origin benjaminstestbranch
+if [ "$push_to_github" = true ]; then
+    git add -A
+    git commit -m "Update ROS workspace" || echo "Nothing to commit"
+    git push origin benjaminstestbranch
+fi
