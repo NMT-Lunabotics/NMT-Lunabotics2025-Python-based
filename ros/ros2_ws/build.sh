@@ -1,35 +1,39 @@
 #!/bin/bash
 set -e
 
-# Where you want the repo
-WORKDIR=~/ros2_ws
+# Where your repo lives
+WORKDIR="$HOME/ros2_ws"
 
-# Remove old repo if needed
-rm -rf $WORKDIR
-mkdir -p $WORKDIR
+# Clone if it doesn't exist
+if [ ! -d "$WORKDIR/.git" ]; then
+    if [ -z "$GITHUB_TOKEN" ]; then
+        echo "Error: GITHUB_TOKEN is not set."
+        exit 1
+    fi
 
-# Clone the repo
-if [ -z "$GITHUB_TOKEN" ]; then
-  echo "Error: GITHUB_TOKEN is not set."
-  exit 1
+    git clone -b benjaminstestbranch \
+      https://benjamin-p15:$GITHUB_TOKEN@github.com/NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git \
+      "$WORKDIR"
 fi
 
-git clone -b benjaminstestbranch https://benjamin-p15:$GITHUB_TOKEN@github.com/NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git $WORKDIR
+cd "$WORKDIR"
 
-cd $WORKDIR
+# Pull latest changes
+git fetch origin
+git reset --hard origin/benjaminstestbranch
 
 # Build project
 if [ -f Makefile ]; then
-  make
+    make
 elif [ -f package.json ]; then
-  npm install && npm run build
+    npm install && npm run build
 elif [ -f CMakeLists.txt ]; then
-  mkdir -p build && cd build && cmake .. && make
+    mkdir -p build && cd build && cmake .. && make
 else
-  echo "No known build system found."
+    echo "No known build system found."
 fi
 
-# Commit & push changes
+# Commit & push any local changes
 git config user.name "benjamin-p15"
 git config user.email "benjamin.peterson@student.nmt.edu"
 git add .
