@@ -7,7 +7,6 @@ ROS_DOMAIN_ID=42
 IMAGE_NAME="luna/ros2:$ROS_DISTRO"
 
 
-
 #Variables set by flags
 DISPLAY_ENABLED=false
 BUILD_IMAGE=false
@@ -29,9 +28,11 @@ done
 
 #Run flags that docker containor needs.
 DOCKER_RUN_FLAGS=(
+    --user $(id -u):$(id -g) \
     --privileged 
     --net=host
     --volume=/home/masterpi/NMT-Lunabotics2025-Python-based/ros/ros2_ws:/ros2_ws
+    --volume=/home/masterpi/.ssh:/root/.ssh
     -w /ros2_ws 
     )
 
@@ -81,4 +82,6 @@ if [ "$RUNNING" = false ]; then
 fi
 
 # Exec into the container with bash
-docker exec -it $CONTAINER_ID /entrypoint.sh bash
+docker exec -it \
+--env-file .env \
+$CONTAINER_ID /entrypoint.sh bash
