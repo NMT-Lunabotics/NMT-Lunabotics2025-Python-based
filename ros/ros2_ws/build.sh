@@ -1,6 +1,6 @@
-echo '#!/bin/bash
+#!/bin/bash
 REPO_URL="https://github.com/NMT-Lunabotics/NMT-Lunabotics2025-Python-based"
-BRANCH="benjamintestbrance"
+BRANCH="benjamintestbrance
 
 if colcon build; then
     echo "Build successful! Pushing to GitHub..."
