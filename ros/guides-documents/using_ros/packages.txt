@@ -1,6 +1,6 @@
 mkdir -p src
 cd src
-ros2 pkg create package_name --build-type ament_python --dependencies rclpy std_msgs
+ros2 pkg create package_name2 --build-type ament_python --dependencies rclpy std_msgs
 
 
 ssh masterpi@129.138.174.18
@@ -22,3 +22,12 @@ cp /home/masterpi/.env /home/masterpi/NMT-Lunabotics2025-Python-based/ros/ros2_w
 
 touch .env
 nano .env
+
+
+
+git remote add origin git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git
+git checkout -b benjaminstestbranch
+git fetch origin
+git add -A
+git commit -m "Initial commit of ROS workspace"
+git push -u origin benjaminstestbranch

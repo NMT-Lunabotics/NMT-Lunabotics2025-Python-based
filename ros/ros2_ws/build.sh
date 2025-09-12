@@ -28,6 +28,10 @@ git fetch origin
 git checkout -B benjaminstestbranch origin/benjaminstestbranch
 
 # Build project (adjust to your actual build folder)
+<<<<<<< HEAD
+=======
+cd package_name  # if your build is inside this folder
+>>>>>>> origin/benjaminstestbranch
 if [ -f Makefile ]; then
     make
 elif [ -f package.json ]; then
