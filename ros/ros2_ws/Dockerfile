@@ -10,14 +10,14 @@ RUN apt-get update && apt-get install -y \
     python3-opencv \
     python3-colcon-common-extensions \
     python3-rosdep \
+    #nano--> file editing
     nano \
+    #git--> push.pull from github repsoitory
     git \
+    #openssh-client--> ssh connection
+    openssh-client \
     v4l-utils \
     && rm -rf /var/lib/apt/lists/*
-
-ENV LANG=en_US.UTF-8
-ENV LANGUAGE=en_US:en
-ENV LC_ALL=en_US.UTF-8
 
 WORKDIR /ros2_ws
 RUN mkdir -p src
