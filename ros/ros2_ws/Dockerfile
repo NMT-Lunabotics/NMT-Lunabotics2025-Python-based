@@ -15,10 +15,6 @@ ENV GIT_USER=benjamin-p15
 ENV GIT_EMAIL=benjamin.peterson@student.nmt.edu
 
 
-
-#Set our default display.
-ENV DISPLAY=0
-
 #Set the locale to use "bash" as default shell.
 SHELL ["/bin/bash", "-c"]
 
