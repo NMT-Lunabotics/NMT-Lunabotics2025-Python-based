@@ -1,20 +1,14 @@
 <?xml version="1.0"?>
-<?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
   <name>pi_camera</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="benjamin.peterson@student.nmt.edu">root</maintainer>
-  <license>TODO: License declaration</license>
+  <description>Launch package for Raspberry Pi camera using v4l2_camera</description>
+  <maintainer email="you@example.com">Your Name</maintainer>
+  <license>Apache-2.0</license>
 
   <depend>rclpy</depend>
-
-  <test_depend>ament_copyright</test_depend>
-  <test_depend>ament_flake8</test_depend>
-  <test_depend>ament_pep257</test_depend>
-  <test_depend>python3-pytest</test_depend>
-
-  <export>
-    <build_type>ament_python</build_type>
-  </export>
+  <depend>launch</depend>
+  <depend>launch_ros</depend>
+  <depend>v4l2_camera</depend>
+  <depend>image_transport</depend>
 </package>
