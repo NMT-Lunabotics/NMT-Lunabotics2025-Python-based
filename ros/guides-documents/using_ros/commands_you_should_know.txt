@@ -16,3 +16,15 @@ rm -rf folder_name
 ----------------------------------------------------------------------
 
 nano filename
+
+
+
+3. Docker commands. Exit allows you to exit docker containors,
+while the "docker" commands give you informations about the image and running containors.
+----------------------------------------------------------------------
+
+exit 
+
+docker images
+
+docker ps
