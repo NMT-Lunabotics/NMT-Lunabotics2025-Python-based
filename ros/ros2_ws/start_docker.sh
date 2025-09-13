@@ -31,6 +31,7 @@ done
 #Run flags that docker containor needs.
 DOCKER_RUN_FLAGS=(
     --privileged 
+    --device /dev/video0:/dev/video0 \
     --net=host
     --volume=/home/masterpi/NMT-Lunabotics2025-Python-based/ros/ros2_ws:/ros2_ws
     --volume=$HOME/.ssh:/root/.ssh
