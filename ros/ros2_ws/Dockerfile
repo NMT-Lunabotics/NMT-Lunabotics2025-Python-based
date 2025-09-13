@@ -1,35 +1,70 @@
-FROM ros:humble-ros-base
+#Select the ros distribution we are using.
+FROM ros:humble
 
+#Create a user to avoid using root.
+ARG USER=luna
+RUN useradd -m $USER && usermod -aG dialout,video $USER
+
+
+#---VARIABLE SETTINGS---
+ENV HOME_DIR=/home/$USER
+ENV WORKING_DIR=$HOME_DIR/ros2_ws
+ENV GIT_REPO=git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git
+ENV GIT_BRANCH=benjaminstestbranch
+ENV GIT_USER=benjamin-p15
+ENV GIT_EMAIL=benjamin.peterson@student.nmt.edu
+
+
+
+#Set our default display.
+ENV DISPLAY=0
+
+#Set the locale to use "bash" as default shell.
 SHELL ["/bin/bash", "-c"]
 
+#Install our images used packages, and switch to root for process.
+USER root
 RUN apt-get update && apt-get install -y \
-    ros-humble-v4l2-camera \
+    #camera librarys
+    ros-humble-camera-ros \
     ros-humble-cv-bridge \
     ros-humble-image-transport \
     ros-humble-rviz2 \
     python3-opencv \
     python3-colcon-common-extensions \
-    ros-humble-image-tools \
     python3-rosdep \
-    #nano--> file editing
-    nano \
-    #ros-$ROS_DISTRO-libcamera-ros \
-    ros-$ROS_DISTRO-camera-ros \
-    #ros-$ROS_DISTRO-demos \
-    #git--> push.pull from github repsoitory
-    git \
-    #openssh-client--> ssh connection
-    openssh-client \
     v4l-utils \
-    && rm -rf /var/lib/apt/lists/*
+    #tools
+    git \
+    openssh-client \
+    nano \
+#ros-humble-v4l2-camera \
+#ros-humble-image-tools \
+#ros-$ROS_DISTRO-libcamera-ros \
+#ros-$ROS_DISTRO-camera-ros \
+#ros-$ROS_DISTRO-demos \
+#v4l-utils \
+&& rm -rf /var/lib/apt/lists/*
 
-WORKDIR /ros2_ws
-RUN mkdir -p src
 
-RUN echo "source /opt/ros/humble/setup.bash" >> /root/.bashrc
+#Copy in ros workspace.
+COPY --chown=$USER:$USER ros/ros2_ws $WORKING_DIR
 
+#Set correct user and directory.
+USER $USER
+ENV ROS_USER=$USER
+WORKDIR $WORKING_DIR
+
+#Setup our entry point script.
+USER root
+WORKDIR $HOME_DIR
+#RUN chmod -R 666 /dev read access for everyone
 COPY entrypoint.sh /entrypoint.sh
+RUN echo "source /opt/ros/humble/setup.bash" >> $HOME_DIR/.bashrc
+RUN echo "source $WORKING_DIR/install/setup.bash" >> $HOME_DIR/.bashrc
 RUN chmod +x /entrypoint.sh
-
 ENTRYPOINT ["/entrypoint.sh"]
-CMD ["bash"]
+
+#Switch to our non root user.
+USER $USER
+WORKDIR $HOME_DIR

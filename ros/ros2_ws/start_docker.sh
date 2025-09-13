@@ -1,105 +1,65 @@
 #!/bin/bash
 set -e
 
-# Sets the default values for running the containor from the env_file list of variables.
+# Default variables
 ROS_DISTRO="humble"
-ROS_DOMAIN_ID=42
 IMAGE_NAME="luna/ros2:$ROS_DISTRO"
-RESTART_CONTAINER=false
-
-
-#Variables set by flags
 DISPLAY_ENABLED=false
 BUILD_IMAGE=false
-export DISPLAY=$DISPLAY
+RESTART_CONTAINER=false
 
+WORKSPACE="/home/luna/ros2_ws"
 
-
-
-
-
-#Check flags that were set, and update variables. 
+# Parse flags
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
-        -d|-display) DISPLAY_ENABLED=true; shift ;;
-        -b|-build) BUILD_IMAGE=true; shift ;;
-        -r|-restart) RESTART_CONTAINER=true; shift ;;
+        -d|--display) DISPLAY_ENABLED=true; shift ;;
+        -b|--build) BUILD_IMAGE=true; shift ;;
+        -r|--restart) RESTART_CONTAINER=true; shift ;;
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
 done
 
-#Run flags that docker containor needs.
-DOCKER_RUN_FLAGS=(
-    --privileged 
-    --device /dev/video0 \
-    -v /opt/vc/lib:/opt/vc/lib \
-      --device=/dev/video0 \
-  --device=/dev/video1 \
-  --device=/dev/video2 \
-  --device=/dev/video3 \
-  --device=/dev/video4 \
-  --device=/dev/video5 \
-  --device=/dev/video6 \
-  --device=/dev/video7 \
-  --group-add video \
-    --device /dev/v4l \
-    --net=host
-    --volume=/home/masterpi/NMT-Lunabotics2025-Python-based/ros/ros2_ws:/ros2_ws
-    --volume=$HOME/.ssh:/root/.ssh
-    -e DISPLAY=$DISPLAY \
-    -w /ros2_ws 
-    )
-
-# Enable X11 display if DISPLAY is set
-if [ "$DISPLAY_ENABLED" = true ]; then
-    DOCKER_RUN_FLAGS+=("-e" "DISPLAY=$DISPLAY")
-fi
-
-#echo "Removing unused Docker images..."
-#docker image prune -a -f
-
-# If image does not exist build it if the architecture is supported.
+# Build image if needed
 if [ "$BUILD_IMAGE" = true ] || ! docker image inspect $IMAGE_NAME >/dev/null 2>&1; then
     echo "Building Docker image: $IMAGE_NAME"
-    ARCH=$(uname -m)
-    TARGET_ARCH=""
-    if [[ "$ARCH" == "x86_64" ]]; then
-        TARGET_ARCH="amd64"
-    elif [[ "$ARCH" == "aarch64" ]]; then
-        TARGET_ARCH="arm64"
-    else
-        echo "Unsupported architecture: $ARCH"
-        exit 1
-    fi
-
-    docker build -t $IMAGE_NAME --build-arg TARGET_ARCH=$TARGET_ARCH .
+    docker build -t $IMAGE_NAME .
 fi
 
-# Restart container if requested
+# Remove old containers if restarting
 if [ "$RESTART_CONTAINER" = true ]; then
-    echo "Restarting: stopping and removing all containers for $IMAGE_NAME..."
     OLD_CONTAINERS=$(docker ps -aq -f ancestor=$IMAGE_NAME)
     if [ -n "$OLD_CONTAINERS" ]; then
         docker rm -f $OLD_CONTAINERS
     fi
-    RUNNING=false
 fi
 
-# Check if a container is already running for this image
-RUNNING=false
+# Check if container is already running
 CONTAINER_ID=$(docker ps -q -f ancestor=$IMAGE_NAME)
-if [ -n "$CONTAINER_ID" ]; then
-    echo "Docker container is already running."
-    RUNNING=true
-fi
-
-# Start container if not running
-if [ "$RUNNING" = false ]; then
+if [ -z "$CONTAINER_ID" ]; then
     echo "Starting Docker container..."
-    docker run -dit "${DOCKER_RUN_FLAGS[@]}" $IMAGE_NAME bash
+    DOCKER_FLAGS=(
+        --privileged
+        --net=host
+        --group-add video
+        -v /dev:/dev
+        -v "$WORKSPACE":"$WORKSPACE"
+        -w "$WORKSPACE"
+    )
+
+    if [ "$DISPLAY_ENABLED" = true ]; then
+        DOCKER_FLAGS+=(
+            -e DISPLAY=$DISPLAY
+            -v /tmp/.X11-unix:/tmp/.X11-unix:rw
+        )
+        xhost +local:docker
+    fi
+
+    docker run -dit "${DOCKER_FLAGS[@]}" $IMAGE_NAME bash
     CONTAINER_ID=$(docker ps -q -f ancestor=$IMAGE_NAME)
 fi
 
+echo "Container ID: $CONTAINER_ID"
 
-# Exec into the container with bash
-docker run -it "${DOCKER_RUN_FLAGS[@]}" $IMAGE_NAME bash
+# Attach to container and start bash (or ROS camera test)
+docker exec -it $CONTAINER_ID bash
