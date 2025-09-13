@@ -9,6 +9,7 @@ RUN apt-get update && apt-get install -y \
     ros-humble-rviz2 \
     python3-opencv \
     python3-colcon-common-extensions \
+    ros-humble-image-tools \
     python3-rosdep \
     #nano--> file editing
     nano \
