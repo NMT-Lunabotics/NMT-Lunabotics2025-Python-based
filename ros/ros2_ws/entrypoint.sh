@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
 
+: "${WORKING_DIR:=/home/luna/ros2_ws}"
 cd "$WORKING_DIR"
 
 # Source ROS 2

@@ -48,7 +48,7 @@ RUN apt-get update && apt-get install -y \
 
 
 #Copy in ros workspace.
-COPY --chown=$USER:$USER ros/ros2_ws $WORKING_DIR
+#COPY --chown=$USER:$USER ros/ros2_ws $WORKING_DIR
 
 #Set correct user and directory.
 USER $USER

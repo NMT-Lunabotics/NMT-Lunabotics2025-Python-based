@@ -7,7 +7,7 @@ IMAGE_NAME="luna/ros2:$ROS_DISTRO"
 DISPLAY_ENABLED=false
 BUILD_IMAGE=false
 RESTART_CONTAINER=false
-
+WORKING_DIR_CONTAINER="/home/luna/ros2_ws"
 WORKSPACE="/home/luna/ros2_ws"
 
 # Parse flags
@@ -42,9 +42,10 @@ if [ -z "$CONTAINER_ID" ]; then
         --privileged
         --net=host
         --group-add video
-        -v /dev:/dev
-        -v "$WORKSPACE":"$WORKSPACE"
-        -w "$WORKSPACE"
+        --volume=/dev:/dev:rw
+        --volume=$WORKING_DIR_HOST:$WORKING_DIR_CONTAINER
+        --env WORKING_DIR=$WORKING_DIR_CONTAINER
+        -w $WORKING_DIR_CONTAINER
     )
 
     if [ "$DISPLAY_ENABLED" = true ]; then
