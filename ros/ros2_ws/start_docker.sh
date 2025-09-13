@@ -31,7 +31,18 @@ done
 #Run flags that docker containor needs.
 DOCKER_RUN_FLAGS=(
     --privileged 
-    --device /dev/video0:/dev/video0 \
+    --device /dev/video0 \
+    -v /opt/vc/lib:/opt/vc/lib \
+      --device=/dev/video0 \
+  --device=/dev/video1 \
+  --device=/dev/video2 \
+  --device=/dev/video3 \
+  --device=/dev/video4 \
+  --device=/dev/video5 \
+  --device=/dev/video6 \
+  --device=/dev/video7 \
+  --group-add video \
+    --device /dev/v4l \
     --net=host
     --volume=/home/masterpi/NMT-Lunabotics2025-Python-based/ros/ros2_ws:/ros2_ws
     --volume=$HOME/.ssh:/root/.ssh
@@ -44,8 +55,8 @@ if [ "$DISPLAY_ENABLED" = true ]; then
     DOCKER_RUN_FLAGS+=("-e" "DISPLAY=$DISPLAY")
 fi
 
-echo "Removing unused Docker images..."
-docker image prune -a -f
+#echo "Removing unused Docker images..."
+#docker image prune -a -f
 
 # If image does not exist build it if the architecture is supported.
 if [ "$BUILD_IMAGE" = true ] || ! docker image inspect $IMAGE_NAME >/dev/null 2>&1; then

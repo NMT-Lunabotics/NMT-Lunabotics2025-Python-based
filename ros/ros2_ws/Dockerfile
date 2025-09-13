@@ -13,7 +13,9 @@ RUN apt-get update && apt-get install -y \
     python3-rosdep \
     #nano--> file editing
     nano \
+    ros-$ROS_DISTRO-libcamera-ros \
     ros-$ROS_DISTRO-camera-ros \
+    ros-$ROS_DISTRO-demos \
     #git--> push.pull from github repsoitory
     git \
     #openssh-client--> ssh connection
