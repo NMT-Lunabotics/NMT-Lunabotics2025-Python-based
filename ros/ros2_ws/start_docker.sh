@@ -44,6 +44,9 @@ if [ "$DISPLAY_ENABLED" = true ]; then
     DOCKER_RUN_FLAGS+=("-e" "DISPLAY=$DISPLAY")
 fi
 
+echo "Removing unused Docker images..."
+docker image prune -a -f
+
 # If image does not exist build it if the architecture is supported.
 if [ "$BUILD_IMAGE" = true ] || ! docker image inspect $IMAGE_NAME >/dev/null 2>&1; then
     echo "Building Docker image: $IMAGE_NAME"
