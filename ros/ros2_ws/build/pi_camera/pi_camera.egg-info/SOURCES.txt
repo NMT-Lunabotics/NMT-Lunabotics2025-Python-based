@@ -1,0 +1,13 @@
+package.xml
+setup.cfg
+setup.py
+pi_camera/__init__.py
+pi_camera/pi_camera_node.py
+pi_camera.egg-info/PKG-INFO
+pi_camera.egg-info/SOURCES.txt
+pi_camera.egg-info/dependency_links.txt
+pi_camera.egg-info/entry_points.txt
+pi_camera.egg-info/requires.txt
+pi_camera.egg-info/top_level.txt
+pi_camera.egg-info/zip-safe
+resource/pi_camera

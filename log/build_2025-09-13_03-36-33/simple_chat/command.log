@@ -1,0 +1,2 @@
+Invoking command in '/ros2_ws/build/simple_chat': /usr/bin/cmake /ros2_ws/ros/ros2_ws/src/simple_chat -DCATKIN_INSTALL_INTO_PREFIX_ROOT=0 -DCATKIN_SYMLINK_INSTALL=ON -DCMAKE_INSTALL_PREFIX=/ros2_ws/install/simple_chat
+Invoked command in '/ros2_ws/build/simple_chat' returned '1': /usr/bin/cmake /ros2_ws/ros/ros2_ws/src/simple_chat -DCATKIN_INSTALL_INTO_PREFIX_ROOT=0 -DCATKIN_SYMLINK_INSTALL=ON -DCMAKE_INSTALL_PREFIX=/ros2_ws/install/simple_chat
