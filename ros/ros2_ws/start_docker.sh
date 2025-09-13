@@ -8,6 +8,7 @@ DISPLAY_ENABLED=false
 BUILD_IMAGE=false
 RESTART_CONTAINER=false
 WORKING_DIR_CONTAINER="/home/luna/ros2_ws"
+WORKING_DIR_HOST="$HOME/NMT-Lunabotics2025-Python-based/ros/ros2_ws"
 WORKSPACE="/home/luna/ros2_ws"
 
 # Parse flags
@@ -56,7 +57,7 @@ if [ -z "$CONTAINER_ID" ]; then
         xhost +local:docker
     fi
 
-    docker run -dit "${DOCKER_FLAGS[@]}" $IMAGE_NAME bash
+    docker run -dit "${DOCKER_FLAGS[@]}" $IMAGE_NAME /entrypoint.sh bash
     CONTAINER_ID=$(docker ps -q -f ancestor=$IMAGE_NAME)
 fi
 
