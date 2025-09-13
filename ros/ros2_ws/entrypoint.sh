@@ -6,6 +6,9 @@ cd "$WORKING_DIR"
 
 # Source ROS 2
 source /opt/ros/humble/setup.bash
+if [ -f $WORKING_DIR/install/setup.bash ]; then
+    source $WORKING_DIR/install/setup.bash
+fi
 
 # If workspace hasn't been built yet, build it
 if [ ! -f "$WORKING_DIR/install/setup.bash" ]; then
