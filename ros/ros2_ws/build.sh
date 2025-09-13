@@ -25,8 +25,6 @@ git config --global user.name "benjamin-p15"
 git config --global --add safe.directory /ros2_ws
 git remote add origin git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git 2>/dev/null || true
 
-cd "$WORKDIR"
-
 # Sync code to branch
 if [ "$sync_to_github" = true ]; then
     git fetch origin
