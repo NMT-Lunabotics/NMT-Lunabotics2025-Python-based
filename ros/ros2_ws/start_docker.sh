@@ -40,14 +40,16 @@ CONTAINER_ID=$(docker ps -q -f ancestor=$IMAGE_NAME)
 if [ -z "$CONTAINER_ID" ]; then
     echo "Starting Docker container..."
     DOCKER_FLAGS=(
-        --privileged
-        --net=host
-        --group-add video
-        --volume=/dev:/dev:rw
-        --volume=$WORKING_DIR_HOST:$WORKING_DIR_CONTAINER
-        --env WORKING_DIR=$WORKING_DIR_CONTAINER
-        -w $WORKING_DIR_CONTAINER
-    )
+    --privileged
+    --net=host
+    --group-add video
+    --volume=/dev:/dev:rw
+    --volume $HOME_DIR/.ssh:/home/$USER/.ssh:ro
+    --volume $WORKING_DIR_HOST:$WORKING_DIR_CONTAINER
+    --env WORKING_DIR=$WORKING_DIR_CONTAINER
+    -w $WORKING_DIR_CONTAINER
+)
+
 
     if [ "$DISPLAY_ENABLED" = true ]; then
         DOCKER_FLAGS+=(
@@ -65,4 +67,3 @@ echo "Container ID: $CONTAINER_ID"
 
 # Attach to container and start bash (or ROS camera test)
 docker exec -it $CONTAINER_ID bash
-cd src
