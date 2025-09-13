@@ -4,11 +4,6 @@
 
 
 
-
-
-
-mkdir -p src
-cd src
 ros2 pkg create --build-type ament_python simple_chat
 
 
@@ -34,10 +29,6 @@ chmod +x ./build.sh
 
 
 
-touch .env
-nano .env
-
-
 
 git remote add origin git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git
 git checkout -b benjaminstestbranch
@@ -46,8 +37,3 @@ git merge origin/benjaminstestbranch
 git add -A
 git commit -m "Initial commit of ROS workspace"
 git push -u origin benjaminstestbranch
-
-
-rm -rf folder_name
-
-mkdir folder_name
