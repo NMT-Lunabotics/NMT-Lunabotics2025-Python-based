@@ -60,10 +60,15 @@ USER root
 WORKDIR $HOME_DIR
 #RUN chmod -R 666 /dev read access for everyone
 COPY entrypoint.sh /entrypoint.sh
-RUN echo "source /opt/ros/humble/setup.bash" >> $HOME_DIR/.bashrc
-RUN echo "source $WORKING_DIR/install/setup.bash" >> $HOME_DIR/.bashrc
+RUN echo "source /opt/ros/humble/setup.bash" >> /etc/bash.bashrc
+RUN echo "if [ -f $WORKING_DIR/install/setup.bash ]; then source $WORKING_DIR/install/setup.bash; fi" >> /etc/bash.bashrc
 RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
+
+COPY .start_docker.sh /usr/local/bin/start_docker.sh
+RUN chmod +x /usr/local/bin/start_docker.sh
+RUN echo "source /usr/local/bin/start_docker.sh" >> /etc/bash.bashrc
+
 
 #Switch to our non root user.
 USER $USER
