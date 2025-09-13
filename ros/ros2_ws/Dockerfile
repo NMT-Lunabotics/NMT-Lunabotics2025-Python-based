@@ -52,8 +52,9 @@ RUN apt-get update && apt-get install -y \
 
 # Copy script → make executable → add alias
 COPY start_docker.sh /usr/local/bin/start_docker
-RUN chmod +x /usr/local/bin/start_docker \
-    && echo "alias mystart='/usr/local/bin/start_docker'" >> /etc/bash.bashrc
+RUN chmod +x /usr/local/bin/start_docker && echo "alias mystart='/usr/local/bin/start_docker'" >> /etc/bash.bashrc
+COPY build.sh /usr/local/bin/build_docker
+RUN chmod +x /usr/local/bin/build_docker && echo "alias mystart='/usr/local/bin/build_docker'" >> /etc/bash.bashrc
 
 #Set correct user and directory.
 USER $USER

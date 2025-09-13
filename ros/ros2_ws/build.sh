@@ -51,5 +51,3 @@ if [ "$push_to_github" = true ]; then
     git commit -m "Update ROS workspace" || echo "Nothing to commit"
     git push origin benjaminstestbranch
 fi
-
-cd "ros/ros_ws"

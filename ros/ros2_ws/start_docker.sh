@@ -65,3 +65,4 @@ echo "Container ID: $CONTAINER_ID"
 
 # Attach to container and start bash (or ROS camera test)
 docker exec -it $CONTAINER_ID bash
+cd src
