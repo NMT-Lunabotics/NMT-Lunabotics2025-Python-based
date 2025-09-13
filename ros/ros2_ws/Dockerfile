@@ -50,6 +50,11 @@ RUN apt-get update && apt-get install -y \
 #Copy in ros workspace.
 #COPY --chown=$USER:$USER ros/ros2_ws $WORKING_DIR
 
+# Copy script → make executable → add alias
+COPY myscript.sh /usr/local/bin/myscript
+RUN chmod +x /usr/local/bin/myscript \
+    && echo "alias mystart='/usr/local/bin/myscript'" >> /etc/bash.bashrc
+
 #Set correct user and directory.
 USER $USER
 ENV ROS_USER=$USER
@@ -64,11 +69,6 @@ RUN echo "source /opt/ros/humble/setup.bash" >> /etc/bash.bashrc
 RUN echo "if [ -f $WORKING_DIR/install/setup.bash ]; then source $WORKING_DIR/install/setup.bash; fi" >> /etc/bash.bashrc
 RUN chmod +x /entrypoint.sh
 ENTRYPOINT ["/entrypoint.sh"]
-
-COPY .start_docker.sh /usr/local/bin/start_docker.sh
-RUN chmod +x /usr/local/bin/start_docker.sh
-RUN echo "source /usr/local/bin/start_docker.sh" >> /etc/bash.bashrc
-
 
 #Switch to our non root user.
 USER $USER
