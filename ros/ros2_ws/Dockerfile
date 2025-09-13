@@ -51,9 +51,9 @@ RUN apt-get update && apt-get install -y \
 #COPY --chown=$USER:$USER ros/ros2_ws $WORKING_DIR
 
 # Copy script → make executable → add alias
-COPY myscript.sh /usr/local/bin/myscript
-RUN chmod +x /usr/local/bin/myscript \
-    && echo "alias mystart='/usr/local/bin/myscript'" >> /etc/bash.bashrc
+COPY start_docker.sh /usr/local/bin/start_docker
+RUN chmod +x /usr/local/bin/start_docker \
+    && echo "alias mystart='/usr/local/bin/start_docker'" >> /etc/bash.bashrc
 
 #Set correct user and directory.
 USER $USER
