@@ -10,7 +10,7 @@ RESTART_CONTAINER=false
 WORKING_DIR_CONTAINER="/home/luna/ros2_ws"
 WORKING_DIR_HOST="$HOME/NMT-Lunabotics2025-Python-based/ros/ros2_ws"
 WORKSPACE="/home/luna/ros2_ws"
-DISPLAY=0
+: "${DISPLAY:=:0}"
 
 # Parse flags
 while [[ "$#" -gt 0 ]]; do
