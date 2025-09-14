@@ -3,7 +3,7 @@ from launch_ros.actions import Node
 
 def generate_launch_description():
     cameras = [
-        {'name': 'camera0', 'video_device': '/dev/video0'},
+        {'name': 'camera0', 'video_device': '/dev/video20'},
         # Add more cameras as needed
     ]
 

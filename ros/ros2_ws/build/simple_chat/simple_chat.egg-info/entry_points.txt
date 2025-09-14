@@ -1,3 +1,0 @@
-[console_scripts]
-chat_node = simple_chat.chat_node:main
-

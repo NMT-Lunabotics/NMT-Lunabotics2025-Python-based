@@ -1,3 +1,0 @@
-[console_scripts]
-pi_camera_node = pi_camera.pi_camera_node:main
-
