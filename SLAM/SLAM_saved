@@ -1,0 +1,233 @@
+#!/usr/bin/env python3
+# RPLIDAR S1 -> BreezySLAM live map + live pose (matplotlib viewer, conservative serial)
+# - Auto-detects port (or set RPLIDAR_PORT)
+# - Uses iter_measures for smoother serial consumption + overflow flush
+# - Avoids set_pwm to reduce USB flakiness on some S1 units
+# - Shows occupancy grid + (x,y,theta) in real time; press 'r' to reset displayed origin
+
+import os, glob, math, time, threading, queue
+import numpy as np
+import serial
+from rplidar import RPLidar, RPLidarException
+from breezyslam.algorithms import RMHC_SLAM
+from breezyslam.sensors import Laser
+
+import matplotlib
+if "MPLBACKEND" not in os.environ:
+    matplotlib.use("TkAgg")
+import matplotlib.pyplot as plt
+
+# ---------- TUNABLES ----------
+BAUD = 256000
+TIMEOUT_S = 5
+WARMUP_S = 2.0               # skip first seconds (motor spin-up)
+MAX_DIST_MM = 40000
+FOV_DEG = 360
+BINS = 360                   # 1° bins
+TARGET_SCAN_HZ = 10
+MAP_SIZE_METERS = 20.0
+MAP_SIZE_PIXELS = 800
+MAX_BUF_MEAS = 1500          # allow bursts
+IN_WAITING_FLUSH = 700       # flush threshold for serial backlog
+SLEEP_ON_NEW_SCAN = 0.01     # tiny breather between scans
+STATUS_EVERY = 1.0           # seconds between console pose prints (0=off)
+# -----------------------------
+
+def find_port():
+    p = os.environ.get('RPLIDAR_PORT')
+    if p and os.path.exists(p): return p
+    ids = sorted(glob.glob('/dev/serial/by-id/*'))
+    if ids: return ids[0]
+    for patt in ('/dev/ttyUSB*','/dev/ttyACM*'):
+        m = sorted(glob.glob(patt))
+        if m: return m[0]
+    return None
+
+def open_lidar():
+    port = find_port()
+    if not port:
+        raise serial.SerialException("No RPLIDAR serial device found.")
+    lidar = RPLidar(port, baudrate=BAUD, timeout=TIMEOUT_S)
+    try: lidar.clear_input()
+    except Exception:
+        try: lidar._serial.reset_input_buffer()
+        except Exception: pass
+    lidar.start_motor()
+    time.sleep(0.5)
+    return lidar
+
+def collector(out_q: queue.Queue, stop_evt: threading.Event):
+    """Collects scans, runs SLAM, pushes (map_img, x_mm, y_mm, theta_deg) to out_q."""
+    laser = Laser(BINS, TARGET_SCAN_HZ, FOV_DEG, MAX_DIST_MM)
+    slam  = RMHC_SLAM(laser, MAP_SIZE_PIXELS, MAP_SIZE_METERS)
+    mapbuf = bytearray(MAP_SIZE_PIXELS * MAP_SIZE_PIXELS)
+
+    lidar = None
+    distances = np.zeros(BINS, dtype=np.int32)
+    have_bins = np.zeros(BINS, dtype=bool)
+    t0 = time.time()
+    last_status = 0
+
+    while not stop_evt.is_set():
+        try:
+            lidar = open_lidar()
+            try:
+                info = lidar.get_info(); health = lidar.get_health()
+                print("Connected:", info, "Health:", health)
+            except Exception:
+                pass
+
+            meas_iter = lidar.iter_measures(max_buf_meas=MAX_BUF_MEAS)
+            distances.fill(0); have_bins.fill(False); t0 = time.time()
+
+            for new_scan, q, angle, distance in meas_iter:
+                if stop_evt.is_set():
+                    break
+
+                # If serial backlog grows, flush to re-sync
+                try:
+                    iw = lidar._serial.in_waiting
+                    if iw > IN_WAITING_FLUSH:
+                        print(f"Too many bytes in buffer: {iw}/{IN_WAITING_FLUSH}. Flushing…")
+                        try: lidar._serial.reset_input_buffer()
+                        except Exception:
+                            try: lidar.clear_input()
+                            except Exception: pass
+                        continue
+                except Exception:
+                    pass
+
+                if new_scan:
+                    if have_bins.sum() > BINS * 0.3 and (time.time() - t0) > WARMUP_S:
+                        scans = distances.tolist()
+                        slam.update(scans)
+                        x_mm, y_mm, theta_deg = slam.getpos()
+                        slam.getmap(mapbuf)
+
+                        # Map image for display (invert so occupied=black, free=white)
+                        mapimg = np.frombuffer(mapbuf, dtype=np.uint8).reshape(MAP_SIZE_PIXELS, MAP_SIZE_PIXELS)
+                        vis = 255 - mapimg
+
+                        # Push latest (drop older frame if queue is full)
+                        if not out_q.empty():
+                            try: out_q.get_nowait()
+                            except queue.Empty: pass
+                        out_q.put((vis.copy(), x_mm, y_mm, theta_deg), block=False)
+
+                        # Periodic console status
+                        if STATUS_EVERY > 0 and (time.time() - last_status) >= STATUS_EVERY:
+                            dist_from_origin = math.hypot(x_mm, y_mm)
+                            print(f"POSE  x={x_mm:.0f} mm  y={y_mm:.0f} mm  θ={theta_deg:.1f}°  |  |r|={dist_from_origin/1000:.2f} m")
+                            last_status = time.time()
+
+                    distances.fill(0); have_bins.fill(False)
+                    time.sleep(SLEEP_ON_NEW_SCAN)
+                    continue
+
+                d = int(distance)
+                if d <= 0 or d > MAX_DIST_MM:
+                    continue
+                k = int(angle) % BINS
+                if not have_bins[k] or d < distances[k]:
+                    distances[k] = d
+                    have_bins[k] = True
+
+        except (OSError, serial.SerialException, RPLidarException) as e:
+            print(f"[WARN] LIDAR stream error: {e}. Resetting…")
+            time.sleep(0.8)
+        except KeyboardInterrupt:
+            break
+        finally:
+            try:
+                if lidar:
+                    lidar.stop(); lidar.stop_motor(); lidar.disconnect()
+                    lidar = None
+            except Exception:
+                pass
+
+def main():
+    # Inter-thread queue
+    q = queue.Queue(maxsize=1)
+    stop_evt = threading.Event()
+    th = threading.Thread(target=collector, args=(q, stop_evt), daemon=True)
+    th.start()
+
+    # Displayed-origin (can be reset with 'r')
+    origin = {"x": 0.0, "y": 0.0}
+
+    # Matplotlib live viewer
+    plt.ion()
+    fig, ax = plt.subplots(figsize=(6,6))
+    ax.set_title("RPLIDAR S1 – Live SLAM Map\nPress 'r' to reset displayed origin")
+    ax.set_xticks([]); ax.set_yticks([])
+    img = ax.imshow(np.full((MAP_SIZE_PIXELS, MAP_SIZE_PIXELS), 255, dtype=np.uint8),
+                    cmap='gray', vmin=0, vmax=255, interpolation='nearest')
+    # Pose text overlay
+    pose_text = ax.text(0.02, 0.02, "x=0 y=0 θ=0", color='yellow', transform=ax.transAxes,
+                        bbox=dict(facecolor='black', alpha=0.5, pad=3))
+
+    current_pose = {"x": 0.0, "y": 0.0, "theta": 0.0}
+    pose_history = []
+
+    def on_key(event):
+        if event.key and event.key.lower() == 'r':
+            # Reset displayed origin to current pose (SLAM internal origin unchanged)
+            origin["x"] = current_pose["x"]
+            origin["y"] = current_pose["y"]
+            print("Displayed origin reset to current pose.")
+
+    fig.canvas.mpl_connect('key_press_event', on_key)
+    fig.canvas.draw(); fig.canvas.flush_events()
+
+    try:
+        while plt.fignum_exists(fig.number):
+            try:
+                vis, x_mm, y_mm, theta_deg = q.get(timeout=0.2)
+                current_pose["x"] = x_mm
+                current_pose["y"] = y_mm
+                current_pose["theta"] = theta_deg
+
+                # Display relative to chosen origin
+                xr = (x_mm - origin["x"]) / 1000.0
+                yr = (y_mm - origin["y"]) / 1000.0
+                img.set_data(vis)
+                pose_text.set_text(f"x={xr: .2f} m   y={yr: .2f} m   θ={theta_deg: .1f}°")
+                fig.canvas.draw()
+                fig.canvas.flush_events()
+
+                pose_history.append((x_mm, y_mm, theta_deg))
+
+                # Save path every N frames
+                if main.frame_count % 50 == 0:
+                    np.savetxt("pose_history.csv", pose_history, delimiter=",", header="x_mm,y_mm,theta_deg", comments="")
+                    print("Pose history saved to pose_history.csv")
+            except queue.Empty:
+                pass
+            plt.pause(0.01)
+
+            # Save the map every N frames (e.g., every 50 frames)
+            if not hasattr(main, "frame_count"):
+                main.frame_count = 0
+            main.frame_count += 1
+            if main.frame_count % 50 == 0:
+                np.save("slam_map.npy", vis)
+                print("Map saved to slam_map.npy")
+
+        waypoints = []
+        for i in range(1, 11):
+            # 10 waypoints, each 10cm ahead in the current heading
+            dx = math.cos(math.radians(theta_deg)) * i * 100
+            dy = math.sin(math.radians(theta_deg)) * i * 100
+            waypoints.append((x_mm + dx, y_mm + dy))
+        np.savetxt("waypoints.csv", waypoints, delimiter=",", header="x_mm,y_mm", comments="")
+        print("Waypoints saved to waypoints.csv")
+    except KeyboardInterrupt:
+        pass
+    finally:
+        stop_evt.set()
+        th.join(timeout=2.0)
+
+if __name__ == '__main__':
+    # Note: Pose is RELATIVE to the starting point (or when you press 'r').
+    # For absolute/global position you’d need external references (e.g., fiducials, GPS/IMU fusion).
+    main()
