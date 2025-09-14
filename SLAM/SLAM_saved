@@ -11,6 +11,7 @@ import serial
 from rplidar import RPLidar, RPLidarException
 from breezyslam.algorithms import RMHC_SLAM
 from breezyslam.sensors import Laser
+from filterpy.kalman import ExtendedKalmanFilter
 
 import matplotlib
 if "MPLBACKEND" not in os.environ:
@@ -145,6 +146,25 @@ def collector(out_q: queue.Queue, stop_evt: threading.Event):
             except Exception:
                 pass
 
+def fx(x, u, dt):
+    # State transition function for a differential drive robot
+    # x: [x, y, theta], u: [v, omega]
+    theta = x[2]
+    v, omega = u
+    if abs(omega) > 1e-5:
+        dx = v/omega * (np.sin(theta + omega*dt) - np.sin(theta))
+        dy = v/omega * (-np.cos(theta + omega*dt) + np.cos(theta))
+        dtheta = omega * dt
+    else:
+        dx = v * dt * np.cos(theta)
+        dy = v * dt * np.sin(theta)
+        dtheta = 0
+    return x + np.array([dx, dy, dtheta])
+
+def hx(x):
+    # Measurement function: returns the state as measurement
+    return x
+
 def main():
     # Inter-thread queue
     q = queue.Queue(maxsize=1)
@@ -178,6 +198,13 @@ def main():
 
     fig.canvas.mpl_connect('key_press_event', on_key)
     fig.canvas.draw(); fig.canvas.flush_events()
+
+    # Extended Kalman Filter initialization
+    ekf = ExtendedKalmanFilter(dim_x=3, dim_z=3)
+    ekf.x = np.array([0., 0., 0.])  # initial state
+    ekf.P *= 0.1                    # initial uncertainty
+    ekf.R = np.diag([0.5, 0.5, 0.1])  # measurement noise
+    ekf.Q = np.eye(3) * 0.01           # process noise
 
     try:
         while plt.fignum_exists(fig.number):
@@ -221,13 +248,15 @@ def main():
             waypoints.append((x_mm + dx, y_mm + dy))
         np.savetxt("waypoints.csv", waypoints, delimiter=",", header="x_mm,y_mm", comments="")
         print("Waypoints saved to waypoints.csv")
-    except KeyboardInterrupt:
-        pass
-    finally:
-        stop_evt.set()
-        th.join(timeout=2.0)
+    except Exception as e:
+        print(f"An error occurred in the main loop: {e}")
+
+        np.savetxt("waypoints.csv", waypoints, delimiter=",", header="x_mm,y_mm", comments="")
+        print("Waypoints saved to waypoints.csv")
+
 
 if __name__ == '__main__':
-    # Note: Pose is RELATIVE to the starting point (or when you press 'r').
-    # For absolute/global position you’d need external references (e.g., fiducials, GPS/IMU fusion).
-    main()
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("Interrupted by user. Exiting...")
