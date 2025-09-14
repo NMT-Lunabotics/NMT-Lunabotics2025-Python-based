@@ -2,18 +2,17 @@
 <package format="3">
     <name>usb_camera</name>
     <version>0.0.1</version>
-    <description>The camera package</description>
+    <description>Minimal USB camera ROS2 package</description>
 
     <maintainer email="user@example.com">Your Name</maintainer>
     <license>Apache-2.0</license>
 
     <buildtool_depend>ament_cmake</buildtool_depend>
-
     <depend>rclcpp</depend>
     <depend>sensor_msgs</depend>
-
-    <test_depend>ament_lint_auto</test_depend>
-    <test_depend>ament_lint_common</test_depend>
+    <depend>cv_bridge</depend>
+    <depend>image_transport</depend>
+    <depend>opencv</depend>
 
     <export>
         <build_type>ament_cmake</build_type>
