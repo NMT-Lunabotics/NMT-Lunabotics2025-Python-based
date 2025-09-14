@@ -32,7 +32,6 @@ RUN apt-get update && apt-get install -y \
     ros-humble-cv-bridge \
     ros-humble-image-transport \
     ros-humble-rviz2 \
-    ros-humble-libcamera-ros \
     python3-opencv \
     python3-colcon-common-extensions \
     python3-rosdep \
