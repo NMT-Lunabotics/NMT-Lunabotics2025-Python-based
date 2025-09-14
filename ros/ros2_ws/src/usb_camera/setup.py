@@ -10,8 +10,9 @@ setup(
     zip_safe=True,
     maintainer='Your Name',
     maintainer_email='you@example.com',
-    description='USB camera ROS2 node',
+    description='Python ROS2 USB camera node',
     license='Apache-2.0',
+    tests_require=['pytest'],
     entry_points={
         'console_scripts': [
             'usb_camera_node = usb_camera.usb_camera_node:main',
