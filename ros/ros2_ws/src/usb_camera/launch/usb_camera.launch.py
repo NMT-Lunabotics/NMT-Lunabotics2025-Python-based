@@ -11,8 +11,8 @@ def generate_launch_description():
     for camera in cameras:
         nodes.append(
             Node(
-                package='usb_cam',
-                executable='usb_cam_node_exe',
+                package='usb_camera',
+                executable='usb_camera_node',
                 namespace=camera['name'],  # Set the namespace for the node
                 output='screen'
             )

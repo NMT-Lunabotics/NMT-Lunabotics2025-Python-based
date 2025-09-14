@@ -1,9 +1,11 @@
 #Select the ros distribution we are using.
 FROM ros:humble
 
-#Create a user to avoid using root.
+#Create a user to avoid using root and make sure luna requires no password.
 ARG USER=luna
-RUN useradd -m $USER && usermod -aG dialout,video $USER
+RUN apt-get update && apt-get install -y sudo \
+    && usermod -aG sudo $USER \
+    && echo "$USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
 
 
 #---VARIABLE SETTINGS---
@@ -29,6 +31,7 @@ RUN apt-get update && apt-get install -y \
     ros-humble-cv-bridge \
     ros-humble-image-transport \
     ros-humble-rviz2 \
+    ros-humble-libcamera-ros \
     python3-opencv \
     python3-colcon-common-extensions \
     python3-rosdep \
