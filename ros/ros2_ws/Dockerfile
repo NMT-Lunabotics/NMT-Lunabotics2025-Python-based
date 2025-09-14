@@ -3,6 +3,7 @@ FROM ros:humble
 
 #Create a user to avoid using root and make sure luna requires no password.
 ARG USER=luna
+ENV USER=$USER
 RUN apt-get update && apt-get install -y sudo \
     && usermod -aG sudo $USER \
     && echo "$USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
