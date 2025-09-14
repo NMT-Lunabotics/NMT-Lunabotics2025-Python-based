@@ -1,9 +1,9 @@
 #Select the ros distribution we are using.
 FROM ros:humble
 
-#Create a user to avoid using root and make sure luna requires no password.
+#Create a user to avoid using root, make sure luna doesn't require passwords.
 ARG USER=luna
-ENV USER=$USER
+RUN useradd -m $USER && usermod -aG dialout,video $USER
 RUN apt-get update && apt-get install -y sudo \
     && usermod -aG sudo $USER \
     && echo "$USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers
