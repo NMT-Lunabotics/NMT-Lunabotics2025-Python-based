@@ -23,6 +23,9 @@ USER root
 RUN apt-get update && apt-get install -y \
     #camera librarys
     ros-humble-camera-ros \
+    ros-humble-usb-cam \
+    ros-humble-image-tools \
+    ros-humble-image-view \
     ros-humble-cv-bridge \
     ros-humble-image-transport \
     ros-humble-rviz2 \
