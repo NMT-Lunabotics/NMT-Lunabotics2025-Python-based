@@ -1,13 +1,15 @@
-#sudo apt update
-#sudo apt install python3-serial
-
-
 import serial
 import time
 
-# adjust port if needed (check with ls /dev/tty*)
-ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
-time.sleep(2)  # wait for Arduino to reset
+# Check of other program or devices are using the serial port.
+# lsof /dev/ttyACM0
+# sudo kill -9 <PID>
 
-ser.write(b"Hello Arduino!\n")
-print(ser.readline().decode('utf-8').strip())
+ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
+time.sleep(2)
+
+value = 0
+while True:
+    ser.write(f"{value}\n".encode('utf-8'))
+    value = 1 - value  # toggles between 0 and 1
+    time.sleep(1)

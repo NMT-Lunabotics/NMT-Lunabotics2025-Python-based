@@ -1,12 +1,20 @@
+const int ledPin = 8; 
+
 void setup() {
-  Serial.begin(9600); // baud rate of (pi+arduino) 
+  Serial.begin(9600);     
+  pinMode(ledPin, OUTPUT); 
 }
 
 void loop() {
   if (Serial.available()) {
     String msg = Serial.readStringUntil('\n');
-    Serial.print("Arduino got: ");
-    Serial.println(msg);
+    msg.trim();  // remove whitespace or newline characters
+
+    // Power pin based on message
+    if (msg == "1") {
+      digitalWrite(ledPin, HIGH);  // Power pin
+    } else {
+      digitalWrite(ledPin, LOW);   // Unpower pin
+    }
   }
 }
-
