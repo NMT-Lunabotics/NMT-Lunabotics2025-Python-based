@@ -6,6 +6,7 @@ void setup() {
 }
 
 void loop() {
+  digitalWrite(ledPin, HIGH);
   if (Serial.available()) {
     String msg = Serial.readStringUntil('\n');
     msg.trim();  // remove whitespace or newline characters
