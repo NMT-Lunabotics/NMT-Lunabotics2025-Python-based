@@ -2,8 +2,10 @@ import serial
 import time
 
 # Check of other program or devices are using the serial port.
-# lsof /dev/serial0
-# sudo kill -9 <PID>
+# Requires that the GPIO are change on the PI, add this to file and (disable login shell over serial) and (enable serial hardware) in settings sudo raspi-config
+#sudo nano /boot/config.txt
+#enable_uart=1
+#dtoverlay=disable-bt
 
 ser = serial.Serial('/dev/serial0', 9600, timeout=1)
 time.sleep(2)

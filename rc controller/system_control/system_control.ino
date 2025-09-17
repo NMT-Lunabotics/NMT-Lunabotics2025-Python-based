@@ -515,6 +515,8 @@ int16_t *processIbus() {
             if (joystick[i] > 127) joystick[i] = 127;
           }
         }
+        aL_speed = joystick[3];
+        aR_speed = joystick[3];
         aB_speed = joystick[3];
         //Serial.println(aB_speed);
         return joystick;  //joystick;

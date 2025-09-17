@@ -57,7 +57,7 @@ void loop() {
 
   int16_t* joystick = readIbus();
   if (joystick != nullptr) {
-      Serial.println(joystick[3]);
+    Serial.println(joystick[3]);
     setMotor(joystick[3]);
   }
 

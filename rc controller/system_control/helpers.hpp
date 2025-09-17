@@ -1,7 +1,8 @@
 #ifndef HELPERS_H
 #define HELPERS_H
 
-bool MD04_drivers = true;
+//Condition that changes actuator code to accept pwm, and GND, instead of current setup that uses pinout, pwm, and GND
+bool MD04_drivers = false;
 
 #include <Arduino.h>
 #include "arduino_lib.hpp"
