@@ -5,6 +5,8 @@ import time
 # lsof /dev/ttyACM0
 # sudo kill -9 <PID>
 
+#ls /dev/tty*
+
 ser = serial.Serial('/dev/ttyACM0', 9600, timeout=1)
 time.sleep(2)
 

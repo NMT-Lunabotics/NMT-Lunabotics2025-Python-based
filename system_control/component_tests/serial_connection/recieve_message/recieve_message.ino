@@ -1,4 +1,4 @@
-const int ledPin = 8; 
+const int ledPin = 9; 
 
 void setup() {
   Serial.begin(9600);     
@@ -6,6 +6,7 @@ void setup() {
 }
 
 void loop() {
+  //digitalWrite(ledPin, HIGH);
   if (Serial.available()) {
     String msg = Serial.readStringUntil('\n');
     msg.trim();  // remove whitespace or newline characters
