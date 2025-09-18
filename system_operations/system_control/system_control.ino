@@ -194,7 +194,6 @@ void loop() {
   //  if (disable_estop == false) emergency_stop = true;
   //  return;
   //}
-
   current_time = millis();
   // if (Serial.available() > 0) {
   //     if (Serial.read() == 0x02) { // Start byte
@@ -216,7 +215,6 @@ void loop() {
   // }
 
   // --- Non-blocking serial receive ---
-
   while (Serial.available() > 0) {
     byte b = Serial.read();
     if (!receiving_message) {
@@ -295,7 +293,7 @@ void loop() {
         prev_err = lr_err;
         lr_err = abs(aL_pos - aR_pos);
         if (lr_err > prev_err && disable_estop == false) fault("Actuator positions are diverging.");
-        Serial.println("Fixing actuators: ");
+        //Serial.println("Fixing actuators: ");
         ledy_pin.write(1);
       }
       act_left.stop();
@@ -345,7 +343,7 @@ void loop() {
 
     if (emergency_stop)
       Serial.println("Estopped");
-    Serial.println("<F," + String(aL_pos) + "," + String(aR_pos) + "," + String(aB_pos) + "," + String(aL_speed) + "," + String(aR_speed) + ',' + String(aLR_tgt) + "," + String(mL_speed) + "," + String(mR_speed) + ">");
+    //Serial.println("<F," + String(aL_pos) + "," + String(aR_pos) + "," + String(aB_pos) + "," + String(aL_speed) + "," + String(aR_speed) + ',' + String(aLR_tgt) + "," + String(mL_speed) + "," + String(mR_speed) + ">");
   }
 
   if (current_time - last_reset_int_time >= 1000 / reset_int_rate) {
@@ -372,7 +370,6 @@ void processMessage(byte *data, int length) {
     }
     Serial.println();
   }
-
   switch (type) {
     case 'A':
       {                                                 // Actuator control
@@ -397,12 +394,12 @@ void processMessage(byte *data, int length) {
       {                              // Motor control
         mR_speed = (int8_t)data[1];  // Adjusted index to skip the type byte
         mL_speed = (int8_t)data[2];
-        if (debug_mode) {
+        //if (debug_mode) {
           Serial.print("Left Speed: ");
           Serial.println(mL_speed);
           Serial.print("Right Speed: ");
           Serial.println(mR_speed);
-        }
+        //}
         break;
       }
     case 'S':
