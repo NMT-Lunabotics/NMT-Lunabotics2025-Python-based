@@ -1,8 +1,6 @@
-# ---------- add near the top ----------
+
 import json
 
-# ---------- TUNABLES (keep yours) ----------
-# ... your existing tunables ...
 
 ### NEW ###  # Rover UART + basic obstacle policy
 ROVER_PORT = os.environ.get("ROVER_PORT", "/dev/serial0")
