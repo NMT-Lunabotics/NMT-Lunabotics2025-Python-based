@@ -14,19 +14,8 @@ serial = serialCommands()
 
 # Loop that sends our command and then reads the response for debugging.
 while True:
-    #<motorCommand, leftMotorSpeed, rightMotorSpeed>     values from -127 to 127
-    start = time.time()
-    while time.time() - start < 5:
-        serial.send_command("M", [1, 1])
-        time.sleep(0.1)
-    time.sleep(1)
-    start = time.time()
-    while time.time() - start < 5:
-        serial.send_command("M", [-1, -1])
-        time.sleep(0.1)
-    time.sleep(1)
-    start = time.time()
-    while time.time() - start < 3:
-        serial.send_command("M", [1, -1])
-        time.sleep(0.1)
-    time.sleep(1)
+    #<motorCommand, leftMotorSpeed, rightMotorSpeed>
+    serial.send_command("M", [50, 50])
+    time.sleep(0.05)
+    value = serial.read_serial()
+    if value: print(value)
