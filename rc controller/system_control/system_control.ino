@@ -5,7 +5,7 @@
 //--------------- Debug settings ---------------
 
 bool debug_mode = false;  // Debug mode flag
-bool disable_estop = true;
+bool disable_estop = true; //Disable all e-stops for non full actuator tests.
 
 //--------------- RC controller ---------------
 
@@ -189,11 +189,11 @@ void setup() {
 }
 
 void loop() {
-  int16_t *joystick = processIbus();
-  if (joystick != nullptr) {
-    if (disable_estop == false) emergency_stop = true;
-    return;
-  }
+  //int16_t *joystick = processIbus();
+  //if (joystick != nullptr) {
+  //  if (disable_estop == false) emergency_stop = true;
+  //  return;
+  //}
 
   current_time = millis();
   // if (Serial.available() > 0) {
