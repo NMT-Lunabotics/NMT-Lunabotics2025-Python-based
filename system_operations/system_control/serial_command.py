@@ -13,7 +13,7 @@ serial = serialCommands()
 
 # Loop that sends our command and then reads the response for debugging.
 while True:
-    #<motorCommand, leftMotorSpeed, rightMotorSpeed>
+    #<motorCommand, leftMotorSpeed, rightMotorSpeed>     values from -127 to 127
     serial.send_command("M", [50, 50])
     time.sleep(0.05)
     value = serial.read_serial()
