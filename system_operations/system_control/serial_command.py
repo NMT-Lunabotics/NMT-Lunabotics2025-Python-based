@@ -13,9 +13,14 @@ arduino.compile_and_upload()
 serial = serialCommands()
 
 # Loop that sends our command and then reads the response for debugging.
-while True:
     #<motorCommand, leftMotorSpeed, rightMotorSpeed>     values from -127 to 127
-    serial.send_command("M", [50, 50])
-    time.sleep(0.05)
-    value = serial.read_serial()
-    if value: print(value)
+    #serial.send_command("M", [1, -1])
+
+
+    #Motors need a speed value between -127 and 128.
+    #Bucket Actuator needs positions between 0 and 128.
+
+while True:
+    serial.send_command("M", [-1, -1])
+#    value = serial.read_serial()
+#    if value: print(value)

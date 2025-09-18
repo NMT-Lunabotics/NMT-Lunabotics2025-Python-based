@@ -5,7 +5,7 @@
 //--------------- Debug settings ---------------
 
 bool debug_mode = false;  // Debug mode flag
-bool disable_estop = true; //Disable all e-stops for non full actuator tests.
+bool disable_estop = false; //Disable all e-stops for non full actuator tests.
 bool rc_controller = false;
 
 //--------------- RC controller ---------------
@@ -121,7 +121,7 @@ unsigned long last_update_actuator_time = 0;
 unsigned long last_feedback_time = 0;
 unsigned long last_reset_int_time = 0;
 unsigned long current_time = 0;
-const unsigned long estop_timeout = 1000;  // 1 second timeout
+const unsigned long estop_timeout = 2000;  // 1 second timeout
 unsigned long last_message_time = 0;
 bool emergency_stop = false;
 bool doomsday = false;
@@ -167,11 +167,14 @@ OutPin ledy_pin(LEDY_PIN);
 OutPin ledg_pin(LEDG_PIN);
 OutPin ledb_pin(LEDB_PIN);
 
+String fault_reason = "";
+
 // void processMessage(byte* data, int length);
 void stop_all();
 void fault();
 
 void setup() {
+  delay(5);
   //pinMode(RX_PIN, INPUT);
   //ibusSerial.begin(115200);
 
@@ -249,7 +252,10 @@ void loop() {
 }
 
   }
-  if (current_time - last_message_time > estop_timeout && disable_estop == false) emergency_stop = true;
+  if (current_time - last_message_time > estop_timeout && disable_estop == false) {
+    emergency_stop = true;
+    fault_reason="Serial communication timeout.";
+  }
   if (current_time - last_update_actuator_time >= 1000 / update_actuator_feedback) {
     last_update_actuator_time = current_time;
     aL_pos = act_left.update_pos();
@@ -283,7 +289,7 @@ void loop() {
 
     // Correct dual actuator misalignment
 
-    /*
+    
     float lr_err = abs(aL_pos - aR_pos);
     if (lr_err >= act_fix_err && lr_err < act_max_err) {
       stop_all();
@@ -300,7 +306,10 @@ void loop() {
 
         prev_err = lr_err;
         lr_err = abs(aL_pos - aR_pos);
-        if (lr_err > prev_err && disable_estop == false) fault("Actuator positions are diverging.");
+        if (lr_err > prev_err && disable_estop == false){
+          fault("Actuator positions are diverging.");
+          fault_reason="Actuator positions are diverging.";
+        }
         //Serial.println("Fixing actuators: ");
         ledy_pin.write(1);
       }
@@ -312,7 +321,7 @@ void loop() {
       //  Serial.print("wtf");
     }
 
-      */
+      
 
     if (!emergency_stop) {
       led_r = false;
@@ -353,6 +362,7 @@ void loop() {
 
     if (emergency_stop)
       Serial.println("Estopped");
+      Serial.print(fault_reason);
     //Serial.println("<F," + String(aL_pos) + "," + String(aR_pos) + "," + String(aB_pos) + "," + String(aL_speed) + "," + String(aR_speed) + ',' + String(aLR_tgt) + "," + String(mL_speed) + "," + String(mR_speed) + ">");
   }
 
@@ -367,6 +377,7 @@ void loop() {
 
 // Read serial communication from autonomy computer and set system variables to output.
 void processMessage(byte *data, int length) {
+  current_time = millis();
   char type = data[0];
   if (debug_mode) {
     Serial.print("Received message of type: ");
@@ -398,6 +409,7 @@ void processMessage(byte *data, int length) {
           Serial.print("Bucket Velocity: ");
           Serial.println(aB_speed);
         }
+        last_message_time=current_time;
         break;
       }
     case 'M':
@@ -410,6 +422,7 @@ void processMessage(byte *data, int length) {
           Serial.print("Right Speed: ");
           Serial.println(mR_speed);
         }
+        last_message_time=current_time;
         break;
       }
     case 'S':
