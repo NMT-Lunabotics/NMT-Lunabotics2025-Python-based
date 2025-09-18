@@ -5,7 +5,7 @@
 //--------------- Debug settings ---------------
 
 bool debug_mode = false;  // Debug mode flag
-bool disable_estop = false; //Disable all e-stops for non full actuator tests.
+bool disable_estop = true; //Disable all e-stops for non full actuator tests.
 bool rc_controller = false;
 
 //--------------- RC controller ---------------
