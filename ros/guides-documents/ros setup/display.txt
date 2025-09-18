@@ -1,0 +1,3 @@
+To use the display run this code on your local machine and make sure you use the -display flag when connecting to the containor from your pc.
+
+xhost +local:docker

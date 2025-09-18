@@ -1,0 +1,30 @@
+1. mkdir makes a new folder in your current directory.
+----------------------------------------------------------------------
+
+mkdir folder_name
+
+
+
+2. rm deletes a folder and anything inside of that folder.
+----------------------------------------------------------------------
+
+rm -rf folder_name
+
+
+
+3. nano is document editor, it can open existing files or it will create a new one if one does not exist.
+----------------------------------------------------------------------
+
+nano filename
+
+
+
+3. Docker commands. Exit allows you to exit docker containors,
+while the "docker" commands give you informations about the image and running containors.
+----------------------------------------------------------------------
+
+exit 
+
+docker images
+
+docker ps

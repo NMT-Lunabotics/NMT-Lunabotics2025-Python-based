@@ -1,1 +1,19 @@
-Resister: 4.7 kohm
+The actuator can work on 2 modes (I2C) and (PWM), the 2025 system control uses (PWM).
+
+
+I2C
+----------------------------------------------------------------------
+Connect I2C driver to the Arduino using the SDA and SCL pins.
+These pins require power which the driver does not provide. 
+To fix this those pins need to be powered with ~2.5V or equivalently 5V using a 4.7 kohm resister.
+
+Each driver uses a unique hex address which can be changed using the config Software. http://www.robot-electronics.co.uk/files/md04_config_java.zip
+Changing address doesn't always work in which case run the logAddresses() function from the actuator_test and that will list the used address.
+
+Sample actuator test code can be found in: rc_controller/component_tests/actuator_test/actuator_test.ino
+
+
+PWM
+----------------------------------------------------------------------
+Connect the positive and negitive terminals to PWM pins.
+Powering them in diffrent combanations does not appear to have an affect on them.

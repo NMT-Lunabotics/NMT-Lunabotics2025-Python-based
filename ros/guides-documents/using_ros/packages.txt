@@ -1,0 +1,12 @@
+packages is how ros fundamentally works. Every node/topic/service that you make will be bundeled into packages.
+
+To make a new package you can run (NOTE always make sure you are in the src):
+
+ros2 pkg create --build-type ament_python --dependencies rclpy --node-name pi_camera_node pi_camera
+
+
+ament_python makes the package pythin based and ament_cmake makes the package c++ based. (WE ONLY USE PYTHON PACKAGES)
+
+(--dependencies) rclpy std_msgs adds packages that your pack requires to the package.xml and setup.py files.
+
+my_package is the name of your package

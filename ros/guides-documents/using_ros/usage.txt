@@ -1,0 +1,18 @@
+1. The following script starts ros with a set of optional (flags) which are added to the end of the command.
+By adding the flags you can enable diffrent docker aspects to enable your desiered setup for testing.
+----------------------------------------------------------------------
+./start_docker.sh [ --build (-b) ] [--display (-d)]
+
+--build (-b)                Build the Docker container (will stop the running container if any) Fully updates all large packages.
+--display (-d)              Enable display support (forward X11 display) Use if you need to use visual ros softwere. 
+
+
+
+2. The follow script allows you to do all manner of things related to build your packages 
+and keep github updated.
+----------------------------------------------------------------------
+./build.sh [ --build (-b) ] [--sync (-s)] [--push (-p)]
+
+--build (-b)                Builds and sources the current docker containor.
+--sync (-s)                 Syncs/pulls data from github (NOTE this may overwite files)
+--push (-p)                 Push current code to github (Note to stay up to date, only work in 1 enveriment at a time .e.i docker or vscode)
