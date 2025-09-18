@@ -11,11 +11,11 @@ We send 3 main types of data (0…255) values for most things, (-128…127) for 
 Our current system setup is this:
 ---Motors---
 <startByte:0x02, M:'M', lengthByte:3, leftMotorSpeed:-128…127, rightMotorSpeed:-128…127, endByte:0x03>
-
+(-128…128 are converted to/from 0…255 for serial data)
 
 ---Actuators---
 <startByte:0x02, A:'A', lengthByte:7, armTargetHighByte:0…255, armTargetLowByte:0…255, bucketTargetHighByte:0…255, bucketTargetLowByte:0…255, armVelocity:-128…127, bucketVelocity:-128…127, endByte:0x03>
-
+(-128…128 are converted to/from 0…255 for serial data)
 
 ---Servo Motor---
 <startByte:0x02, S:'S', lengthByte:2, servoState:0/1, endByte:0x03>

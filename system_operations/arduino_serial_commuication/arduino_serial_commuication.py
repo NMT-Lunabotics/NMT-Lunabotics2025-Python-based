@@ -8,8 +8,8 @@ class serialCommands:
         self.baudrate = baudrate
         self.port = port or self.find_arduino()
         self.ser = serial.Serial(self.port, self.baudrate, timeout=0.1)
-        self.startByte=0x02
-        self.endbyte=0x03
+        self.startByte=2
+        self.endbyte=3
         time.sleep(2)
 
     def find_arduino(self):
@@ -42,15 +42,14 @@ class serialCommands:
     
     def send_command(self, command: str, data: list):
         """Send required data string command to arduino over serial."""
-        length = 1 + len(data) # Length = command byte + data bytes
+        length = len(data)+1 # Length = command byte + data bytes
         msg = bytearray()
         msg.append(self.startByte)
         msg.append(length)
         msg.append(ord(command))
         for d in data:
-            if not 0 <= d <= 255:
-                raise ValueError(f"Data value {d} out of byte range")
-            msg.append(d)
+            msg.append(d % 256)
         msg.append(self.endbyte)
         self.ser.write(msg)
         self.ser.flush()
+        time.sleep(0.001)
