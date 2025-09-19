@@ -25,8 +25,6 @@ class arduinoConsole:
 
     def compile_and_upload(self):
         """Compile and upload the sketch to connected arduino"""
-        subprocess.run(f"arduino-cli compile --fqbn {self.board} {self.sketch_path}",
-                       shell=True, check=True)
+        subprocess.run(f'arduino-cli compile --fqbn {self.board} "{self.sketch_path}"', shell=True, check=True)
         time.sleep(2)
-        subprocess.run(f"arduino-cli upload -p {self.port} --fqbn {self.board} {self.sketch_path}",
-                       shell=True, check=True)
+        subprocess.run(f'arduino-cli upload -p {self.port} --fqbn {self.board} "{self.sketch_path}"',shell=True,check=True)
