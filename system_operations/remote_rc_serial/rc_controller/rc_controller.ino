@@ -1,4 +1,4 @@
-//This code is pushed to an external adruino, then by connecting it to the system control arduino the external adruino will take rc controller inputs and send serial commands.#include "helpers.hpp"
+//This code is pushed to an external adruino, then by connecting it to the system control arduino the external adruino will take rc controller inputs and send serial
 
 //--------------- RC controller ---------------
 
@@ -14,18 +14,22 @@ void setup() {
   delay(5);
   //pinMode(RX_PIN, INPUT);
   //ibusSerial.begin(115200);
-
+  Serial2.begin(115200);
   Serial.begin(115200);
   Serial.flush();
 }
 
 void loop() {
-    if(Serial1.available()){
+    if(Serial2.available()){
   int16_t *joystick = processIbus();
   if (joystick != nullptr) {
-    return;
+    //Motor commands
+    uint8_t joystickData[4] = { joystick[2], joystick[3] };
+    sendSerialCommand('M', joystickData, sizeof(joystickData) / sizeof(joystickData[0]));
+    //Actuator commands
+    //uint8_t joystickData[4] = { -1,-1,-1,-1, joystick[0], joystick[1] };
+    //sendSerialCommand('A', joystickData, sizeof(joystickData) / sizeof(joystickData[0]));
   }
-  Serial.println(joystick);
 }
 }
 
@@ -37,8 +41,8 @@ int16_t *processIbus() {
   static uint8_t buffer[32];
   static int idx = 0;
 
-  while (Serial1.available()) {
-    uint8_t val = Serial1.read();
+  while (Serial2.available()) {
+    uint8_t val = Serial2.read();
     // Check if buffer index matches the data index for the first and last index to unsure we received a valid data stream.
     if (idx == 0 && val != 0x20)
       continue;
@@ -90,4 +94,19 @@ int16_t *processIbus() {
     }
   }
   return nullptr;
+}
+
+void sendSerialCommand(char command, uint8_t* data, size_t dataLen) {
+  uint8_t startByte = 2;
+  uint8_t endByte = 3;
+
+  Serial.println(startByte);          // start byte
+  Serial.println((uint8_t)command);  // command byte
+
+  for (size_t i = 0; i < dataLen; i++) {
+      Serial.println(data[i]);       // send each data byte
+  }
+
+  Serial.println(endByte);            // end byte
+  Serial.flush();                   // ensure all bytes are sent
 }
