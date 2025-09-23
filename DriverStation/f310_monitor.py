@@ -36,6 +36,14 @@ except Exception as exc:  # pragma: no cover - import failure handled later
 else:
     SERIAL_IMPORT_ERROR = None
 
+try:
+    from system_operations.arduino_cli import arduinoConsole
+except Exception as exc:  # pragma: no cover - optional dependency
+    arduinoConsole = None  # type: ignore
+    ARDUINO_CONSOLE_ERROR = exc
+else:
+    ARDUINO_CONSOLE_ERROR = None
+
 SYNC_FULL_STATE = 0xA6
 AXIS_COUNT = 6
 LED_COUNT = 4
@@ -62,6 +70,7 @@ class ControlMapping:
     invert_steer: bool
     invert_arm: bool
     invert_bucket: bool
+    motor_max_speed: int
 
 
 def clamp_int8(value: int) -> int:
@@ -118,58 +127,6 @@ def decode_packet(data: bytes) -> Optional[ControlState]:
     return ControlState(seq=seq, armed=armed, axes=tuple(axes), buttons_mask=buttons_mask)
 
 
-class SerialBridge:
-    def __init__(self, port: Optional[str], baudrate: int) -> None:
-        self.port = port
-        self.baudrate = baudrate
-        self._serial = None
-        self._next_retry = 0.0
-
-    def close(self) -> None:
-        if self._serial is not None:
-            try:
-                self._serial.close_serial()
-            except Exception:
-                pass
-            self._serial = None
-
-    def _ensure_serial(self) -> bool:
-        if self._serial is not None:
-            return True
-        if SERIAL_IMPORT_ERROR is not None:
-            raise RuntimeError(
-                "pyserial/serialCommands not available: {}".format(SERIAL_IMPORT_ERROR)
-            )
-        now = time.monotonic()
-        if now < self._next_retry:
-            return False
-        try:
-            self._serial = serialCommands(port=self.port, baudrate=self.baudrate)  # type: ignore[call-arg]
-            print(f"Connected to Arduino on {self._serial.port}")
-            return True
-        except (SerialException, RuntimeError, OSError) as exc:
-            print(f"Serial connect failed: {exc}")
-            self._next_retry = now + 2.0
-            self._serial = None
-            return False
-
-    def send_command(self, command: str, data: Iterable[int]) -> None:
-        raw_values = [int(v) for v in data]
-        int8_values = [clamp_int8(v) for v in raw_values]
-        connected = self._ensure_serial()
-        label = "ok" if connected else "pending"
-        print(f"[serial {label}] {command} int8={int8_values}")
-        if not connected:
-            return
-        assert self._serial is not None
-        payload = [(v + 256) % 256 for v in int8_values]
-        try:
-            self._serial.send_command(command, payload)
-        except (SerialException, OSError) as exc:
-            print(f"Serial write failed: {exc}")
-            self.close()
-
-
 def compute_motor_outputs(state: ControlState, mapping: ControlMapping) -> Tuple[int, int]:
     throttle = get_axis(
         state.axes,
@@ -183,8 +140,16 @@ def compute_motor_outputs(state: ControlState, mapping: ControlMapping) -> Tuple
         invert=mapping.invert_steer,
         deadband=mapping.deadband,
     )
-    left = clamp_int8(throttle + steer)
-    right = clamp_int8(throttle - steer)
+    left_raw = clamp_int8(throttle + steer)
+    right_raw = clamp_int8(throttle - steer)
+    max_speed = max(1, min(127, mapping.motor_max_speed))
+    if max_speed >= 127:
+        left = left_raw
+        right = right_raw
+    else:
+        scale = max_speed / 127.0
+        left = clamp_int8(int(round(left_raw * scale)))
+        right = clamp_int8(int(round(right_raw * scale)))
     if not state.armed:
         left = 0
         right = 0
@@ -231,11 +196,6 @@ def compute_led_output(state: ControlState, mapping: ControlMapping) -> Tuple[in
 
 
 def run_server(args: argparse.Namespace) -> None:
-    if SERIAL_IMPORT_ERROR is not None:
-        raise SystemExit(
-            "Unable to import serialCommands / pyserial: {}".format(SERIAL_IMPORT_ERROR)
-        )
-
     host, port = parse_host_port(args.listen)
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     try:
@@ -258,9 +218,79 @@ def run_server(args: argparse.Namespace) -> None:
         invert_steer=args.invert_steer,
         invert_arm=args.invert_arm,
         invert_bucket=args.invert_bucket,
+        motor_max_speed=max(1, min(127, args.motor_max_speed)),
     )
 
-    bridge = SerialBridge(args.serial_port, args.baudrate)
+    if args.upload:
+        sketch_path = ROOT / "system_operations" / "system_control" / "system_control.ino"
+        if arduinoConsole is None:
+            raise SystemExit(
+                "--upload requested but arduinoConsole unavailable: {}".format(
+                    ARDUINO_CONSOLE_ERROR
+                )
+            )
+        try:
+            console = arduinoConsole(sketch_path=sketch_path)  # type: ignore[call-arg]
+            console.compile_and_upload()
+        except Exception as exc:  # pragma: no cover - depends on hardware
+            print(f"Arduino upload failed: {exc}")
+
+    serial_state: dict[str, object] = {"serial": None, "next_retry": 0.0}
+
+    def ensure_serial() -> bool:
+        if SERIAL_IMPORT_ERROR is not None:
+            return False
+        ser = serial_state["serial"]
+        if ser is not None:
+            return True
+        now = time.monotonic()
+        if now < serial_state["next_retry"]:
+            return False
+        try:
+            serial_state["serial"] = serialCommands(  # type: ignore[call-arg]
+                port=args.serial_port,
+                baudrate=args.baudrate,
+            )
+            ser = serial_state["serial"]
+            try:
+                port_name = getattr(ser, "port", args.serial_port)
+            except Exception:
+                port_name = args.serial_port
+            print(f"Connected to Arduino on {port_name or 'auto-detected'}")
+            return True
+        except (SerialException, RuntimeError, OSError) as exc:
+            print(f"Serial connect failed: {exc}")
+            serial_state["serial"] = None
+            serial_state["next_retry"] = now + 2.0
+            return False
+
+    def close_serial() -> None:
+        ser = serial_state.get("serial")
+        if ser is not None:
+            try:
+                ser.close_serial()
+            except Exception:
+                pass
+        serial_state["serial"] = None
+
+    def send_serial(command: str, values: Iterable[int]) -> None:
+        int8_values = [clamp_int8(v) for v in values]
+        connected = ensure_serial()
+        label = "ok" if connected else "pending"
+        print(f"[serial {label}] {command} int8={int8_values}")
+        if not connected:
+            return
+        ser = serial_state.get("serial")
+        if ser is None:
+            return
+        payload = [(v + 256) % 256 for v in int8_values]
+        try:
+            ser.send_command(command, payload)
+        except (SerialException, OSError) as exc:
+            print(f"Serial write failed: {exc}")
+            serial_state["next_retry"] = time.monotonic() + 1.0
+            close_serial()
+
     last_packet_time = 0.0
     try:
         while True:
@@ -271,7 +301,7 @@ def run_server(args: argparse.Namespace) -> None:
                     if time.monotonic() - last_packet_time >= args.timeout:
                         idle_state = ControlState(seq=0, armed=False, axes=(0,) * AXIS_COUNT, buttons_mask=0)
                         left, right = compute_motor_outputs(idle_state, mapping)
-                        bridge.send_command('M', (right, left))
+                        send_serial('M', (right, left))
                         last_packet_time = 0.0
                 continue
             except KeyboardInterrupt:
@@ -293,10 +323,10 @@ def run_server(args: argparse.Namespace) -> None:
                 flush=True,
             )
             left, right = compute_motor_outputs(state, mapping)
-            bridge.send_command('M', (right, left))
+            send_serial('M', (right, left))
 
     finally:
-        bridge.close()
+        close_serial()
         sock.close()
 
 
@@ -326,13 +356,14 @@ def parse_led_buttons(values: Optional[Sequence[int]]) -> Optional[Tuple[Optiona
 
 def build_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Forward F310 UDP packets to Arduino over serial")
-    parser.add_argument("--listen", default="127.0.0.1:9999", help="host:port to bind for UDP control (default 127.0.0.1:9999)")
+    parser.add_argument("--listen", default="0.0.0.0:9999", help="host:port to bind for UDP control (default 0.0.0.0:9999)")
     parser.add_argument("--serial-port", default=None, help="Explicit serial port for Arduino (auto-detect if omitted)")
     parser.add_argument("--baudrate", type=int, default=115200, help="Arduino serial baud rate (default 115200)")
     parser.add_argument("--deadband", type=float, default=0.08, help="Axis deadband in [0,1] before command becomes zero")
     parser.add_argument("--timeout", type=float, default=0.5, help="Seconds before sending idle commands when link lost")
     parser.add_argument("--throttle-axis", type=int, default=1, help="Axis index for forward/back (default 1)")
     parser.add_argument("--steer-axis", type=int, default=0, help="Axis index for steering mix (-1 to disable)")
+    parser.add_argument("--motor-max-speed", type=int, default=30, help="Max magnitude sent for motor commands (int8 range)")
     parser.add_argument("--arm-axis", type=int, default=3, help="Axis index for arm velocity (-1 to disable)")
     parser.add_argument("--bucket-axis", type=int, default=4, help="Axis index for bucket velocity (-1 to disable)")
     parser.add_argument("--servo-button", type=int, default=-1, help="Button index for servo state (-1 to disable)")
@@ -348,6 +379,7 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--invert-steer", action="store_true", help="Invert steer axis")
     parser.add_argument("--invert-arm", action="store_true", help="Invert arm axis")
     parser.add_argument("--invert-bucket", action="store_true", help="Invert bucket axis")
+    parser.add_argument("--upload", action="store_true", help="Compile/upload Arduino sketch before connecting")
     return parser
 
 
