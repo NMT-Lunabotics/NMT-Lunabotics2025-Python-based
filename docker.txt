@@ -1,0 +1,8 @@
+git clone https://github.com/NMT-Lunabotics/NMT-Lunabotics2025-Python-based
+cd NMT-Lunabotics/NMT-Lunabotics2025-Python-based
+git pull
+
+sudo apt update
+sudo apt install -y docker.io
+sudo usermod -aG docker $USER
+sudo reboot
