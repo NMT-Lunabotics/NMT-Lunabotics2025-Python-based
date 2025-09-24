@@ -7,11 +7,9 @@ DISPLAY_ENABLED=false
 BUILD_IMAGE=false
 RESTART_CONTAINER=false
 
-WORKING_DIR_CONTAINER="/home/luna"
-WORKING_DIR_HOST="$(pwd)/system_operations"
+WORKING_DIR_CONTAINER="/home/luna/NMT-Lunabotics2025-Python-based"
+WORKING_DIR_HOST="$(pwd)"  # should be the root of NMT-Lunabotics2025-Python-based
 : "${DISPLAY:=:0}"
-
-
 
 # Set up phrase flags for running the script
 while [[ "$#" -gt 0 ]]; do
@@ -47,10 +45,8 @@ if [ -z "$CONTAINER_ID" ]; then
         --privileged
         --group-add video
         --device /dev:/dev        # pass all devices (serial + video)
-        #--volume $HOME/.ssh:/home/luna/.ssh:ro
-        --volume $WORKING_DIR_HOST:$WORKING_DIR_CONTAINER
         --env WORKING_DIR=$WORKING_DIR_CONTAINER
-        -w $WORKING_DIR_CONTAINER
+        -w /home/luna
     )
 
     if [ "$DISPLAY_ENABLED" = true ]; then
@@ -61,13 +57,25 @@ if [ -z "$CONTAINER_ID" ]; then
         xhost +local:docker
     fi
 
-    docker run -it "${DOCKER_FLAGS[@]}" $IMAGE_NAME bash
+    # Start container detached so we can copy files
+    docker run -dit --name temp_container "${DOCKER_FLAGS[@]}" $IMAGE_NAME bash
     CONTAINER_ID=$(docker ps -q -f ancestor=$IMAGE_NAME)
+
+    # Copy host project into a temp folder inside the container
+    docker exec "$CONTAINER_ID" rm -rf /tmp/NMT_temp
+    docker cp "$WORKING_DIR_HOST" "$CONTAINER_ID":/tmp/NMT_temp
+
+    # Remove old project folder safely
+    docker exec "$CONTAINER_ID" rm -rf "$WORKING_DIR_CONTAINER"
+
+    # Move temp folder into the final location
+    docker exec "$CONTAINER_ID" mv /tmp/NMT_temp/NMT-Lunabotics2025-Python-based "$WORKING_DIR_CONTAINER"
+    docker exec "$CONTAINER_ID" chown -R luna:luna "$WORKING_DIR_CONTAINER"
+
+    echo "Files copied successfully."
 fi
 
 echo "Container ID: $CONTAINER_ID"
 
 # attach containor to shell
 docker exec -it $CONTAINER_ID bash
-
-#TODO add entery_point.sh
