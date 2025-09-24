@@ -8,8 +8,9 @@ BUILD_IMAGE=false
 RESTART_CONTAINER=false
 
 WORKING_DIR_CONTAINER="/home/luna/NMT-Lunabotics2025-Python-based"
-WORKING_DIR_HOST="$(pwd)"  # should be the root of NMT-Lunabotics2025-Python-based
+WORKING_DIR_HOST="$(pwd)" 
 : "${DISPLAY:=:0}"
+# should be the root of NMT-Lunabotics2025-Python-based
 
 # Set up phrase flags for running the script
 while [[ "$#" -gt 0 ]]; do
@@ -39,16 +40,16 @@ fi
 CONTAINER_ID=$(docker ps -q -f ancestor=$IMAGE_NAME)
 if [ -z "$CONTAINER_ID" ]; then
     echo "Starting Docker container..."
-
+if [[ "$OS" != "Windows_NT" ]]; then
     DOCKER_FLAGS=(
         --net=host
         --privileged
         --group-add video
-        --device /dev:/dev        # pass all devices (serial + video)
+        --device /dev:/dev        
         --env WORKING_DIR=$WORKING_DIR_CONTAINER
         -w /home/luna
     )
-
+fi
     if [ "$DISPLAY_ENABLED" = true ]; then
         DOCKER_FLAGS+=(
             -e DISPLAY=$DISPLAY
@@ -58,8 +59,8 @@ if [ -z "$CONTAINER_ID" ]; then
     fi
 
     # Start container detached so we can copy files
-    docker run -dit --name temp_container "${DOCKER_FLAGS[@]}" $IMAGE_NAME bash
-    CONTAINER_ID=$(docker ps -q -f ancestor=$IMAGE_NAME)
+    docker run -dit "${DOCKER_FLAGS[@]}" $IMAGE_NAME bash
+    CONTAINER_ID=$(docker run -dit "${DOCKER_FLAGS[@]}" $IMAGE_NAME bash)
 
     # Copy host project into a temp folder inside the container
     docker exec "$CONTAINER_ID" rm -rf /tmp/NMT_temp

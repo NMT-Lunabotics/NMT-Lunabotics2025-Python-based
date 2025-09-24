@@ -12,7 +12,7 @@ RUN useradd -m $USER && usermod -aG dialout,video $USER \
 # Set default Docker settings
 ENV HOME_DIR=/home/$USER
 ENV WORKING_DIR=$HOME_DIR/NMT-Lunabotics2025-Python-based/system_operations
-ENV HOST_FILES_DIR=/host_files  # Temporary location inside container for SSH copy
+ENV HOST_FILES_DIR=/host_files  
 
 # Set default shell to bash
 SHELL ["/bin/bash", "-c"]
