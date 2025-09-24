@@ -11,7 +11,7 @@ RUN useradd -m $USER && usermod -aG dialout,video $USER \
 
 # Set default Docker settings
 ENV HOME_DIR=/home/$USER
-ENV WORKING_DIR=$HOME_DIR/NMT-Lunabotics2025-Python-based
+ENV WORKING_DIR=$HOME_DIR/NMT-Lunabotics2025-Python-based/system_operations
 
 # Set default shell to bash
 SHELL ["/bin/bash", "-c"]
@@ -32,13 +32,10 @@ RUN apt-get update && apt-get upgrade -y \
 # Python Packages to install
 RUN pip install --no-cache-dir \
     #Essiental packages .ie fundelmental compatition package that are required to run the robot
-    pyserial 
-    #Development packages: \
+    pyserial
 
 # Install used github distros
-RUN curl -fsSL \
-    ttps://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh \
-    | sh
+RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
 
 # Copy start_docker.sh into docker and make executable for accessing the containor
 COPY start_docker.sh /usr/local/bin/start_docker

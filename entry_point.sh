@@ -7,8 +7,8 @@ cd "$WORKING_DIR"
 
 # --- Execute the command passed to the container ---
 if [ $# -eq 0 ]; then
-    # default command if none passed: run main.py
-    exec python -m app.main
+    # No default command for now, just keep container interactive
+    exec bash
 else
     exec "$@"
 fi

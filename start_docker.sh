@@ -7,9 +7,11 @@ DISPLAY_ENABLED=false
 BUILD_IMAGE=false
 RESTART_CONTAINER=false
 
-WORKING_DIR_CONTAINER="/home/luna/app"
-WORKING_DIR_HOST="$HOME/NMT-Lunabotics2025-Python-based"
+WORKING_DIR_CONTAINER="/home/luna"
+WORKING_DIR_HOST="$(pwd)/system_operations"
 : "${DISPLAY:=:0}"
+
+
 
 # Set up phrase flags for running the script
 while [[ "$#" -gt 0 ]]; do
@@ -42,9 +44,10 @@ if [ -z "$CONTAINER_ID" ]; then
 
     DOCKER_FLAGS=(
         --net=host
+        --privileged
         --group-add video
         --device /dev:/dev        # pass all devices (serial + video)
-        --volume $HOME/.ssh:/home/luna/.ssh:ro
+        #--volume $HOME/.ssh:/home/luna/.ssh:ro
         --volume $WORKING_DIR_HOST:$WORKING_DIR_CONTAINER
         --env WORKING_DIR=$WORKING_DIR_CONTAINER
         -w $WORKING_DIR_CONTAINER
@@ -58,7 +61,7 @@ if [ -z "$CONTAINER_ID" ]; then
         xhost +local:docker
     fi
 
-    docker run -dit "${DOCKER_FLAGS[@]}" $IMAGE_NAME /entrypoint.sh
+    docker run -it "${DOCKER_FLAGS[@]}" $IMAGE_NAME bash
     CONTAINER_ID=$(docker ps -q -f ancestor=$IMAGE_NAME)
 fi
 
@@ -66,3 +69,5 @@ echo "Container ID: $CONTAINER_ID"
 
 # attach containor to shell
 docker exec -it $CONTAINER_ID bash
+
+#TODO add entery_point.sh
