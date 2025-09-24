@@ -1,17 +1,17 @@
-import os
+# heartbeat.py
+import socket
 import time
 
-# Get the USER_ID from environment
-USER_ID = int(os.environ.get("USER_ID", 0))
+PORT = 5000  # fixed port for single heartbeat
 
-# Each user has their own port (optional if you want network isolation)
-PORT = 5000 + USER_ID
+s = socket.socket()
+s.bind(('0.0.0.0', PORT))
+s.listen(1)
 
-print(f"[USER {USER_ID}] Starting heartbeat on port {PORT}...")
+print(f"[Heartbeat] Listening on port {PORT}...")
 
-try:
-    while True:
-        print(f"[USER {USER_ID}] Alive at {time.strftime('%H:%M:%S')}")
-        time.sleep(2)
-except KeyboardInterrupt:
-    print(f"[USER {USER_ID}] Stopping heartbeat.")
+while True:
+    conn, addr = s.accept()
+    conn.send(b"Heartbeat alive\n")
+    conn.close()
+    time.sleep(1)
