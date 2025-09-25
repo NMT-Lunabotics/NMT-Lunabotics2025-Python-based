@@ -7,9 +7,12 @@ DISPLAY_ENABLED=false
 BUILD_IMAGE=false
 RESTART_CONTAINER=false
 
-WORKING_DIR_CONTAINER="/home/luna/app"
-WORKING_DIR_HOST="$HOME/NMT-Lunabotics2025-Python-based"
-: "${DISPLAY:=:0}"
+WORKING_DIR_CONTAINER="/home/luna/NMT-Lunabotics2025-Python-based"
+WORKING_DIR_HOST="$(pwd)" 
+: "${DISPLAY:=$DISPLAY}"
+export XAUTHORITY=${XAUTHORITY:-$HOME/.Xauthority}
+export DISPLAY=${DISPLAY:-localhost:10.0}
+# should be the root of NMT-Lunabotics2025-Python-based
 
 # Set up phrase flags for running the script
 while [[ "$#" -gt 0 ]]; do
@@ -36,30 +39,31 @@ if [ "$RESTART_CONTAINER" = true ]; then
 fi
 
 # Checks if a container is already running, if it is it attaches to it, if not it starts a new one.
-CONTAINER_ID=$(docker ps -q -f ancestor=$IMAGE_NAME)
+CONTAINER_ID=$(docker ps -q -f ancestor=$IMAGE_NAME | head -n1)
 if [ -z "$CONTAINER_ID" ]; then
     echo "Starting Docker container..."
-
+if [[ "$OS" != "Windows_NT" ]]; then
     DOCKER_FLAGS=(
         --net=host
+        --privileged
         --group-add video
-        --device /dev:/dev        # pass all devices (serial + video)
-        --volume $HOME/.ssh:/home/luna/.ssh:ro
-        --volume $WORKING_DIR_HOST:$WORKING_DIR_CONTAINER
-        --env WORKING_DIR=$WORKING_DIR_CONTAINER
+        --device /dev:/dev
+        -v $WORKING_DIR_HOST:$WORKING_DIR_CONTAINER
         -w $WORKING_DIR_CONTAINER
+        -v $XAUTHORITY:$XAUTHORITY:rw 
+        -e XAUTHORITY=$XAUTHORITY 
     )
-
+fi
     if [ "$DISPLAY_ENABLED" = true ]; then
         DOCKER_FLAGS+=(
-            -e DISPLAY=$DISPLAY
-            -v /tmp/.X11-unix:/tmp/.X11-unix:rw
+            -e DISPLAY=$DISPLAY 
+            -v /tmp/.X11-unix:/tmp/.X11-unix:rw 
         )
         xhost +local:docker
     fi
 
-    docker run -dit "${DOCKER_FLAGS[@]}" $IMAGE_NAME /entrypoint.sh
-    CONTAINER_ID=$(docker ps -q -f ancestor=$IMAGE_NAME)
+    # Start container detached with host folder mounted
+    CONTAINER_ID=$(docker run -dit "${DOCKER_FLAGS[@]}" $IMAGE_NAME bash)
 fi
 
 echo "Container ID: $CONTAINER_ID"

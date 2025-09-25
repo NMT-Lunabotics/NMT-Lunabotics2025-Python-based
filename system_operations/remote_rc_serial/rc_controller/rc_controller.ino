@@ -97,16 +97,23 @@ int16_t *processIbus() {
 }
 
 void sendSerialCommand(char command, uint8_t* data, size_t dataLen) {
-  uint8_t startByte = 2;
-  uint8_t endByte = 3;
+  const uint8_t startByte = 0x02; // STX
+  const uint8_t endByte   = 0x03; // ETX
 
-  Serial.println(startByte);          // start byte
-  Serial.println((uint8_t)command);  // command byte
+  uint8_t length = dataLen + 1; // command byte + data bytes
+
+  // Make sure Serial is ready (important on Leonardo/Micro)
+  while (!Serial) { ; }
+
+  Serial.write(startByte);       // start byte
+  Serial.write(length);          // length byte
+  Serial.write((uint8_t)command); // command byte
 
   for (size_t i = 0; i < dataLen; i++) {
-      Serial.println(data[i]);       // send each data byte
+      Serial.write(data[i]);    // data bytes
   }
 
-  Serial.println(endByte);            // end byte
-  Serial.flush();                   // ensure all bytes are sent
+  Serial.write(endByte);         // end byte
+  Serial.flush();                // ensure all bytes are sent
 }
+
