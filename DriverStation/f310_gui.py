@@ -1,47 +1,93 @@
 #!/usr/bin/env python3
-import argparse
-import fcntl
-import glob
+"""Simple Tk-based driver station for the Logitech F310 controller.
+
+This GUI mirrors the functionality of ``f310_send.py`` while providing a
+visual overview of the controller state, telemetry returned from the robot,
+and a bottom-right command console for sending ad-hoc text commands.  The
+script intentionally avoids command-line arguments; tweak the constants near
+the top to adjust destinations or ports.
+
+Telemetry reception expects JSON objects (bytes or text) delivered over UDP to
+``TELEMETRY_LISTEN``.  For example::
+
+    echo '{"voltage": 12.4, "current": 3.8, "temperature": 32}' \
+        | socat - UDP-DATAGRAM:127.0.0.1:10000
+
+Command console submissions are transmitted verbatim (UTF-8 encoded) to
+``COMMAND_DESTINATION`` over UDP.
+"""
+
+from __future__ import annotations
+
+import json
 import os
-import queue
 import socket
 import struct
 import threading
 import time
 from array import array
 from dataclasses import dataclass
+from typing import Callable, Dict, List, Optional, Tuple
 
-import tkinter as tk
-from tkinter import ttk
 try:
-    from PIL import Image, ImageTk  # type: ignore
-except Exception:  # Pillow optional
-    Image = None
-    ImageTk = None
+    import tkinter as tk
+    from tkinter import ttk
+except ImportError as exc:  # pragma: no cover - tkinter unavailable on some envs
+    raise SystemExit(f"tkinter is required for this GUI: {exc}")
 
+# --- Controller/UDP configuration -------------------------------------------------
 
-# Linux joystick API constants
+TARGET_CONTROLLER_NAME = "Logitech Gamepad F310"
+UDP_DESTINATION: Tuple[str, int] = ("127.0.0.1", 9999)
+SEND_RATE_HZ = 50.0
+IDLE_RATE_HZ = 5.0
+DEADZONE = 0.10
+HOLD_BUTTON_INDEX = 4  # LB acts as deadman switch by default
+MAX_DISPLAY_AXES = 6
+MAX_DISPLAY_BUTTONS = 12
+TELEMETRY_LISTEN: Tuple[str, int] = ("0.0.0.0", 10000)
+COMMAND_DESTINATION: Tuple[str, int] = ("127.0.0.1", 10001)
+
+# --- UI colors -------------------------------------------------------------------
+
+WINDOW_BG = "#141821"
+PANEL_BG = "#1f2430"
+PANEL_INNER_BG = "#242a38"
+CANVAS_BG = "#10141f"
+BORDER_COLOR = "#31384a"
+GRID_COLOR = "#3f475c"
+ACCENT_COLOR = "#4a90e2"
+ACCENT_ACTIVE = "#5aa0ff"
+TEXT_PRIMARY = "#f4f7ff"
+TEXT_MUTED = "#9aa3c2"
+
+# --- Linux joystick constants -----------------------------------------------------
+
 JS_EVENT_BUTTON = 0x01
 JS_EVENT_AXIS = 0x02
 JS_EVENT_INIT = 0x80
 
 
-def _IOC(dir_bits, type_chr, nr, size):
+def _IOC(dir_bits: int, type_chr: str, nr: int, size: int) -> int:
     return (dir_bits << 30) | (ord(type_chr) << 8) | (nr << 0) | (size << 16)
 
 
 _IOC_READ = 2
-JSIOCGAXES = _IOC(_IOC_READ, 'j', 0x11, 1)
-JSIOCGBUTTONS = _IOC(_IOC_READ, 'j', 0x12, 1)
+JSIOCGAXES = _IOC(_IOC_READ, "j", 0x11, 1)
+JSIOCGBUTTONS = _IOC(_IOC_READ, "j", 0x12, 1)
 
 
 def JSIOCGNAME(length: int) -> int:
-    return _IOC(_IOC_READ, 'j', 0x13, length)
+    return _IOC(_IOC_READ, "j", 0x13, length)
 
+
+# --- Helper utilities -------------------------------------------------------------
 
 def read_device_name(fd: int) -> str:
-    buf = array('b', [0] * 128)
+    buf = array("b", [0] * 128)
     try:
+        import fcntl
+
         fcntl.ioctl(fd, JSIOCGNAME(len(buf)), buf, True)
         raw = buf.tobytes().split(b"\x00", 1)[0]
         return raw.decode(errors="ignore") or ""
@@ -50,13 +96,17 @@ def read_device_name(fd: int) -> str:
 
 
 def read_count(fd: int, req: int) -> int:
-    buf = array('B', [0])
+    import fcntl
+
+    buf = array("B", [0])
     fcntl.ioctl(fd, req, buf, True)
     return int(buf[0])
 
 
-def find_matching_device(target_name: str | None) -> tuple[str | None, str | None]:
-    candidates = sorted(glob.glob('/dev/input/js*'))
+def find_matching_device(target_name: Optional[str]) -> Tuple[Optional[str], Optional[str]]:
+    import glob
+
+    candidates = sorted(glob.glob("/dev/input/js*"))
     for path in candidates:
         try:
             fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
@@ -67,530 +117,803 @@ def find_matching_device(target_name: str | None) -> tuple[str | None, str | Non
         finally:
             os.close(fd)
         if target_name:
-            if target_name.lower() in (name or '').lower():
+            if target_name.lower() in (name or "").lower():
                 return path, name
         else:
             return path, name
     return None, None
 
 
-def normalize_axis_value(v: int) -> float:
-    if v <= -32767:
+def normalize_axis_value(raw: int) -> float:
+    if raw <= -32767:
         return -1.0
-    if v >= 32767:
+    if raw >= 32767:
         return 1.0
-    return max(-1.0, min(1.0, v / 32767.0))
+    return max(-1.0, min(1.0, raw / 32767.0))
 
 
-def quantize_axis(x: float, deadzone: float = 0.05) -> int:
-    if abs(x) < deadzone:
+def quantize_axis(value: float, deadzone: float) -> int:
+    if abs(value) < deadzone:
         return 0
-    x = max(-1.0, min(1.0, x))
-    return int(round(x * 127.0))  # int8 range
+    value = max(-1.0, min(1.0, value))
+    return int(round(value * 127.0))
 
 
-def build_full_packet(seq: int, armed: bool, axes_i8: list[int], buttons_mask16: int) -> bytes:
-    flags = (1 if armed else 0) & 0xFF
-    a = [(x & 0xFF) for x in (axes_i8 + [0] * 6)[:6]]
-    b0 = buttons_mask16 & 0xFF
-    b1 = (buttons_mask16 >> 8) & 0xFF
-    header = bytes([0xA6, seq & 0xFF, flags] + a + [b0, b1])
+def build_full_packet(seq: int, armed: bool, axes_i8: List[int], buttons_mask16: int) -> bytes:
+    flags = 1 if armed else 0
+    a = [(x & 0xFF) for x in (axes_i8 + [0] * MAX_DISPLAY_AXES)[:MAX_DISPLAY_AXES]]
+    low = buttons_mask16 & 0xFF
+    high = (buttons_mask16 >> 8) & 0xFF
+    header = bytes([0xA6, seq & 0xFF, flags] + a + [low, high])
     checksum = 0
     for b in header:
         checksum ^= b
     return header + bytes((checksum,))
 
 
-def build_text_message(seq: int, text: str) -> bytes:
-    payload = text.encode('utf-8')[:220]
-    header = bytes((0xB0, seq & 0xFF, len(payload))) + payload
-    csum = 0
-    for b in header:
-        csum ^= b
-    return header + bytes((csum,))
+# --- Data containers --------------------------------------------------------------
+
+@dataclass
+class ControllerSnapshot:
+    axes: List[float]
+    buttons: List[int]
+    connected: bool
+    name: str
 
 
 @dataclass
-class JoyState:
-    axes: list
-    buttons: list
-    name: str = ""
+class TelemetrySnapshot:
+    voltage: Optional[float]
+    current: Optional[float]
+    temperature: Optional[float]
+    last_update: Optional[float]
 
 
-class JoystickReader(threading.Thread):
-    def __init__(self, target_name: str | None, deadzone: float = 0.1):
-        super().__init__(daemon=True)
-        self.target_name = target_name
-        self.deadzone = deadzone
-        self.running = True
-        self.state = JoyState([0.0] * 6, [0] * 16, "")
-        self._fd = None
+class JoystickWorker:
+    """Background reader that keeps track of the current joystick state."""
 
-    def stop(self):
-        self.running = False
-        try:
-            if self._fd is not None:
-                os.close(self._fd)
-        except Exception:
-            pass
+    def __init__(self, target_name: Optional[str] = TARGET_CONTROLLER_NAME) -> None:
+        self._target_name = target_name
+        self._lock = threading.Lock()
+        self._axes: List[float] = []
+        self._buttons: List[int] = []
+        self._connected = False
+        self._name = ""
+        self._stop_event = threading.Event()
+        self._thread = threading.Thread(target=self._run, name="JoystickWorker", daemon=True)
 
-    def run(self):
-        while self.running:
-            if self._fd is None:
-                path, name = find_matching_device(self.target_name)
+    def start(self) -> None:
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop_event.set()
+
+    def join(self, timeout: Optional[float] = None) -> None:
+        self._thread.join(timeout)
+
+    def snapshot(self) -> ControllerSnapshot:
+        with self._lock:
+            return ControllerSnapshot(
+                axes=list(self._axes),
+                buttons=list(self._buttons),
+                connected=self._connected,
+                name=self._name,
+            )
+
+    # Internal ------------------------------------------------------------------
+
+    def _run(self) -> None:
+        fd: Optional[int] = None
+        while not self._stop_event.is_set():
+            if fd is None:
+                path, name = find_matching_device(self._target_name)
                 if not path:
-                    time.sleep(0.5)
+                    self._mark_disconnected()
+                    self._stop_event.wait(0.4)
                     continue
                 try:
-                    self._fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
+                    fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
                 except OSError:
-                    self._fd = None
-                    time.sleep(0.5)
+                    fd = None
+                    self._stop_event.wait(0.3)
                     continue
                 try:
-                    na = read_count(self._fd, JSIOCGAXES)
-                    nb = read_count(self._fd, JSIOCGBUTTONS)
+                    axis_count = read_count(fd, JSIOCGAXES)
+                    button_count = read_count(fd, JSIOCGBUTTONS)
                 except OSError:
-                    os.close(self._fd)
-                    self._fd = None
-                    time.sleep(0.5)
+                    os.close(fd)
+                    fd = None
+                    self._stop_event.wait(0.3)
                     continue
-                self.state = JoyState([0.0] * max(6, na), [0] * max(16, nb), name or "")
+                with self._lock:
+                    self._axes = [0.0] * axis_count
+                    self._buttons = [0] * button_count
+                    self._connected = True
+                    self._name = name or path
+                continue
 
-            # Drain events
             try:
-                data = os.read(self._fd, 8)
+                data = os.read(fd, 8)
             except BlockingIOError:
-                data = None
+                self._stop_event.wait(0.01)
+                continue
             except OSError:
-                try:
-                    os.close(self._fd)
-                except Exception:
-                    pass
-                self._fd = None
+                os.close(fd)
+                fd = None
+                self._mark_disconnected()
                 continue
 
-            if not data:
-                time.sleep(0.01)
+            if not data or len(data) < 8:
+                self._stop_event.wait(0.01)
                 continue
-            if len(data) < 8:
-                continue
+
             try:
-                _, value, etype, number = struct.unpack('IhBB', data)
+                _, value, etype, number = struct.unpack("IhBB", data)
             except struct.error:
                 continue
-            effective = etype & ~JS_EVENT_INIT
-            if effective == JS_EVENT_AXIS:
-                if 0 <= number < len(self.state.axes):
-                    self.state.axes[number] = normalize_axis_value(value)
-            elif effective == JS_EVENT_BUTTON:
-                if 0 <= number < len(self.state.buttons):
-                    self.state.buttons[number] = 1 if value != 0 else 0
 
+            effective_type = etype & ~JS_EVENT_INIT
+            with self._lock:
+                if effective_type == JS_EVENT_AXIS:
+                    if 0 <= number < len(self._axes):
+                        self._axes[number] = normalize_axis_value(value)
+                elif effective_type == JS_EVENT_BUTTON:
+                    if 0 <= number < len(self._buttons):
+                        self._buttons[number] = 1 if value else 0
 
-class UDPSession(threading.Thread):
-    def __init__(self, host: str, port: int, joy: JoystickReader,
-                 hold_button: int = 4, rate_hz: float = 50.0, deadzone: float = 0.1):
-        super().__init__(daemon=True)
-        self.addr = (host, port)
-        self.joy = joy
-        self.hold_button = hold_button
-        self.period = 1.0 / max(1.0, rate_hz)
-        self.deadzone = deadzone
-        self.running = True
-        self.seq = 0
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.setblocking(False)
-        # Bind to receive messages back
-        self.sock.bind(("0.0.0.0", 0))
-        self.rx_queue: queue.Queue[str] = queue.Queue()
-        self._rx_thread = threading.Thread(target=self._rx_loop, daemon=True)
-
-    def stop(self):
-        self.running = False
-        try:
-            self.sock.close()
-        except Exception:
-            pass
-
-    def _rx_loop(self):
-        while self.running:
+        if fd is not None:
             try:
-                data, _ = self.sock.recvfrom(2048)
-            except BlockingIOError:
-                time.sleep(0.01)
-                continue
-            if not data:
-                continue
-            # Accept plain text messages (0xB0) and log others briefly
-            if data[0] == 0xB0 and len(data) >= 4:
-                # Validate checksum
-                csum = 0
-                for b in data[:-1]:
-                    csum ^= b
-                if csum == data[-1]:
-                    ln = data[2]
-                    payload = data[3:3 + ln]
-                    try:
-                        text = payload.decode('utf-8', errors='replace')
-                    except Exception:
-                        text = str(payload)
-                    self.rx_queue.put(text)
-            else:
-                self.rx_queue.put(f"[rx {len(data)} bytes]")
+                os.close(fd)
+            except OSError:
+                pass
 
-    def send_text(self, text: str):
-        pkt = build_text_message(self.seq, text)
+    def _mark_disconnected(self) -> None:
+        with self._lock:
+            self._connected = False
+            self._name = ""
+            if self._axes:
+                self._axes = [0.0] * len(self._axes)
+            if self._buttons:
+                self._buttons = [0] * len(self._buttons)
+
+
+class TelemetryListener:
+    """Listens for UDP telemetry updates and exposes the latest sample."""
+
+    def __init__(self, listen_addr: Tuple[str, int] = TELEMETRY_LISTEN) -> None:
+        self._lock = threading.Lock()
+        self._state: Dict[str, Optional[float]] = {"voltage": None, "current": None, "temperature": None}
+        self._last_update: Optional[float] = None
+        self._stop_event = threading.Event()
+        self._sock: Optional[socket.socket] = None
+        self._thread = threading.Thread(target=self._run, name="TelemetryListener", daemon=True)
+        self._listen_addr = listen_addr
+
+    def start(self) -> None:
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        if self._sock:
+            self._sock.close()
+
+    def join(self, timeout: Optional[float] = None) -> None:
+        self._thread.join(timeout)
+
+    def snapshot(self) -> TelemetrySnapshot:
+        with self._lock:
+            return TelemetrySnapshot(
+                voltage=self._state.get("voltage"),
+                current=self._state.get("current"),
+                temperature=self._state.get("temperature"),
+                last_update=self._last_update,
+            )
+
+    # Internal ------------------------------------------------------------------
+
+    def _run(self) -> None:
         try:
-            self.sock.sendto(pkt, self.addr)
-        except OSError:
+            sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            sock.bind(self._listen_addr)
+            sock.settimeout(0.5)
+            self._sock = sock
+        except OSError as exc:
+            print(f"Telemetry listener disabled: {exc}")
+            return
+
+        while not self._stop_event.is_set():
+            try:
+                data, _ = sock.recvfrom(512)
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+
+            payload = data.decode(errors="ignore").strip()
+            if not payload:
+                continue
+
+            parsed = self._parse_payload(payload)
+            if not parsed:
+                continue
+
+            with self._lock:
+                self._state.update(parsed)
+                self._last_update = time.time()
+
+        sock.close()
+
+    @staticmethod
+    def _parse_payload(payload: str) -> Dict[str, Optional[float]]:
+        try:
+            data = json.loads(payload)
+            if isinstance(data, dict):
+                return {
+                    "voltage": TelemetryListener._coerce_float(data.get("voltage")),
+                    "current": TelemetryListener._coerce_float(data.get("current")),
+                    "temperature": TelemetryListener._coerce_float(data.get("temperature")),
+                }
+        except json.JSONDecodeError:
             pass
-        self.seq = (self.seq + 1) & 0xFF
 
-    def run(self):
-        self._rx_thread.start()
-        last = 0.0
-        while self.running:
-            now = time.monotonic()
-            if now - last >= self.period:
-                axes = self.joy.state.axes
-                buttons = self.joy.state.buttons
-                axes_i8 = [quantize_axis(a, self.deadzone) for a in axes[:6]]
-                mask = 0
-                for i in range(min(16, len(buttons))):
-                    if buttons[i]:
-                        mask |= (1 << i)
-                armed = (0 <= self.hold_button < len(buttons) and buttons[self.hold_button] == 1)
-                pkt = build_full_packet(self.seq, armed, axes_i8, mask)
-                try:
-                    self.sock.sendto(pkt, self.addr)
-                except OSError:
-                    pass
-                self.seq = (self.seq + 1) & 0xFF
-                last = now
-            time.sleep(0.005)
+        result: Dict[str, Optional[float]] = {}
+        for token in payload.replace(",", " ").split():
+            if "=" not in token:
+                continue
+            key, value = token.split("=", 1)
+            if key in {"voltage", "current", "temperature"}:
+                result[key] = TelemetryListener._coerce_float(value)
+        return result
+
+    @staticmethod
+    def _coerce_float(value: object) -> Optional[float]:
+        try:
+            if value is None:
+                return None
+            return float(value)
+        except (TypeError, ValueError):
+            return None
 
 
-class MapPanel(ttk.Frame):
-    def __init__(self, parent, image_path: str | None = None):
-        super().__init__(parent)
-        self.canvas = tk.Canvas(self, bg="white")
-        self.canvas.pack(fill=tk.BOTH, expand=True)
-        self.image_path = image_path
-        self._img_pil = None
-        self._photo = None
-        self._img_item = None
-        self.bind("<Configure>", lambda e: self._draw())
-        self._load()
+# --- GUI -------------------------------------------------------------------------
 
-    def _load(self):
-        self._img_pil = None
-        self._photo = None
-        if self.image_path and os.path.exists(self.image_path):
-            if Image is not None:
-                try:
-                    self._img_pil = Image.open(self.image_path)
-                except Exception:
-                    self._img_pil = None
-            else:
-                # Fallback: try Tk PhotoImage directly (may support PNG)
-                try:
-                    self._photo = tk.PhotoImage(file=self.image_path)
-                except Exception:
-                    self._photo = None
+
+class StickOverlay(ttk.Frame):
+    """FPV-style dual-axis indicator showing joystick position."""
+
+    def __init__(self, parent: tk.Widget, label: str, size: int = 140) -> None:
+        super().__init__(parent, style="PanelInner.TFrame")
+        self.columnconfigure(0, weight=1)
+        self._pad = 4
+        self._dot_radius = 6
+        self._x = 0.0
+        self._y = 0.0
+        self._width = size
+        self._height = size
+
+        ttk.Label(self, text=label, style="Subheading.TLabel").pack(anchor="center")
+
+        self.canvas = tk.Canvas(
+            self,
+            width=size,
+            height=size,
+            background=CANVAS_BG,
+            highlightthickness=1,
+            highlightbackground=BORDER_COLOR,
+        )
+        self.canvas.pack(fill="both", expand=True)
+        self.canvas.bind("<Configure>", self._on_resize)
+
+        self.border = self.canvas.create_rectangle(0, 0, 0, 0, outline=BORDER_COLOR)
+        self.h_line = self.canvas.create_line(0, 0, 0, 0, fill=GRID_COLOR, dash=(3, 2))
+        self.v_line = self.canvas.create_line(0, 0, 0, 0, fill=GRID_COLOR, dash=(3, 2))
+        self.dot = self.canvas.create_oval(0, 0, 0, 0, fill=ACCENT_COLOR, outline="")
+
+        self.value_var = tk.StringVar(value="X=+0.00  Y=+0.00")
+        ttk.Label(self, textvariable=self.value_var, style="Muted.TLabel").pack(anchor="center", pady=(4, 0))
+
+        self._layout_elements()
+
+    def update(self, x: float, y: float) -> None:
+        self._x = max(-1.0, min(1.0, x))
+        self._y = max(-1.0, min(1.0, y))
+        self._position_dot()
+        self.value_var.set(f"X={self._x:+.2f}  Y={self._y:+.2f}")
+
+    def _on_resize(self, event: tk.Event) -> None:
+        self._width = max(12, int(event.width))
+        self._height = max(12, int(event.height))
+        self._layout_elements()
+
+    def _layout_elements(self) -> None:
+        pad = self._pad
+        width = self._width
+        height = self._height
+        size = max(2 * pad + 2, min(width, height))
+        offset_x = (width - size) / 2
+        offset_y = (height - size) / 2
+        left = offset_x + pad
+        top = offset_y + pad
+        right = offset_x + size - pad
+        bottom = offset_y + size - pad
+        usable_span = max(2.0, size - 2 * pad)
+        self._dot_radius = max(4.0, usable_span * 0.05)
+        self.canvas.coords(self.border, left, top, right, bottom)
+        cx = (left + right) / 2
+        cy = (top + bottom) / 2
+        self.canvas.coords(self.h_line, left, cy, right, cy)
+        self.canvas.coords(self.v_line, cx, top, cx, bottom)
+        self._position_dot()
+
+    def _position_dot(self) -> None:
+        border_coords = self.canvas.coords(self.border)
+        if len(border_coords) != 4:
+            return
+        left, top, right, bottom = border_coords
+        width = max(1.0, right - left)
+        height = max(1.0, bottom - top)
+        usable_w = max(1.0, width - 2 * self._dot_radius)
+        usable_h = max(1.0, height - 2 * self._dot_radius)
+        cx = left + self._dot_radius + ((self._x + 1.0) / 2.0) * usable_w
+        cy = top + self._dot_radius + (1.0 - (self._y + 1.0) / 2.0) * usable_h
+        r = self._dot_radius
+        self.canvas.coords(self.dot, cx - r, cy - r, cx + r, cy + r)
+
+
+class AxisBar(ttk.Frame):
+    """Horizontal bar showing a single-axis value in -1..1."""
+
+    def __init__(self, parent: tk.Widget, label: str, width: int = 80) -> None:
+        super().__init__(parent, style="PanelInner.TFrame")
+        ttk.Label(self, text=label, style="Subheading.TLabel").pack(anchor="center")
+        self._width = width
+        self._value = 0.0
+        self.canvas = tk.Canvas(
+            self,
+            width=width,
+            height=10,
+            background=CANVAS_BG,
+            highlightthickness=1,
+            highlightbackground=BORDER_COLOR,
+        )
+        self.canvas.pack(padx=6, pady=4, fill="x")
+        self.canvas.bind("<Configure>", self._resize)
+        self.mid_line = self.canvas.create_line(0, 0, 0, 0, fill=GRID_COLOR, dash=(3, 2))
+        self.bar = self.canvas.create_rectangle(0, 0, 0, 0, outline="", fill=ACCENT_COLOR)
+        self.value_var = tk.StringVar(value="+0.00")
+        ttk.Label(self, textvariable=self.value_var, style="Muted.TLabel").pack(anchor="center")
         self._draw()
 
-    def _draw(self):
-        c = self.canvas
-        c.delete("all")
-        w = c.winfo_width() or 10
-        h = c.winfo_height() or 10
-        if self._img_pil is not None and ImageTk is not None:
-            # Fit image to canvas while preserving aspect ratio
-            iw, ih = self._img_pil.size
-            if iw <= 0 or ih <= 0:
-                iw, ih = 1, 1
-            scale = min(w / iw, h / ih)
-            tw, th = max(1, int(iw * scale)), max(1, int(ih * scale))
-            img = self._img_pil.resize((tw, th))
-            self._photo = ImageTk.PhotoImage(img)
-            self._img_item = c.create_image(w // 2, h // 2, image=self._photo)
-        elif self._photo is not None:
-            # Unscaled center
-            self._img_item = c.create_image(w // 2, h // 2, image=self._photo)
+    def update(self, value: float) -> None:
+        self._value = max(-1.0, min(1.0, value))
+        self.value_var.set(f"{self._value:+.2f}")
+        self._draw()
+
+    def _resize(self, event: tk.Event) -> None:
+        self._width = max(80, int(event.width))
+        self._draw()
+
+    def _draw(self) -> None:
+        w = self.canvas.winfo_width() or self._width
+        h = self.canvas.winfo_height() or 46
+        center = w / 2
+        half_height = h / 2
+        self.canvas.coords(self.mid_line, 2, half_height, w - 2, half_height)
+        magnitude = self._value * (w / 2 - 8)
+        if self._value >= 0:
+            left = center
+            right = center + magnitude
         else:
-            # Placeholder box with instructions
-            c.create_rectangle(10, 10, w - 10, h - 10, outline="#888")
-            msg = "No map image found. Place file and restart."
-            c.create_text(w // 2, h // 2, text=msg)
+            left = center + magnitude
+            right = center
+        if abs(self._value) < 0.02:
+            left = center - 2
+            right = center + 2
+        top = half_height - 10
+        bottom = half_height + 10
+        self.canvas.coords(self.bar, left, top, right, bottom)
 
 
-class Dashboard(tk.Tk):
-    def __init__(self, host: str, port: int, target_name: str | None):
-        super().__init__()
-        self.title("F310 Robot Control GUI")
-        self.geometry("1200x800")
+class CommandConsole(ttk.LabelFrame):
+    """Simple command prompt area for sending manual robot commands."""
 
-        self.joy = JoystickReader(target_name)
-        self.udp = UDPSession(host, port, self.joy)
+    def __init__(self, parent: tk.Widget, sender: Callable[[str], Optional[str]]) -> None:
+        super().__init__(parent, text="Robot Console", padding=10, style="Panel.TLabelframe")
+        self._sender = sender
 
-        # Layout: left/right split
-        self.main_split = ttk.Panedwindow(self, orient=tk.HORIZONTAL)
-        self.main_split.pack(fill=tk.BOTH, expand=True)
+        self.columnconfigure(0, weight=1)
+        self.rowconfigure(0, weight=1)
 
-        self.left_frame = ttk.Frame(self.main_split)
-        self.right_frame = ttk.Frame(self.main_split)
-        self.main_split.add(self.left_frame, weight=1)
-        self.main_split.add(self.right_frame, weight=1)
+        self._output = tk.Text(
+            self,
+            height=8,
+            state="disabled",
+            wrap="word",
+            background=CANVAS_BG,
+            foreground=TEXT_PRIMARY,
+            insertbackground=TEXT_PRIMARY,
+            relief="flat",
+            borderwidth=1,
+            highlightthickness=1,
+            highlightbackground=BORDER_COLOR,
+        )
+        self._output.grid(row=0, column=0, columnspan=2, sticky="nsew")
 
-        # Right split: top controls (75%), bottom terminal (25%)
-        self.right_split = ttk.Panedwindow(self.right_frame, orient=tk.VERTICAL)
-        self.right_split.pack(fill=tk.BOTH, expand=True)
+        self._entry_var = tk.StringVar()
+        self._entry = ttk.Entry(self, textvariable=self._entry_var, style="Console.TEntry")
+        self._entry.grid(row=1, column=0, sticky="ew", pady=(6, 0))
+        self._entry.bind("<Return>", self._on_submit)
 
-        self.controls_frame = ttk.Frame(self.right_split, padding=10)
-        self.terminal_frame = ttk.Frame(self.right_split)
-        self.right_split.add(self.controls_frame, weight=3)
-        self.right_split.add(self.terminal_frame, weight=1)
+        send_btn = ttk.Button(self, text="Send", command=self._on_submit, style="Accent.TButton")
+        send_btn.grid(row=1, column=1, padx=(6, 0), pady=(6, 0))
 
-        # Left pane: Camera/Map tabs (placeholder)
-        self.tabs = ttk.Notebook(self.left_frame)
-        self.tab_camera = ttk.Frame(self.tabs)
-        self.tab_map = ttk.Frame(self.tabs)
-        self.tabs.add(self.tab_camera, text="Camera")
-        self.tabs.add(self.tab_map, text="Map")
-        self.tabs.pack(fill=tk.BOTH, expand=True)
-        ttk.Label(self.tab_camera, text="Camera feed placeholder").pack(pady=20)
-        # Map placeholder image panel
-        self.map_panel = MapPanel(self.tab_map, getattr(self, "map_image_path", None))
-        self.map_panel.pack(fill=tk.BOTH, expand=True)
+    def focus_entry(self) -> None:
+        self._entry.focus_set()
 
-        # Controls & indicators
-        row = 0
-        self.lbl_conn = ttk.Label(self.controls_frame, text="Controller: disconnected")
-        self.lbl_conn.grid(row=row, column=0, columnspan=3, sticky="w")
-        row += 1
+    def append(self, line: str) -> None:
+        self._output.configure(state="normal")
+        timestamp = time.strftime("%H:%M:%S")
+        self._output.insert("end", f"[{timestamp}] {line}\n")
+        self._output.see("end")
+        self._output.configure(state="disabled")
 
-        self._add_progress(row, "Actuator", 0)
-        row += 1
-        self._add_progress(row, "Speed", 0)
-        row += 1
-        self._add_progress(row, "Battery", 0)
-        row += 1
-        self._add_progress(row, "Current", 0)
-        row += 1
-
-        # Compass
-        ttk.Label(self.controls_frame, text="Compass").grid(row=row, column=0, sticky="w")
-        self.canvas_compass = tk.Canvas(self.controls_frame, width=120, height=120, bg="white")
-        self.canvas_compass.grid(row=row, column=1, sticky="w")
-        self._draw_compass(heading_deg=0.0)
-        row += 1
-
-        # Axes/buttons readout
-        self.lbl_axes = ttk.Label(self.controls_frame, text="Axes: []")
-        self.lbl_axes.grid(row=row, column=0, columnspan=3, sticky="w")
-        row += 1
-        self.lbl_buttons = ttk.Label(self.controls_frame, text="Buttons: []")
-        self.lbl_buttons.grid(row=row, column=0, columnspan=3, sticky="w")
-        row += 1
-
-        for i in range(3):
-            self.controls_frame.grid_columnconfigure(i, weight=1)
-
-        # Terminal/chat UI
-        self.txt_log = tk.Text(self.terminal_frame, height=8, wrap=tk.WORD, state=tk.DISABLED)
-        self.txt_log.pack(fill=tk.BOTH, expand=True, padx=8, pady=(8, 4))
-        entry_row = ttk.Frame(self.terminal_frame)
-        entry_row.pack(fill=tk.X, padx=8, pady=(0, 8))
-        self.entry_msg = ttk.Entry(entry_row)
-        self.entry_msg.pack(side=tk.LEFT, fill=tk.X, expand=True)
-        self.btn_send = ttk.Button(entry_row, text="Send", command=self._on_send)
-        self.btn_send.pack(side=tk.LEFT, padx=6)
-
-        # Start threads
-        self.joy.start()
-        self.udp.start()
-
-        # Drive periodic UI updates
-        self.after(100, self._update_ui)
-
-        # Set initial pane ratios after window draws
-        self.after(200, self._set_initial_sashes)
-
-        self.protocol("WM_DELETE_WINDOW", self._on_close)
-
-    def _add_progress(self, row: int, label: str, init_value: float):
-        ttk.Label(self.controls_frame, text=label).grid(row=row, column=0, sticky="w")
-        pb = ttk.Progressbar(self.controls_frame, orient=tk.HORIZONTAL, mode='determinate', length=200)
-        pb.grid(row=row, column=1, sticky="we")
-        pb['maximum'] = 100
-        pb['value'] = int(init_value * 100)
-        setattr(self, f"pb_{label.lower()}", pb)
-        val_lbl = ttk.Label(self.controls_frame, text=f"{init_value:.2f}")
-        val_lbl.grid(row=row, column=2, sticky="e")
-        setattr(self, f"lbl_{label.lower()}_val", val_lbl)
-
-    def _draw_compass(self, heading_deg: float):
-        c = self.canvas_compass
-        c.delete("all")
-        w = int(c['width']); h = int(c['height'])
-        cx, cy = w // 2, h // 2
-        r = min(cx, cy) - 5
-        c.create_oval(cx - r, cy - r, cx + r, cy + r, outline="black")
-        # Heading line (north-up circle, 0 deg points up)
-        import math
-        ang = math.radians(90 - heading_deg)
-        x = cx + r * math.cos(ang)
-        y = cy - r * math.sin(ang)
-        c.create_line(cx, cy, x, y, fill="red", width=3)
-        c.create_text(cx, cy + r + 10, text=f"{heading_deg:.0f}°")
-
-    def _append_log(self, text: str):
-        self.txt_log.configure(state=tk.NORMAL)
-        self.txt_log.insert(tk.END, text + "\n")
-        self.txt_log.see(tk.END)
-        self.txt_log.configure(state=tk.DISABLED)
-
-    def _on_send(self):
-        msg = self.entry_msg.get().strip()
-        if not msg:
+    def _on_submit(self, *_args) -> None:
+        raw = self._entry_var.get().strip()
+        if not raw:
             return
-        self.udp.send_text(msg)
-        self._append_log(f"> {msg}")
-        self.entry_msg.delete(0, tk.END)
-
-    def _set_initial_sashes(self):
-        # Approximate 50/50 split horizontally
+        self._entry_var.set("")
+        self.append(f"> {raw}")
         try:
-            total_w = self.main_split.winfo_width()
-            self.main_split.sashpos(0, total_w // 2)
-        except Exception:
+            error = self._sender(raw)
+        except Exception as exc:  # pragma: no cover - defensive
+            self.append(f"! send failed: {exc}")
+        else:
+            if error:
+                self.append(f"! {error}")
+
+
+class ControlStationGUI:
+    def __init__(
+        self,
+        root: tk.Tk,
+        joystick: JoystickWorker,
+        telemetry: TelemetryListener,
+    ) -> None:
+        self.root = root
+        self.joystick = joystick
+        self.telemetry = telemetry
+
+        self._style = ttk.Style()
+        self._configure_style()
+
+        self.root.title("F310 Driver Station")
+        self.root.geometry("1000x600")
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+
+        self._setup_layout()
+
+        self._udp_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._udp_socket.setblocking(False)
+        self._seq = 0
+        self._last_tx = 0.0
+
+        self._command_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._command_socket.setblocking(False)
+
+        self._schedule_update()
+
+    # Layout --------------------------------------------------------------------
+
+    def _setup_layout(self) -> None:
+        main = ttk.Frame(self.root, padding=12)
+        main.configure(style="Main.TFrame")
+        main.pack(fill="both", expand=True)
+
+        self.view_frame = ttk.LabelFrame(main, text="Visualization", padding=10, style="Panel.TLabelframe")
+        self.view_frame.place(relx=0.02, rely=0.02, relwidth=0.56, relheight=0.6)
+
+        self.view_notebook = ttk.Notebook(self.view_frame)
+        self.view_notebook.pack(fill="both", expand=True)
+
+        self.map_tab = ttk.Frame(self.view_notebook, style="PanelInner.TFrame")
+        self.camera_tab = ttk.Frame(self.view_notebook, style="PanelInner.TFrame")
+        self.view_notebook.add(self.map_tab, text="Map")
+        self.view_notebook.add(self.camera_tab, text="Camera")
+
+        self.map_placeholder = ttk.Label(
+            self.map_tab,
+            text="Map view placeholder",
+            anchor="center",
+            style="Placeholder.TLabel",
+        )
+        self.map_placeholder.pack(fill="both", expand=True, padx=4, pady=4)
+
+        self.camera_placeholder = ttk.Label(
+            self.camera_tab,
+            text="Camera feed placeholder",
+            anchor="center",
+            style="Placeholder.TLabel",
+        )
+        self.camera_placeholder.pack(fill="both", expand=True, padx=4, pady=4)
+
+        telemetry_height = 0.6
+        telemetry_x = 0.62
+        telemetry_y = 0.02
+        telemetry_width = 0.36
+        self.telemetry_frame = ttk.LabelFrame(main, text="Robot Feedback", padding=10, style="Panel.TLabelframe")
+        self.telemetry_frame.place(
+            relx=telemetry_x,
+            rely=telemetry_y,
+            relwidth=telemetry_width,
+            relheight=telemetry_height,
+        )
+
+        stats_container = ttk.Frame(self.telemetry_frame, style="PanelInner.TFrame")
+        stats_container.pack(fill="x")
+        self.voltage_var = tk.StringVar(value="--")
+        self.current_var = tk.StringVar(value="--")
+        self.temperature_var = tk.StringVar(value="--")
+        self.last_update_var = tk.StringVar(value="No data")
+
+        self._add_stat_row(stats_container, "Voltage", self.voltage_var, "V")
+        self._add_stat_row(stats_container, "Current", self.current_var, "A")
+        self._add_stat_row(stats_container, "Temperature", self.temperature_var, "°C")
+
+        ttk.Label(stats_container, textvariable=self.last_update_var, style="Muted.TLabel").grid(
+            row=3, column=0, columnspan=3, sticky="w", pady=(6, 0)
+        )
+
+        # Controller panel sized as percentages to keep layout responsive.
+        controller_width = 0.5
+        controller_height = 0.35
+        controller_x = 0.02
+        controller_y = 1.0 - controller_height - 0.02
+        self.controller_frame = ttk.Frame(main, padding=10, style="Panel.TFrame")
+        self.controller_frame.place(
+            relx=controller_x,
+            rely=controller_y,
+            relwidth=controller_width,
+            relheight=controller_height,
+        )
+
+        console_width = telemetry_width
+        console_height = controller_height
+        console_x = telemetry_x
+        console_y = controller_y
+        self.command_console = CommandConsole(main, self._send_console_command)
+        self.command_console.place(
+            relx=console_x,
+            rely=console_y,
+            relwidth=console_width,
+            relheight=console_height,
+        )
+        self.command_console.focus_entry()
+
+        self.device_label_var = tk.StringVar(value="Controller: searching...")
+        ttk.Label(
+            self.controller_frame,
+            textvariable=self.device_label_var,
+            style="Header.TLabel",
+        ).pack(anchor="w", pady=(0, 4))
+
+        controls_grid = ttk.Frame(self.controller_frame, style="PanelInner.TFrame")
+        controls_grid.pack(fill="both", expand=True, pady=(6, 4))
+        controls_grid.columnconfigure(0, weight=1)
+        controls_grid.columnconfigure(1, weight=1)
+
+        left_column = ttk.Frame(controls_grid, style="PanelInner.TFrame")
+        left_column.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
+        left_column.columnconfigure(0, weight=1)
+
+        self.left_stick = StickOverlay(left_column, "Left Stick (0/1)", size=120)
+        self.left_stick.pack(fill="both", expand=True, pady=(0, 6))
+
+        buttons_container = ttk.Frame(left_column, style="PanelInner.TFrame")
+        buttons_container.pack(fill="x")
+        ttk.Label(buttons_container, text="Buttons", style="Subheading.TLabel").grid(row=0, column=0, columnspan=4, sticky="w")
+        self.button_vars = []
+        for i in range(MAX_DISPLAY_BUTTONS):
+            var = tk.BooleanVar(value=False)
+            btn = ttk.Checkbutton(
+                buttons_container,
+                text=f"{i}",
+                variable=var,
+                state="disabled",
+                style="Joystick.TCheckbutton",
+            )
+            r = (i // 4) + 1
+            c = i % 4
+            btn.grid(row=r, column=c, sticky="w", padx=2, pady=1)
+            self.button_vars.append(var)
+
+        right_column = ttk.Frame(controls_grid, style="PanelInner.TFrame")
+        right_column.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
+        right_column.columnconfigure(0, weight=1)
+
+        self.right_stick = StickOverlay(right_column, "Right Stick (3/4)", size=120)
+        self.right_stick.pack(fill="both", expand=True, pady=(0, 6))
+
+        slider_container = ttk.Frame(right_column, style="PanelInner.TFrame")
+        slider_container.pack(fill="x")
+        slider_container.columnconfigure(0, weight=1)
+        self.axis2_bar = AxisBar(slider_container, "Axis 2")
+        self.axis2_bar.pack(fill="x", pady=(0, 6))
+        self.axis5_bar = AxisBar(slider_container, "Axis 5")
+        self.axis5_bar.pack(fill="x")
+
+    def _add_stat_row(self, parent: ttk.Frame, label: str, value_var: tk.StringVar, unit: str) -> None:
+        row = parent.grid_size()[1]
+        ttk.Label(parent, text=f"{label}:", style="Subheading.TLabel").grid(row=row, column=0, sticky="w", pady=4)
+        ttk.Label(parent, textvariable=value_var, style="Header.TLabel").grid(row=row, column=1, sticky="w", pady=4)
+        ttk.Label(parent, text=unit, style="Muted.TLabel").grid(row=row, column=2, sticky="w", padx=(4, 0))
+
+    # Update loop ----------------------------------------------------------------
+
+    def _configure_style(self) -> None:
+        try:
+            if "clam" in self._style.theme_names():
+                self._style.theme_use("clam")
+        except tk.TclError:
             pass
-        # Right vertical split: 75% controls, 25% terminal
+
+        self.root.configure(background=WINDOW_BG)
+
+        self._style.configure("Main.TFrame", background=WINDOW_BG)
+        self._style.configure("Panel.TLabelframe", background=PANEL_BG, foreground=TEXT_PRIMARY, borderwidth=0, relief="flat")
+        self._style.configure("Panel.TLabelframe.Label", background=PANEL_BG, foreground=TEXT_PRIMARY, font=("TkDefaultFont", 12, "bold"))
+        self._style.configure("Panel.TFrame", background=PANEL_BG)
+        self._style.configure("PanelInner.TFrame", background=PANEL_BG)
+
+        self._style.configure("TLabel", background=PANEL_BG, foreground=TEXT_PRIMARY)
+        self._style.configure("Header.TLabel", background=PANEL_BG, foreground=TEXT_PRIMARY, font=("TkDefaultFont", 11, "bold"))
+        self._style.configure("Subheading.TLabel", background=PANEL_BG, foreground=ACCENT_COLOR, font=("TkDefaultFont", 10, "bold"))
+        self._style.configure("Muted.TLabel", background=PANEL_BG, foreground=TEXT_MUTED)
+        self._style.configure("Placeholder.TLabel", background=CANVAS_BG, foreground=TEXT_MUTED, padding=20, anchor="center")
+
+        self._style.configure("Joystick.TCheckbutton", background=PANEL_BG, foreground=TEXT_MUTED)
+        self._style.map(
+            "Joystick.TCheckbutton",
+            foreground=[("selected", ACCENT_COLOR), ("!disabled", TEXT_MUTED)],
+        )
+
+        self._style.configure("Accent.TButton", background=ACCENT_COLOR, foreground="#ffffff", borderwidth=0, padding=(14, 8))
+        self._style.map(
+            "Accent.TButton",
+            background=[("pressed", ACCENT_ACTIVE), ("active", ACCENT_ACTIVE), ("disabled", BORDER_COLOR)],
+            foreground=[("disabled", TEXT_MUTED)],
+        )
+
+        entry_field_bg = "#1a1f2d"
+        self._style.configure(
+            "Console.TEntry",
+            fieldbackground=entry_field_bg,
+            background=entry_field_bg,
+            foreground=TEXT_PRIMARY,
+            bordercolor=BORDER_COLOR,
+            lightcolor=BORDER_COLOR,
+            darkcolor=BORDER_COLOR,
+            padding=6,
+        )
+        self._style.map("Console.TEntry", fieldbackground=[("focus", entry_field_bg)], foreground=[("disabled", TEXT_MUTED)])
+
+        self._style.configure("TNotebook", background=WINDOW_BG, borderwidth=0, padding=0)
+        self._style.configure("TNotebook.Tab", background=WINDOW_BG, foreground=TEXT_MUTED, padding=(12, 8))
+        self._style.map(
+            "TNotebook.Tab",
+            background=[("selected", PANEL_BG), ("!disabled", WINDOW_BG)],
+            foreground=[("selected", TEXT_PRIMARY), ("!disabled", TEXT_MUTED)],
+        )
+
+    def _schedule_update(self) -> None:
+        self.root.after(20, self._update)
+
+    def _update(self) -> None:
+        snapshot = self.joystick.snapshot()
+        telemetry = self.telemetry.snapshot()
+        self._update_controller_panel(snapshot)
+        self._update_telemetry_panel(telemetry)
+        self._maybe_send_packet(snapshot)
+        self._schedule_update()
+
+    def _update_controller_panel(self, snapshot: ControllerSnapshot) -> None:
+        if snapshot.connected:
+            label = f"Controller: {snapshot.name}"
+        else:
+            label = "Controller: searching..."
+        self.device_label_var.set(label)
+
+        axes = (snapshot.axes + [0.0] * MAX_DISPLAY_AXES)[:MAX_DISPLAY_AXES]
+        self.left_stick.update(axes[0], -axes[1])
+        self.right_stick.update(axes[3], -axes[4])
+        self.axis2_bar.update(axes[2])
+        self.axis5_bar.update(axes[5])
+
+        buttons = snapshot.buttons
+        for idx in range(MAX_DISPLAY_BUTTONS):
+            if idx < len(buttons):
+                active = bool(buttons[idx])
+            else:
+                active = False
+            self.button_vars[idx].set(active)
+
+    def _update_telemetry_panel(self, snapshot: TelemetrySnapshot) -> None:
+        self.voltage_var.set(self._format_float(snapshot.voltage))
+        self.current_var.set(self._format_float(snapshot.current))
+        self.temperature_var.set(self._format_float(snapshot.temperature))
+        if snapshot.last_update is None:
+            self.last_update_var.set("No telemetry received")
+        else:
+            elapsed = time.time() - snapshot.last_update
+            self.last_update_var.set(f"Updated {elapsed:.1f}s ago")
+
+    def _send_console_command(self, command: str) -> Optional[str]:
+        data = command.encode("utf-8")
         try:
-            total_h = self.right_split.winfo_height()
-            self.right_split.sashpos(0, int(total_h * 0.75))
-        except Exception:
-            pass
-
-    def _update_ui(self):
-        # Update connection label and axes/buttons
-        name = self.joy.state.name or "disconnected"
-        self.lbl_conn.configure(text=f"Controller: {name}")
-
-        axes = self.joy.state.axes[:6]
-        buttons = self.joy.state.buttons[:16]
-        axes_str = ", ".join(f"{i}:{v:+.2f}" for i, v in enumerate(axes))
-        self.lbl_axes.configure(text=f"Axes: [{axes_str}]")
-        pressed = [str(i) for i, b in enumerate(buttons) if b]
-        self.lbl_buttons.configure(text=f"Buttons: [{', '.join(pressed)}]")
-
-        # Example: map axes to speed/actuator for display only
-        thr = axes[1] if len(axes) > 1 else 0.0
-        steer = axes[0] if len(axes) > 0 else 0.0
-        spd_val = abs(thr)
-        self.pb_speed['value'] = int(spd_val * 100)
-        self.lbl_speed_val.configure(text=f"{spd_val:.2f}")
-
-        # Battery/Current placeholders (update via incoming messages if available)
-        # Keep existing values; nothing here changes them.
-
-        # Drain any received messages
-        while True:
-            try:
-                m = self.udp.rx_queue.get_nowait()
-            except queue.Empty:
-                break
-            self._append_log(m)
-            # Optional: parse telemetry like "battery=12.1 current=0.8 heading=15"
-            parts = dict(p.split('=') for p in m.split() if '=' in p)
-            if 'battery' in parts:
-                try:
-                    b = float(parts['battery'])
-                    val = max(0.0, min(1.0, (b - 10.0) / 2.6))  # crude 10-12.6V scale
-                    self.pb_battery['value'] = int(val * 100)
-                    self.lbl_battery_val.configure(text=f"{b:.2f}V")
-                except Exception:
-                    pass
-            if 'current' in parts:
-                try:
-                    a = float(parts['current'])
-                    val = max(0.0, min(1.0, a / 20.0))
-                    self.pb_current['value'] = int(val * 100)
-                    self.lbl_current_val.configure(text=f"{a:.2f}A")
-                except Exception:
-                    pass
-            if 'act' in parts:
-                try:
-                    act = float(parts['act'])
-                    val = max(0.0, min(1.0, act))
-                    self.pb_actuator['value'] = int(val * 100)
-                    self.lbl_actuator_val.configure(text=f"{act:.2f}")
-                except Exception:
-                    pass
-            if 'heading' in parts:
-                try:
-                    deg = float(parts['heading'])
-                    self._draw_compass(deg)
-                except Exception:
-                    pass
-
-        self.after(50, self._update_ui)
-
-    def _on_close(self):
-        self.udp.stop()
-        self.joy.stop()
-        self.destroy()
-
-
-def main():
-    parser = argparse.ArgumentParser(description="GUI sender for robot control with chat and indicators.")
-    parser.add_argument("udp", nargs='?', default="127.0.0.1:9999",
-                        help="Destination host:port (default 127.0.0.1:9999)")
-    parser.add_argument("--name", default="Logitech Gamepad F310",
-                        help="Joystick name substring (empty for any)")
-    parser.add_argument("--map-image", default="map_placeholder.png",
-                        help="Path to map placeholder image (PNG/JPG)")
-    args = parser.parse_args()
-
-    if ':' not in args.udp:
-        host, port = '127.0.0.1', 9999
-    else:
-        host, port_s = args.udp.rsplit(':', 1)
-        try:
-            port = int(port_s)
-        except ValueError:
-            host, port = '127.0.0.1', 9999
-
-    # Resolve map image path robustly: prefer CLI path, else script-dir fallback
-    def resolve_map_path(p: str) -> str | None:
-        if not p:
-            return None
-        if os.path.isabs(p) and os.path.exists(p):
-            return p
-        # try CWD
-        if os.path.exists(p):
-            return os.path.abspath(p)
-        # try script directory
-        here = os.path.dirname(os.path.abspath(__file__))
-        candidate = os.path.join(here, p)
-        if os.path.exists(candidate):
-            return candidate
+            self._command_socket.sendto(data, COMMAND_DESTINATION)
+        except OSError as exc:
+            return f"send failed: {exc}"
         return None
 
-    target = args.name or None
-    app = Dashboard(host, port, target)
-    map_path = resolve_map_path(args.map_image)
-    if map_path is not None:
+    def _maybe_send_packet(self, snapshot: ControllerSnapshot) -> None:
+        now = time.monotonic()
+        interval = 1.0 / (SEND_RATE_HZ if snapshot.connected else IDLE_RATE_HZ)
+        if now - self._last_tx < interval:
+            return
+
+        axes = (snapshot.axes + [0.0] * MAX_DISPLAY_AXES)[:MAX_DISPLAY_AXES]
+        buttons = snapshot.buttons
+        armed = False
+        if HOLD_BUTTON_INDEX < len(buttons):
+            armed = bool(buttons[HOLD_BUTTON_INDEX])
+
+        axes_i8 = [quantize_axis(value, DEADZONE) for value in axes]
+        mask = 0
+        for i in range(min(16, len(buttons))):
+            if buttons[i]:
+                mask |= 1 << i
+
+        packet = build_full_packet(self._seq, armed, axes_i8, mask)
         try:
-            app.map_panel.image_path = map_path
-            app.map_panel._load()
-            print(f"Loaded map image: {map_path}")
-        except Exception as e:
-            print(f"Could not load map image '{map_path}': {e}")
-    else:
-        print(f"Map image not found: {args.map_image}")
-    app.mainloop()
+            self._udp_socket.sendto(packet, UDP_DESTINATION)
+        except OSError:
+            pass
+        self._seq = (self._seq + 1) & 0xFF
+        self._last_tx = now
+
+    @staticmethod
+    def _format_float(value: Optional[float]) -> str:
+        if value is None:
+            return "--"
+        return f"{value:.2f}"
+
+    def _on_close(self) -> None:
+        self.joystick.stop()
+        self.telemetry.stop()
+        try:
+            self._command_socket.close()
+        except OSError:
+            pass
+        self.root.after(100, self.root.destroy)
+
+
+# --- Entrypoint ------------------------------------------------------------------
+
+def main() -> None:
+    joystick = JoystickWorker()
+    telemetry = TelemetryListener()
+    joystick.start()
+    telemetry.start()
+
+    root = tk.Tk()
+    app = ControlStationGUI(root, joystick, telemetry)
+
+    try:
+        root.mainloop()
+    finally:
+        joystick.stop()
+        telemetry.stop()
+        joystick.join(1.0)
+        telemetry.join(1.0)
 
 
 if __name__ == "__main__":
