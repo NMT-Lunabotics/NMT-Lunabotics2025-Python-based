@@ -9,7 +9,9 @@ RESTART_CONTAINER=false
 
 WORKING_DIR_CONTAINER="/home/luna/NMT-Lunabotics2025-Python-based"
 WORKING_DIR_HOST="$(pwd)" 
-: "${DISPLAY:=:0}"
+: "${DISPLAY:=$DISPLAY}"
+export XAUTHORITY=${XAUTHORITY:-$HOME/.Xauthority}
+export DISPLAY=${DISPLAY:-localhost:10.0}
 # should be the root of NMT-Lunabotics2025-Python-based
 
 # Set up phrase flags for running the script
@@ -52,8 +54,10 @@ if [[ "$OS" != "Windows_NT" ]]; then
 fi
     if [ "$DISPLAY_ENABLED" = true ]; then
         DOCKER_FLAGS+=(
-            -e DISPLAY=$DISPLAY
-            -v /tmp/.X11-unix:/tmp/.X11-unix:rw
+            -e DISPLAY=$DISPLAY 
+            -e XAUTHORITY=$XAUTHORITY 
+            -v /tmp/.X11-unix:/tmp/.X11-unix:rw 
+            -v $XAUTHORITY:$XAUTHORITY:rw 
         )
         xhost +local:docker
     fi

@@ -27,6 +27,7 @@ RUN apt-get update && apt-get upgrade -y \
     #Development packages:
     nano \
     git \
+    x11-apps \
     curl \
     rsync \
     && rm -rf /var/lib/apt/lists/*
