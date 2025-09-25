@@ -50,14 +50,14 @@ if [[ "$OS" != "Windows_NT" ]]; then
         --device /dev:/dev
         -v $WORKING_DIR_HOST:$WORKING_DIR_CONTAINER
         -w $WORKING_DIR_CONTAINER
+        -v $XAUTHORITY:$XAUTHORITY:rw 
+        -e XAUTHORITY=$XAUTHORITY 
     )
 fi
     if [ "$DISPLAY_ENABLED" = true ]; then
         DOCKER_FLAGS+=(
             -e DISPLAY=$DISPLAY 
-            -e XAUTHORITY=$XAUTHORITY 
             -v /tmp/.X11-unix:/tmp/.X11-unix:rw 
-            -v $XAUTHORITY:$XAUTHORITY:rw 
         )
         xhost +local:docker
     fi
