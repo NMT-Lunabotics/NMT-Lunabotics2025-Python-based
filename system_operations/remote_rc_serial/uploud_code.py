@@ -13,5 +13,5 @@ arduino.compile_and_upload()
 
 
 while True:
-    value = serial.read_serial()
+    value = serial.read_serial_bytes()
     if value: print(value)

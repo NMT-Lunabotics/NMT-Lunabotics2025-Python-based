@@ -37,7 +37,7 @@ if [ "$RESTART_CONTAINER" = true ]; then
 fi
 
 # Checks if a container is already running, if it is it attaches to it, if not it starts a new one.
-CONTAINER_ID=$(docker ps -q -f ancestor=$IMAGE_NAME)
+CONTAINER_ID=$(docker ps -q -f ancestor=$IMAGE_NAME | head -n1)
 if [ -z "$CONTAINER_ID" ]; then
     echo "Starting Docker container..."
 if [[ "$OS" != "Windows_NT" ]]; then
@@ -45,9 +45,9 @@ if [[ "$OS" != "Windows_NT" ]]; then
         --net=host
         --privileged
         --group-add video
-        --device /dev:/dev        
-        --env WORKING_DIR=$WORKING_DIR_CONTAINER
-        -w /home/luna
+        --device /dev:/dev
+        -v $WORKING_DIR_HOST:$WORKING_DIR_CONTAINER
+        -w $WORKING_DIR_CONTAINER
     )
 fi
     if [ "$DISPLAY_ENABLED" = true ]; then
@@ -58,22 +58,8 @@ fi
         xhost +local:docker
     fi
 
-    # Start container detached so we can copy files
-    docker run -dit "${DOCKER_FLAGS[@]}" $IMAGE_NAME bash
+    # Start container detached with host folder mounted
     CONTAINER_ID=$(docker run -dit "${DOCKER_FLAGS[@]}" $IMAGE_NAME bash)
-
-    # Copy host project into a temp folder inside the container
-    docker exec "$CONTAINER_ID" rm -rf /tmp/NMT_temp
-    docker cp "$WORKING_DIR_HOST" "$CONTAINER_ID":/tmp/NMT_temp
-
-    # Remove old project folder safely
-    docker exec "$CONTAINER_ID" rm -rf "$WORKING_DIR_CONTAINER"
-
-    # Move temp folder into the final location
-    docker exec "$CONTAINER_ID" mv /tmp/NMT_temp/NMT-Lunabotics2025-Python-based "$WORKING_DIR_CONTAINER"
-    docker exec "$CONTAINER_ID" chown -R luna:luna "$WORKING_DIR_CONTAINER"
-
-    echo "Files copied successfully."
 fi
 
 echo "Container ID: $CONTAINER_ID"

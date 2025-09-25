@@ -1,24 +1,11 @@
 #include "helpers.hpp"
-#include <SoftwareSerial.h>
 // #include <Servo.h>
 
 //--------------- Debug settings ---------------
 
-bool debug_mode = false;  // Debug mode flag
+bool debug_mode = true;  // Debug mode flag
 bool disable_estop = true; //Disable all e-stops for non full actuator tests.
 bool rc_controller = false;
-
-//--------------- RC controller ---------------
-
-// MotorX, MotorY, actuatorX, actuatorY
-int16_t centers[4] = { 1640, 1615, 1624, 1622 };       // Center of each joystick
-int16_t softZones[4] = { 50, 250, 50, 50 };            // Joy stick Drift ranges
-int16_t maxJoyValues[4] = { 1971, 1976, 2000, 2000 };  // Joy stick max range
-int16_t minJoyValues[4] = { 1000, 1040, 1087, 1064 };  // Joy sick min ranges
-
-// Fake RX serial communication
-#define RX_PIN 10
-SoftwareSerial ibusSerial(RX_PIN, -1);
 
 //--------------- Actuators ---------------
 
@@ -175,8 +162,6 @@ void fault();
 
 void setup() {
   delay(5);
-  //pinMode(RX_PIN, INPUT);
-  //ibusSerial.begin(115200);
 
   Serial.begin(115200);
   Serial.flush();
@@ -193,11 +178,6 @@ void setup() {
 }
 
 void loop() {
-  //int16_t *joystick = processIbus();
-  //if (joystick != nullptr) {
-  //  if (disable_estop == false) emergency_stop = true;
-  //  return;
-  //}
   current_time = millis();
   // if (Serial.available() > 0) {
   //     if (Serial.read() == 0x02) { // Start byte
@@ -289,7 +269,7 @@ void loop() {
 
     // Correct dual actuator misalignment
 
-    
+    /*
     float lr_err = abs(aL_pos - aR_pos);
     if (lr_err >= act_fix_err && lr_err < act_max_err) {
       stop_all();
@@ -319,7 +299,7 @@ void loop() {
     } else if (lr_err >= act_max_err) {
       // fault("Actuator relative error too large: " + String(aL_pos) + " " + String(aR_pos));
       //  Serial.print("wtf");
-    }
+    }*/
 
       
 
@@ -477,71 +457,4 @@ void fault(String msg) {
     delay(500);
     Serial.println("Critical Error: " + msg + " - Reset arduino to continue.");
   }
-}
-
-// Read serial communication from RC controller and set system variables to output
-int16_t *processIbus() {
-  static int16_t channels[6];
-  static int16_t joystick[4];
-  // Create buffer for our data stream
-  static uint8_t buffer[32];
-  static int idx = 0;
-
-  while (ibusSerial.available()) {
-    uint8_t val = ibusSerial.read();
-    // Check if buffer index matches the data index for the first and last index to unsure we received a valid data stream.
-    if (idx == 0 && val != 0x20)
-      continue;
-    if (idx == 1 && val != 0x40) {
-      idx = 0;
-      continue;
-    }
-    buffer[idx++] = val;
-    // Once we recive whole stream convert data values from between 1000-2000 to 0-255
-    if (idx == 32) {
-      idx = 0;
-      uint16_t chksum = 0xFFFF;
-      for (int i = 0; i < 30; i++)
-        chksum -= buffer[i];
-      uint16_t pktChksum = buffer[30] | (buffer[31] << 8);
-      if (chksum == pktChksum) {
-        for (int i = 0; i < 6; i++) {
-          int pos = 2 + (i * 2);
-          channels[i] = buffer[pos] | (buffer[pos + 1] << 8);
-        }
-        for (int i = 0; i < 4; i++) {
-          int16_t val;
-          switch (i) {
-            case 0:
-              val = channels[3];
-              break;
-            case 1:
-              val = channels[2];
-              break;
-            case 2:
-              val = channels[0];
-              break;
-            case 3:
-              val = channels[1];
-              break;
-          }
-          if (val >= centers[i] - softZones[i] && val <= centers[i] + softZones[i]) {
-            joystick[i] = 0;
-          } else if (val < centers[i] - softZones[i]) {
-            joystick[i] = map(val, minJoyValues[i], centers[i] - softZones[i], 255, 129);
-            if (joystick[i] > 255) joystick[i] = 255;
-          } else {
-            joystick[i] = map(val, centers[i] + softZones[i], maxJoyValues[i], 0, 127);
-            if (joystick[i] > 127) joystick[i] = 127;
-          }
-        }
-        aL_speed = joystick[3];
-        aR_speed = joystick[3];
-        aB_speed = joystick[3];
-        //Serial.println(aB_speed);
-        return joystick;  //joystick;
-      }
-    }
-  }
-  return nullptr;
 }
