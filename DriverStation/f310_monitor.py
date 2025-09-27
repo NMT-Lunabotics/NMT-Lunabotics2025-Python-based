@@ -14,10 +14,19 @@ import argparse
 import socket
 import struct
 import sys
+import threading
 import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Optional, Sequence, Tuple
+
+try:
+    import cv2  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    cv2 = None  # type: ignore
+
+from http.server import BaseHTTPRequestHandler, HTTPServer
+from socketserver import ThreadingMixIn
 
 try:
     from serial import SerialException  # type: ignore
@@ -71,6 +80,164 @@ class ControlMapping:
     invert_arm: bool
     invert_bucket: bool
     motor_max_speed: int
+
+
+class ThreadedHTTPServer(ThreadingMixIn, HTTPServer):
+    daemon_threads = True
+
+
+class SimpleCameraServer:
+    """Minimal camera server that exposes snapshot and MJPEG endpoints."""
+
+    def __init__(
+        self,
+        source: Optional[str],
+        host: str,
+        port: int,
+        fps: float,
+        max_width: Optional[int],
+        jpeg_quality: int,
+    ) -> None:
+        self._raw_source = None if source is None else source.strip()
+        self._host = host
+        self._port = port
+        self._capture: Optional["cv2.VideoCapture"] = None  # type: ignore[name-defined]
+        self._frame_lock = threading.Lock()
+        self._frame: Optional[bytes] = None
+        self._stop_event = threading.Event()
+        self._capture_thread: Optional[threading.Thread] = None
+        self._httpd: Optional[ThreadedHTTPServer] = None
+        self._http_thread: Optional[threading.Thread] = None
+        self._frame_interval = 0.0
+        if fps > 0:
+            self._frame_interval = 1.0 / fps
+        self._max_width = max_width if max_width and max_width > 0 else None
+        self._jpeg_quality = min(95, max(10, jpeg_quality))
+
+    def start(self) -> Optional[str]:
+        if self._raw_source is None:
+            return None
+        if cv2 is None:
+            print("OpenCV is not available; camera streaming disabled.")
+            return None
+        try:
+            source: object = int(self._raw_source)
+        except (TypeError, ValueError):
+            source = self._raw_source
+        capture = cv2.VideoCapture(source)
+        if not capture.isOpened():
+            print(f"Failed to open camera source {self._raw_source}")
+            capture.release()
+            return None
+        self._capture = capture
+        self._stop_event.clear()
+        self._capture_thread = threading.Thread(target=self._capture_loop, name="CameraCapture", daemon=True)
+        self._capture_thread.start()
+
+        server = self
+
+        class Handler(BaseHTTPRequestHandler):  # pragma: no cover - simple HTTP handler
+            def do_GET(self) -> None:
+                if self.path in {"/", "/frame"}:
+                    frame = server._get_frame()
+                    if frame is None:
+                        self.send_error(503, "Camera frame unavailable")
+                        return
+                    self.send_response(200)
+                    self.send_header("Content-Type", "image/jpeg")
+                    self.send_header("Content-Length", str(len(frame)))
+                    self.end_headers()
+                    self.wfile.write(frame)
+                elif self.path == "/stream":
+                    self.send_response(200)
+                    self.send_header("Content-Type", "multipart/x-mixed-replace; boundary=FRAME")
+                    self.end_headers()
+                    boundary = b"--FRAME\r\n"
+                    try:
+                        while not server._stop_event.is_set():
+                            frame = server._get_frame()
+                            if frame is None:
+                                time.sleep(0.05)
+                                continue
+                            self.wfile.write(boundary)
+                            self.wfile.write(b"Content-Type: image/jpeg\r\n")
+                            self.wfile.write(f"Content-Length: {len(frame)}\r\n\r\n".encode("ascii"))
+                            self.wfile.write(frame)
+                            self.wfile.write(b"\r\n")
+                            if server._frame_interval > 0:
+                                time.sleep(server._frame_interval)
+                    except BrokenPipeError:
+                        return
+                else:
+                    self.send_error(404, "Not Found")
+
+            def log_message(self, *_args: object) -> None:
+                return
+
+        try:
+            httpd = ThreadedHTTPServer((self._host, self._port), Handler)
+        except OSError as exc:
+            print(f"Failed to start camera server on {self._host}:{self._port}: {exc}")
+            self._stop_event.set()
+            if self._capture is not None:
+                self._capture.release()
+                self._capture = None
+            return None
+
+        self._httpd = httpd
+        self._http_thread = threading.Thread(target=httpd.serve_forever, name="CameraHTTP", daemon=True)
+        self._http_thread.start()
+        url_host = "127.0.0.1" if self._host == "0.0.0.0" else self._host
+        url = f"http://{url_host}:{self._port}/frame"
+        print(f"Camera feed available at {url}")
+        return url
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        if self._httpd is not None:
+            try:
+                self._httpd.shutdown()
+            except Exception:
+                pass
+            self._httpd.server_close()
+        if self._capture_thread is not None:
+            self._capture_thread.join(timeout=1.0)
+        if self._http_thread is not None:
+            self._http_thread.join(timeout=1.0)
+        if self._capture is not None:
+            self._capture.release()
+        self._capture = None
+        self._httpd = None
+        self._capture_thread = None
+        self._http_thread = None
+        self._frame = None
+
+    def _capture_loop(self) -> None:
+        assert self._capture is not None
+        while not self._stop_event.is_set():
+            ret, frame = self._capture.read()
+            if not ret:
+                time.sleep(0.1)
+                continue
+            if self._max_width is not None:
+                height, width = frame.shape[:2]
+                if width > self._max_width:
+                    scale = self._max_width / float(width)
+                    new_size = (self._max_width, max(1, int(height * scale)))
+                    frame = cv2.resize(frame, new_size)  # type: ignore[arg-type]
+            quality_flag = getattr(cv2, "IMWRITE_JPEG_QUALITY", 1)
+            encode_params = [int(quality_flag), int(self._jpeg_quality)]
+            ok, buffer = cv2.imencode('.jpg', frame, encode_params)
+            if not ok:
+                continue
+            with self._frame_lock:
+                self._frame = buffer.tobytes()
+            if self._frame_interval > 0:
+                time.sleep(self._frame_interval)
+
+    def _get_frame(self) -> Optional[bytes]:
+        with self._frame_lock:
+            return self._frame
 
 
 def clamp_int8(value: int) -> int:
@@ -221,6 +388,18 @@ def run_server(args: argparse.Namespace) -> None:
         motor_max_speed=max(1, min(127, args.motor_max_speed)),
     )
 
+    camera_server: Optional[SimpleCameraServer] = None
+    if args.camera_source:
+        camera_server = SimpleCameraServer(
+            args.camera_source,
+            args.camera_host,
+            args.camera_port,
+            args.camera_fps,
+            args.camera_width,
+            args.camera_quality,
+        )
+        camera_server.start()
+
     if args.upload:
         sketch_path = ROOT / "system_operations" / "system_control" / "system_control.ino"
         if arduinoConsole is None:
@@ -334,10 +513,16 @@ def run_server(args: argparse.Namespace) -> None:
             )
             left, right = compute_motor_outputs(state, mapping)
             send_serial('M', (right, left))
+            actuator = compute_actuator_outputs(state, mapping)
+            if actuator is not None:
+                arm_vel, bucket_vel = actuator
+                send_serial('A', (-1,-1,-1,-1, arm_vel, bucket_vel))
 
     finally:
         close_serial()
         sock.close()
+        if camera_server is not None:
+            camera_server.stop()
 
 
 def parse_host_port(value: str) -> Tuple[str, int]:
@@ -394,6 +579,40 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument("--invert-arm", action="store_true", help="Invert arm axis")
     parser.add_argument("--invert-bucket", action="store_true", help="Invert bucket axis")
     parser.add_argument("--upload", action="store_true", help="Compile/upload Arduino sketch before connecting")
+    parser.add_argument(
+        "--camera-source",
+        default="0",
+        help="OpenCV camera source (index or path) to stream to operators (default 0)",
+    )
+    parser.add_argument(
+        "--camera-host",
+        default="0.0.0.0",
+        help="Interface to bind the simple camera HTTP server (default 0.0.0.0)",
+    )
+    parser.add_argument(
+        "--camera-port",
+        type=int,
+        default=8081,
+        help="Port for the simple camera HTTP server (default 8081)",
+    )
+    parser.add_argument(
+        "--camera-fps",
+        type=float,
+        default=8.0,
+        help="Capture/update rate for the camera stream (default 8 Hz)",
+    )
+    parser.add_argument(
+        "--camera-width",
+        type=int,
+        default=360,
+        help="Resize camera frames to this width before encoding (default 360)",
+    )
+    parser.add_argument(
+        "--camera-quality",
+        type=int,
+        default=50,
+        help="JPEG quality (10-95) for the camera stream (default 50)",
+    )
     return parser
 
 

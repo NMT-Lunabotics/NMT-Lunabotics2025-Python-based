@@ -19,15 +19,25 @@ Command console submissions are transmitted verbatim (UTF-8 encoded) to
 
 from __future__ import annotations
 
+import io
 import json
 import os
 import socket
 import struct
 import threading
 import time
+import urllib.request
 from array import array
 from dataclasses import dataclass
 from typing import Callable, Dict, List, Optional, Tuple
+
+try:
+    from PIL import Image, ImageTk  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    Image = None  # type: ignore[assignment]
+    ImageTk = None  # type: ignore[assignment]
+else:
+    pass
 
 try:
     import tkinter as tk
@@ -47,6 +57,9 @@ MAX_DISPLAY_AXES = 6
 MAX_DISPLAY_BUTTONS = 12
 TELEMETRY_LISTEN: Tuple[str, int] = ("0.0.0.0", 10000)
 COMMAND_DESTINATION: Tuple[str, int] = ("127.0.0.1", 10001)
+CAMERA_REFRESH_HZ = 8.0
+CAMERA_DEFAULT_URL: Optional[str] = "http://127.0.0.1:8081/frame"
+KEEPALIVE_INTERVAL = 0.5  # seconds between forced resend of identical packet
 
 # --- UI colors -------------------------------------------------------------------
 
@@ -167,7 +180,42 @@ class TelemetrySnapshot:
     current: Optional[float]
     temperature: Optional[float]
     last_update: Optional[float]
+    camera_url: Optional[str]
+    rx_rate_bps: float
 
+
+class RateTracker:
+    """Thread-safe exponential moving average of byte rates."""
+
+    def __init__(self, decay: float = 0.2, timeout: float = 1.0) -> None:
+        self._lock = threading.Lock()
+        self._rate = 0.0
+        self._last_time = time.monotonic()
+        self._decay = max(0.01, decay)
+        self._timeout = max(0.2, timeout)
+
+    def record(self, byte_count: int) -> None:
+        if byte_count <= 0:
+            return
+        now = time.monotonic()
+        with self._lock:
+            elapsed = now - self._last_time
+            if elapsed <= 0:
+                self._last_time = now
+                return
+            instant = (byte_count * 8) / elapsed
+            if self._rate <= 0.0:
+                self._rate = instant
+            else:
+                alpha = min(1.0, self._decay / max(elapsed, 1e-6))
+                self._rate = alpha * instant + (1.0 - alpha) * self._rate
+            self._last_time = now
+
+    def rate(self) -> float:
+        with self._lock:
+            if time.monotonic() - self._last_time > self._timeout:
+                return 0.0
+            return self._rate
 
 class JoystickWorker:
     """Background reader that keeps track of the current joystick state."""
@@ -280,10 +328,16 @@ class JoystickWorker:
 class TelemetryListener:
     """Listens for UDP telemetry updates and exposes the latest sample."""
 
-    def __init__(self, listen_addr: Tuple[str, int] = TELEMETRY_LISTEN) -> None:
+    def __init__(
+        self,
+        listen_addr: Tuple[str, int] = TELEMETRY_LISTEN,
+        rx_tracker: Optional["RateTracker"] = None,
+    ) -> None:
         self._lock = threading.Lock()
         self._state: Dict[str, Optional[float]] = {"voltage": None, "current": None, "temperature": None}
+        self._camera_url: Optional[str] = None
         self._last_update: Optional[float] = None
+        self._rx_tracker = rx_tracker
         self._stop_event = threading.Event()
         self._sock: Optional[socket.socket] = None
         self._thread = threading.Thread(target=self._run, name="TelemetryListener", daemon=True)
@@ -307,7 +361,13 @@ class TelemetryListener:
                 current=self._state.get("current"),
                 temperature=self._state.get("temperature"),
                 last_update=self._last_update,
+                camera_url=self._camera_url,
+                rx_rate_bps=self._rx_tracker.rate() if self._rx_tracker else 0.0,
             )
+
+    def register_rate_tracker(self, tracker: RateTracker) -> None:
+        with self._lock:
+            self._rx_tracker = tracker
 
     # Internal ------------------------------------------------------------------
 
@@ -338,13 +398,25 @@ class TelemetryListener:
                 continue
 
             with self._lock:
-                self._state.update(parsed)
+                camera_value = parsed.pop("camera_url", None)
+                for key in ("voltage", "current", "temperature"):
+                    if key in parsed:
+                        value = parsed[key]
+                        self._state[key] = (
+                            None
+                            if value is None
+                            else TelemetryListener._coerce_float(value)
+                        )
+                if camera_value is not None:
+                    self._camera_url = TelemetryListener._coerce_str(camera_value)
                 self._last_update = time.time()
+                if self._rx_tracker is not None:
+                    self._rx_tracker.record(len(data))
 
         sock.close()
 
     @staticmethod
-    def _parse_payload(payload: str) -> Dict[str, Optional[float]]:
+    def _parse_payload(payload: str) -> Dict[str, object]:
         try:
             data = json.loads(payload)
             if isinstance(data, dict):
@@ -352,17 +424,23 @@ class TelemetryListener:
                     "voltage": TelemetryListener._coerce_float(data.get("voltage")),
                     "current": TelemetryListener._coerce_float(data.get("current")),
                     "temperature": TelemetryListener._coerce_float(data.get("temperature")),
+                    "camera_url": TelemetryListener._coerce_str(data.get("camera_url")),
                 }
         except json.JSONDecodeError:
             pass
 
-        result: Dict[str, Optional[float]] = {}
+        result: Dict[str, object] = {}
+        camera_url: Optional[str] = None
         for token in payload.replace(",", " ").split():
             if "=" not in token:
                 continue
             key, value = token.split("=", 1)
             if key in {"voltage", "current", "temperature"}:
                 result[key] = TelemetryListener._coerce_float(value)
+            elif key == "camera_url":
+                camera_url = value
+        if camera_url is not None:
+            result["camera_url"] = camera_url
         return result
 
     @staticmethod
@@ -373,6 +451,12 @@ class TelemetryListener:
             return float(value)
         except (TypeError, ValueError):
             return None
+
+    @staticmethod
+    def _coerce_str(value: object) -> Optional[str]:
+        if value is None:
+            return None
+        return str(value)
 
 
 # --- GUI -------------------------------------------------------------------------
@@ -435,16 +519,104 @@ class CommandConsole(ttk.LabelFrame):
                 self.append(f"! {error}")
 
 
+class CameraFeedFrame(ttk.Frame):
+    """Displays JPEG snapshots retrieved from a simple HTTP endpoint."""
+
+    def __init__(self, parent: tk.Widget, rx_tracker: Optional[RateTracker]) -> None:
+        super().__init__(parent, style="PanelInner.TFrame")
+        self._pil_enabled = Image is not None and ImageTk is not None
+        self._label = ttk.Label(self, text=self._initial_message(), style="Muted.TLabel", anchor="center")
+        self._label.pack(fill="both", expand=True)
+        self._photo: Optional[tk.PhotoImage] = None
+        self._url: Optional[str] = None
+        self._interval = 1.0
+        self._stop_event = threading.Event()
+        self._thread: Optional[threading.Thread] = None
+        self._rx_tracker = rx_tracker
+
+    def _initial_message(self) -> str:
+        if not (Image is not None and ImageTk is not None):
+            return "Install Pillow to view the camera feed."
+        return "Waiting for camera URL..."
+
+    def show_message(self, message: str) -> None:
+        self._label.configure(text=message, image="")
+        self._photo = None
+
+    def set_source(self, url: Optional[str], interval: float) -> None:
+        if not self._pil_enabled:
+            self.show_message("Install Pillow to view the camera feed.")
+            return
+        if interval <= 0:
+            interval = 1.0
+        if url == self._url and abs(interval - self._interval) < 1e-6:
+            return
+        self.stop()
+        self._url = url
+        self._interval = interval
+        if not url:
+            self.show_message("Camera feed not available.")
+            return
+        self._stop_event.clear()
+        self._thread = threading.Thread(target=self._fetch_loop, name="CameraFetcher", daemon=True)
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        thread = self._thread
+        if thread and thread.is_alive():
+            thread.join(timeout=1.0)
+        self._thread = None
+        self._url = None
+
+    def _fetch_loop(self) -> None:
+        if not self._url:
+            return
+        while not self._stop_event.is_set():
+            try:
+                with urllib.request.urlopen(self._url, timeout=3.0) as response:
+                    data = response.read()
+                image = Image.open(io.BytesIO(data))  # type: ignore[arg-type]
+                image = image.convert("RGB")
+                if self._rx_tracker is not None:
+                    self._rx_tracker.record(len(data))
+                width = self._label.winfo_width()
+                height = self._label.winfo_height()
+                if width > 0 and height > 0:
+                    resample = getattr(Image, "LANCZOS", getattr(Image, "BICUBIC", Image.NEAREST))  # type: ignore[attr-defined]
+                    image.thumbnail((width, height), resample)
+                photo = ImageTk.PhotoImage(image)  # type: ignore[attr-defined]
+                image.close()
+            except Exception as exc:
+                self.after(0, self.show_message, f"Camera error: {exc}")
+            else:
+                self.after(0, self._apply_photo, photo)
+            wait_time = max(0.01, self._interval)
+            if self._stop_event.wait(wait_time):
+                break
+
+    def _apply_photo(self, photo: tk.PhotoImage) -> None:
+        if self._stop_event.is_set():
+            return
+        self._photo = photo
+        self._label.configure(image=self._photo, text="")
+
+
 class ControlStationGUI:
     def __init__(
         self,
         root: tk.Tk,
         joystick: JoystickWorker,
         telemetry: TelemetryListener,
+        tx_tracker: Optional[RateTracker] = None,
+        rx_tracker: Optional[RateTracker] = None,
     ) -> None:
         self.root = root
         self.joystick = joystick
         self.telemetry = telemetry
+        self._tx_tracker = tx_tracker or RateTracker()
+        self._rx_tracker = rx_tracker or RateTracker()
+        self.telemetry.register_rate_tracker(self._rx_tracker)
 
         self._style = ttk.Style()
         self._configure_style()
@@ -462,6 +634,9 @@ class ControlStationGUI:
 
         self._command_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self._command_socket.setblocking(False)
+
+        self._last_packet_bytes: Optional[bytes] = None
+        self._last_packet_send: float = 0.0
 
         self._schedule_update()
 
@@ -482,6 +657,7 @@ class ControlStationGUI:
 
         self.view_notebook = ttk.Notebook(self.view_frame)
         self.view_notebook.pack(fill="both", expand=True)
+        self.view_notebook.bind("<<NotebookTabChanged>>", self._on_tab_changed)
 
         self.map_tab = ttk.Frame(self.view_notebook, style="PanelInner.TFrame")
         self.camera_tab = ttk.Frame(self.view_notebook, style="PanelInner.TFrame")
@@ -496,13 +672,9 @@ class ControlStationGUI:
         )
         self.map_placeholder.pack(fill="both", expand=True, padx=4, pady=4)
 
-        self.camera_placeholder = ttk.Label(
-            self.camera_tab,
-            text="Camera feed placeholder",
-            anchor="center",
-            style="Placeholder.TLabel",
-        )
-        self.camera_placeholder.pack(fill="both", expand=True, padx=4, pady=4)
+        self.camera_view = CameraFeedFrame(self.camera_tab, self._rx_tracker)
+        self.camera_view.pack(fill="both", expand=True, padx=4, pady=4)
+        self._camera_tab_active = self.view_notebook.index("current") == self.view_notebook.index(self.camera_tab)
 
         self.telemetry_frame = ttk.LabelFrame(main, text="Robot Feedback", padding=10, style="Panel.TLabelframe")
         self.telemetry_frame.grid(row=0, column=1, sticky="nsew", padx=(12, 0), pady=(0, 12))
@@ -513,6 +685,8 @@ class ControlStationGUI:
         self.current_var = tk.StringVar(value="--")
         self.temperature_var = tk.StringVar(value="--")
         self.last_update_var = tk.StringVar(value="No data")
+        self.rx_rate_var = tk.StringVar(value="--")
+        self.tx_rate_var = tk.StringVar(value="--")
 
         self._add_stat_row(stats_container, "Voltage", self.voltage_var, "V")
         self._add_stat_row(stats_container, "Current", self.current_var, "A")
@@ -521,6 +695,8 @@ class ControlStationGUI:
         ttk.Label(stats_container, textvariable=self.last_update_var, style="Muted.TLabel").grid(
             row=3, column=0, columnspan=3, sticky="w", pady=(6, 0)
         )
+        self._add_stat_row(stats_container, "RX Rate", self.rx_rate_var, "")
+        self._add_stat_row(stats_container, "TX Rate", self.tx_rate_var, "")
 
         self.controller_frame = ttk.Frame(main, padding=10, style="Panel.TFrame")
         self.controller_frame.grid(row=1, column=0, sticky="nsew", padx=(0, 12), pady=(12, 0))
@@ -617,6 +793,7 @@ class ControlStationGUI:
         telemetry = self.telemetry.snapshot()
         self._update_controller_panel(snapshot)
         self._update_telemetry_panel(telemetry)
+        self._update_camera_view(telemetry)
         self._maybe_send_packet(snapshot)
         self._schedule_update()
 
@@ -643,6 +820,20 @@ class ControlStationGUI:
         else:
             elapsed = time.time() - snapshot.last_update
             self.last_update_var.set(f"Updated {elapsed:.1f}s ago")
+        self.rx_rate_var.set(self._format_rate(snapshot.rx_rate_bps or self._rx_tracker.rate()))
+        self.tx_rate_var.set(self._format_rate(self._tx_tracker.rate()))
+
+    def _update_camera_view(self, snapshot: TelemetrySnapshot) -> None:
+        url = snapshot.camera_url or CAMERA_DEFAULT_URL
+        interval = 1.0 / CAMERA_REFRESH_HZ if CAMERA_REFRESH_HZ > 0 else 1.0
+        if self._camera_tab_active:
+            self.camera_view.set_source(url, interval)
+        else:
+            self.camera_view.set_source(None, interval)
+
+    def _on_tab_changed(self, *_args) -> None:
+        current = self.view_notebook.select()
+        self._camera_tab_active = current == str(self.camera_tab)
 
     def _send_console_command(self, command: str) -> Optional[str]:
         data = command.encode("utf-8")
@@ -673,10 +864,13 @@ class ControlStationGUI:
         packet = build_full_packet(self._seq, armed, axes_i8, mask)
         try:
             self._udp_socket.sendto(packet, UDP_DESTINATION)
+            self._tx_tracker.record(len(packet))
         except OSError:
             pass
         self._seq = (self._seq + 1) & 0xFF
         self._last_tx = now
+        self._last_packet_bytes = packet
+        self._last_packet_send = now
 
     @staticmethod
     def _format_float(value: Optional[float]) -> str:
@@ -684,9 +878,23 @@ class ControlStationGUI:
             return "--"
         return f"{value:.2f}"
 
+    @staticmethod
+    def _format_rate(bps: float) -> str:
+        if bps <= 0:
+            return "--"
+        if bps >= 1_000_000:
+            return f"{bps / 1_000_000:.2f} Mbps"
+        if bps >= 1_000:
+            return f"{bps / 1_000:.1f} kbps"
+        return f"{bps:.0f} bps"
+
     def _on_close(self) -> None:
         self.joystick.stop()
         self.telemetry.stop()
+        try:
+            self.camera_view.stop()
+        except Exception:
+            pass
         try:
             self._command_socket.close()
         except OSError:
@@ -698,12 +906,14 @@ class ControlStationGUI:
 
 def main() -> None:
     joystick = JoystickWorker()
-    telemetry = TelemetryListener()
+    rx_tracker = RateTracker()
+    tx_tracker = RateTracker()
+    telemetry = TelemetryListener(rx_tracker=rx_tracker)
     joystick.start()
     telemetry.start()
 
     root = tk.Tk()
-    app = ControlStationGUI(root, joystick, telemetry)
+    app = ControlStationGUI(root, joystick, telemetry, tx_tracker=tx_tracker, rx_tracker=rx_tracker)
 
     try:
         root.mainloop()
