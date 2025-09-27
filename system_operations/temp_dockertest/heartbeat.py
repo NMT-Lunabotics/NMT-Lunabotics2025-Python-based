@@ -1,21 +1,18 @@
+#!/usr/bin/env python3
 import socket
 
-PORT = 5000  # fixed port for heartbeat
+PORT = 10001  # must match COMMAND_DESTINATION port in GUI
 
-s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-s.bind(('0.0.0.0', PORT))
-s.listen(1)
+# Create UDP socket
+s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+s.bind(('0.0.0.0', PORT))  # listen on all interfaces
 
-print(f"[Heartbeat] Listening on port {PORT}...")
+print(f"[Heartbeat] Listening for UDP on port {PORT}...")
 
 while True:
-    conn, addr = s.accept()
-    print(f"[Heartbeat] Connection from {addr}")
     try:
-        data = conn.recv(1024)  # Receive up to 1024 bytes
+        data, addr = s.recvfrom(1024)  # receive up to 1024 bytes
         if data:
-            print(f"[Heartbeat] Received: {data.decode().strip()}")
+            print(f"[Heartbeat] Received from {addr}: {data.decode().strip()}")
     except Exception as e:
         print(f"[Heartbeat] Error: {e}")
-    finally:
-        conn.close()
