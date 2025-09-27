@@ -6,6 +6,6 @@ network = NetworkingOperations()
 
 # Main loop
 while True:
-    message=network.recivce_data()
+    message=network.receive_data()
     if message: print(f"[message] {message}")
     time.sleep(0.01)

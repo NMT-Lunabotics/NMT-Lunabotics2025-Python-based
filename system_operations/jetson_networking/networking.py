@@ -32,7 +32,7 @@ class NetworkingOperations:
     def receive_data(self):
         """Receive a single UDP packet and return message."""
         try:
-            data = self.s.recvfrom(2048)
+            data, addr = self.s.recvfrom(2048)
             message = data.decode().strip() if data else None
             # Execute commands starting with "CMD:"
             if message and message.startswith("CMD:"):
