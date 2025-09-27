@@ -23,10 +23,10 @@ class NetworkingOperations:
         except Exception as e:                                              # Catch any execution errors
             print(f"[Error] Failed to execute command: {e}")
 
-    def send_data(self, message: str, addr: tuple):
+    def send_data(self, message: str):
         """Send data to a given address (IP, port) via UDP."""
         try:
-            self.s.sendto(message.encode(), addr)
+            self.s.sendto(message.encode(), self.address)
         except Exception as e:
             print(f"[Error] Failed to send data: {e}")
 
