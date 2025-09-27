@@ -377,143 +377,6 @@ class TelemetryListener:
 
 # --- GUI -------------------------------------------------------------------------
 
-
-class StickOverlay(ttk.Frame):
-    """FPV-style dual-axis indicator showing joystick position."""
-
-    def __init__(self, parent: tk.Widget, label: str, size: int = 140) -> None:
-        super().__init__(parent, style="PanelInner.TFrame")
-        self.columnconfigure(0, weight=1)
-        self._pad = 4
-        self._dot_radius = 6
-        self._x = 0.0
-        self._y = 0.0
-        self._width = size
-        self._height = size
-
-        ttk.Label(self, text=label, style="Subheading.TLabel").pack(anchor="center")
-
-        self.canvas = tk.Canvas(
-            self,
-            width=size,
-            height=size,
-            background=CANVAS_BG,
-            highlightthickness=1,
-            highlightbackground=BORDER_COLOR,
-        )
-        self.canvas.pack(fill="both", expand=True)
-        self.canvas.bind("<Configure>", self._on_resize)
-
-        self.border = self.canvas.create_rectangle(0, 0, 0, 0, outline=BORDER_COLOR)
-        self.h_line = self.canvas.create_line(0, 0, 0, 0, fill=GRID_COLOR, dash=(3, 2))
-        self.v_line = self.canvas.create_line(0, 0, 0, 0, fill=GRID_COLOR, dash=(3, 2))
-        self.dot = self.canvas.create_oval(0, 0, 0, 0, fill=ACCENT_COLOR, outline="")
-
-        self.value_var = tk.StringVar(value="X=+0.00  Y=+0.00")
-        ttk.Label(self, textvariable=self.value_var, style="Muted.TLabel").pack(anchor="center", pady=(4, 0))
-
-        self._layout_elements()
-
-    def update(self, x: float, y: float) -> None:
-        self._x = max(-1.0, min(1.0, x))
-        self._y = max(-1.0, min(1.0, y))
-        self._position_dot()
-        self.value_var.set(f"X={self._x:+.2f}  Y={self._y:+.2f}")
-
-    def _on_resize(self, event: tk.Event) -> None:
-        self._width = max(12, int(event.width))
-        self._height = max(12, int(event.height))
-        self._layout_elements()
-
-    def _layout_elements(self) -> None:
-        pad = self._pad
-        width = self._width
-        height = self._height
-        size = max(2 * pad + 2, min(width, height))
-        offset_x = (width - size) / 2
-        offset_y = (height - size) / 2
-        left = offset_x + pad
-        top = offset_y + pad
-        right = offset_x + size - pad
-        bottom = offset_y + size - pad
-        usable_span = max(2.0, size - 2 * pad)
-        self._dot_radius = max(4.0, usable_span * 0.05)
-        self.canvas.coords(self.border, left, top, right, bottom)
-        cx = (left + right) / 2
-        cy = (top + bottom) / 2
-        self.canvas.coords(self.h_line, left, cy, right, cy)
-        self.canvas.coords(self.v_line, cx, top, cx, bottom)
-        self._position_dot()
-
-    def _position_dot(self) -> None:
-        border_coords = self.canvas.coords(self.border)
-        if len(border_coords) != 4:
-            return
-        left, top, right, bottom = border_coords
-        width = max(1.0, right - left)
-        height = max(1.0, bottom - top)
-        usable_w = max(1.0, width - 2 * self._dot_radius)
-        usable_h = max(1.0, height - 2 * self._dot_radius)
-        cx = left + self._dot_radius + ((self._x + 1.0) / 2.0) * usable_w
-        cy = top + self._dot_radius + (1.0 - (self._y + 1.0) / 2.0) * usable_h
-        r = self._dot_radius
-        self.canvas.coords(self.dot, cx - r, cy - r, cx + r, cy + r)
-
-
-class AxisBar(ttk.Frame):
-    """Horizontal bar showing a single-axis value in -1..1."""
-
-    def __init__(self, parent: tk.Widget, label: str, width: int = 80) -> None:
-        super().__init__(parent, style="PanelInner.TFrame")
-        ttk.Label(self, text=label, style="Subheading.TLabel").pack(anchor="center")
-        self._width = width
-        self._value = 0.0
-        self.canvas = tk.Canvas(
-            self,
-            width=width,
-            height=10,
-            background=CANVAS_BG,
-            highlightthickness=1,
-            highlightbackground=BORDER_COLOR,
-        )
-        self.canvas.pack(padx=6, pady=4, fill="x")
-        self.canvas.bind("<Configure>", self._resize)
-        self.mid_line = self.canvas.create_line(0, 0, 0, 0, fill=GRID_COLOR, dash=(3, 2))
-        self.bar = self.canvas.create_rectangle(0, 0, 0, 0, outline="", fill=ACCENT_COLOR)
-        self.value_var = tk.StringVar(value="+0.00")
-        ttk.Label(self, textvariable=self.value_var, style="Muted.TLabel").pack(anchor="center")
-        self._draw()
-
-    def update(self, value: float) -> None:
-        self._value = max(-1.0, min(1.0, value))
-        self.value_var.set(f"{self._value:+.2f}")
-        self._draw()
-
-    def _resize(self, event: tk.Event) -> None:
-        self._width = max(80, int(event.width))
-        self._draw()
-
-    def _draw(self) -> None:
-        w = self.canvas.winfo_width() or self._width
-        h = self.canvas.winfo_height() or 46
-        center = w / 2
-        half_height = h / 2
-        self.canvas.coords(self.mid_line, 2, half_height, w - 2, half_height)
-        magnitude = self._value * (w / 2 - 8)
-        if self._value >= 0:
-            left = center
-            right = center + magnitude
-        else:
-            left = center + magnitude
-            right = center
-        if abs(self._value) < 0.02:
-            left = center - 2
-            right = center + 2
-        top = half_height - 10
-        bottom = half_height + 10
-        self.canvas.coords(self.bar, left, top, right, bottom)
-
-
 class CommandConsole(ttk.LabelFrame):
     """Simple command prompt area for sending manual robot commands."""
 
@@ -609,8 +472,13 @@ class ControlStationGUI:
         main.configure(style="Main.TFrame")
         main.pack(fill="both", expand=True)
 
+        main.grid_columnconfigure(0, weight=3)
+        main.grid_columnconfigure(1, weight=2)
+        main.grid_rowconfigure(0, weight=3)
+        main.grid_rowconfigure(1, weight=2)
+
         self.view_frame = ttk.LabelFrame(main, text="Visualization", padding=10, style="Panel.TLabelframe")
-        self.view_frame.place(relx=0.02, rely=0.02, relwidth=0.56, relheight=0.6)
+        self.view_frame.grid(row=0, column=0, sticky="nsew", padx=(0, 12), pady=(0, 12))
 
         self.view_notebook = ttk.Notebook(self.view_frame)
         self.view_notebook.pack(fill="both", expand=True)
@@ -636,17 +504,8 @@ class ControlStationGUI:
         )
         self.camera_placeholder.pack(fill="both", expand=True, padx=4, pady=4)
 
-        telemetry_height = 0.6
-        telemetry_x = 0.62
-        telemetry_y = 0.02
-        telemetry_width = 0.36
         self.telemetry_frame = ttk.LabelFrame(main, text="Robot Feedback", padding=10, style="Panel.TLabelframe")
-        self.telemetry_frame.place(
-            relx=telemetry_x,
-            rely=telemetry_y,
-            relwidth=telemetry_width,
-            relheight=telemetry_height,
-        )
+        self.telemetry_frame.grid(row=0, column=1, sticky="nsew", padx=(12, 0), pady=(0, 12))
 
         stats_container = ttk.Frame(self.telemetry_frame, style="PanelInner.TFrame")
         stats_container.pack(fill="x")
@@ -663,30 +522,11 @@ class ControlStationGUI:
             row=3, column=0, columnspan=3, sticky="w", pady=(6, 0)
         )
 
-        # Controller panel sized as percentages to keep layout responsive.
-        controller_width = 0.5
-        controller_height = 0.35
-        controller_x = 0.02
-        controller_y = 1.0 - controller_height - 0.02
         self.controller_frame = ttk.Frame(main, padding=10, style="Panel.TFrame")
-        self.controller_frame.place(
-            relx=controller_x,
-            rely=controller_y,
-            relwidth=controller_width,
-            relheight=controller_height,
-        )
+        self.controller_frame.grid(row=1, column=0, sticky="nsew", padx=(0, 12), pady=(12, 0))
 
-        console_width = telemetry_width
-        console_height = controller_height
-        console_x = telemetry_x
-        console_y = controller_y
         self.command_console = CommandConsole(main, self._send_console_command)
-        self.command_console.place(
-            relx=console_x,
-            rely=console_y,
-            relwidth=console_width,
-            relheight=console_height,
-        )
+        self.command_console.grid(row=1, column=1, sticky="nsew", padx=(12, 0), pady=(12, 0))
         self.command_console.focus_entry()
 
         self.device_label_var = tk.StringVar(value="Controller: searching...")
@@ -695,51 +535,16 @@ class ControlStationGUI:
             textvariable=self.device_label_var,
             style="Header.TLabel",
         ).pack(anchor="w", pady=(0, 4))
-
-        controls_grid = ttk.Frame(self.controller_frame, style="PanelInner.TFrame")
-        controls_grid.pack(fill="both", expand=True, pady=(6, 4))
-        controls_grid.columnconfigure(0, weight=1)
-        controls_grid.columnconfigure(1, weight=1)
-
-        left_column = ttk.Frame(controls_grid, style="PanelInner.TFrame")
-        left_column.grid(row=0, column=0, sticky="nsew", padx=(0, 6))
-        left_column.columnconfigure(0, weight=1)
-
-        self.left_stick = StickOverlay(left_column, "Left Stick (0/1)", size=120)
-        self.left_stick.pack(fill="both", expand=True, pady=(0, 6))
-
-        buttons_container = ttk.Frame(left_column, style="PanelInner.TFrame")
-        buttons_container.pack(fill="x")
-        ttk.Label(buttons_container, text="Buttons", style="Subheading.TLabel").grid(row=0, column=0, columnspan=4, sticky="w")
-        self.button_vars = []
-        for i in range(MAX_DISPLAY_BUTTONS):
-            var = tk.BooleanVar(value=False)
-            btn = ttk.Checkbutton(
-                buttons_container,
-                text=f"{i}",
-                variable=var,
-                state="disabled",
-                style="Joystick.TCheckbutton",
-            )
-            r = (i // 4) + 1
-            c = i % 4
-            btn.grid(row=r, column=c, sticky="w", padx=2, pady=1)
-            self.button_vars.append(var)
-
-        right_column = ttk.Frame(controls_grid, style="PanelInner.TFrame")
-        right_column.grid(row=0, column=1, sticky="nsew", padx=(6, 0))
-        right_column.columnconfigure(0, weight=1)
-
-        self.right_stick = StickOverlay(right_column, "Right Stick (3/4)", size=120)
-        self.right_stick.pack(fill="both", expand=True, pady=(0, 6))
-
-        slider_container = ttk.Frame(right_column, style="PanelInner.TFrame")
-        slider_container.pack(fill="x")
-        slider_container.columnconfigure(0, weight=1)
-        self.axis2_bar = AxisBar(slider_container, "Axis 2")
-        self.axis2_bar.pack(fill="x", pady=(0, 6))
-        self.axis5_bar = AxisBar(slider_container, "Axis 5")
-        self.axis5_bar.pack(fill="x")
+        self.controller_summary_var = tk.StringVar(
+            value="Controller indicators are disabled."
+        )
+        ttk.Label(
+            self.controller_frame,
+            textvariable=self.controller_summary_var,
+            style="Muted.TLabel",
+            justify="left",
+            anchor="nw",
+        ).pack(fill="both", expand=True, pady=(6, 4))
 
     def _add_stat_row(self, parent: ttk.Frame, label: str, value_var: tk.StringVar, unit: str) -> None:
         row = parent.grid_size()[1]
@@ -818,23 +623,16 @@ class ControlStationGUI:
     def _update_controller_panel(self, snapshot: ControllerSnapshot) -> None:
         if snapshot.connected:
             label = f"Controller: {snapshot.name}"
+            summary = (
+                f"Axes available: {len(snapshot.axes)}\n"
+                f"Buttons available: {len(snapshot.buttons)}\n"
+                "Visual indicators are currently disabled."
+            )
         else:
             label = "Controller: searching..."
+            summary = "Waiting for controller connection."
         self.device_label_var.set(label)
-
-        axes = (snapshot.axes + [0.0] * MAX_DISPLAY_AXES)[:MAX_DISPLAY_AXES]
-        self.left_stick.update(axes[0], -axes[1])
-        self.right_stick.update(axes[3], -axes[4])
-        self.axis2_bar.update(axes[2])
-        self.axis5_bar.update(axes[5])
-
-        buttons = snapshot.buttons
-        for idx in range(MAX_DISPLAY_BUTTONS):
-            if idx < len(buttons):
-                active = bool(buttons[idx])
-            else:
-                active = False
-            self.button_vars[idx].set(active)
+        self.controller_summary_var.set(summary)
 
     def _update_telemetry_panel(self, snapshot: TelemetrySnapshot) -> None:
         self.voltage_var.set(self._format_float(snapshot.voltage))
