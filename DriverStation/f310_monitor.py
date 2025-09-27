@@ -236,6 +236,9 @@ def run_server(args: argparse.Namespace) -> None:
             print(f"Arduino upload failed: {exc}")
 
     serial_state: dict[str, object] = {"serial": None, "next_retry": 0.0}
+    max_rate_hz = 100.0
+    min_interval = 1.0 / max_rate_hz
+    last_send_time = 0.0
 
     def ensure_serial() -> bool:
         if SERIAL_IMPORT_ERROR is not None:
@@ -274,6 +277,13 @@ def run_server(args: argparse.Namespace) -> None:
         serial_state["serial"] = None
 
     def send_serial(command: str, values: Iterable[int]) -> None:
+        nonlocal last_send_time
+        now = time.monotonic()
+        elapsed = now - last_send_time
+        if elapsed < min_interval:
+            time.sleep(min_interval - elapsed)
+            now = time.monotonic()
+        last_send_time = now
         int8_values = [clamp_int8(v) for v in values]
         connected = ensure_serial()
         label = "ok" if connected else "pending"
@@ -356,7 +366,11 @@ def parse_led_buttons(values: Optional[Sequence[int]]) -> Optional[Tuple[Optiona
 
 def build_argument_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Forward F310 UDP packets to Arduino over serial")
-    parser.add_argument("--listen", default="0.0.0.0:9999", help="host:port to bind for UDP control (default 0.0.0.0:9999)")
+    parser.add_argument(
+        "--listen",
+        default="0.0.0.0:11000",
+        help="host:port to bind for UDP control (default 0.0.0.0:11000)",
+    )
     parser.add_argument("--serial-port", default=None, help="Explicit serial port for Arduino (auto-detect if omitted)")
     parser.add_argument("--baudrate", type=int, default=115200, help="Arduino serial baud rate (default 115200)")
     parser.add_argument("--deadband", type=float, default=0.08, help="Axis deadband in [0,1] before command becomes zero")

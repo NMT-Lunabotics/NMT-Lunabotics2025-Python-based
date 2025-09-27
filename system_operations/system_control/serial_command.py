@@ -24,4 +24,4 @@ while True:
     #serial.send_command("A", [-1, -1,-1,-1, 0,-10])
     serial.send_command("M", [1, -1])
     value = serial.read_serial()
-    if value: print(value)
+    if value: print(value)  
