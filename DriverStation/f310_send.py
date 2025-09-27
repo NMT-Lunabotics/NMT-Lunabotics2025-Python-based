@@ -1,135 +1,102 @@
 #!/usr/bin/env python3
-"""Minimal terminal interface for sending commands to the Arduino.
-
-The script opens a ``serialCommands`` connection and presents a prompt.  Every
-non-empty line you type is transmitted with the trailing newline expected by the
-Arduino firmware.  Responses from the board are printed each time the loop
-cycles, keeping the control flow easy to follow without extra threads.
-"""
+"""Forward F310 GUI UDP packets to the Arduino with minimal processing."""
 
 from __future__ import annotations
 
-import argparse
+import socket
+import struct
 import sys
 import time
 from pathlib import Path
-from typing import Iterable, Optional
+from typing import Optional, Tuple
 
 ROOT = Path(__file__).resolve().parent.parent
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
-try:
-    from system_operations.arduino_serial_commuication.arduino_serial_commuication import (
-        serialCommands,
-    )
-except Exception as exc:  # pragma: no cover - bail out if dependency missing
-    print(f"Failed to import serialCommands: {exc}", file=sys.stderr)
-    sys.exit(1)
+from system_operations.arduino_serial_commuication.arduino_serial_commuication import (
+    serialCommands,
+)
+
+SYNC = 0xA6
+LISTEN_ADDR: Tuple[str, int] = ("0.0.0.0", 11000)
 
 
-def list_serial_ports() -> None:
-    """Print a concise list of available serial devices."""
-
-    try:
-        import serial.tools.list_ports
-    except Exception as exc:  # pragma: no cover - optional, best-effort only
-        print(f"Unable to enumerate ports: {exc}")
-        return
-
-    ports = list(serial.tools.list_ports.comports())
-    if not ports:
-        print("No serial ports detected.")
-        return
-
-    for entry in ports:
-        description = entry.description or "Unknown device"
-        hwid = entry.hwid or ""
-        suffix = f" ({hwid})" if hwid else ""
-        print(f"{entry.device}: {description}{suffix}")
+def clamp_i8(value: int) -> int:
+    return max(-127, min(127, value))
 
 
-def drain_serial(link: serialCommands) -> None:
-    """Read and display any queued lines from the Arduino."""
-
-    try:
-        lines = link.read_serial()
-    except Exception as exc:
-        print(f"Serial read failed: {exc}", file=sys.stderr)
-        return
-
-    if not lines:
-        return
-
-    for line in lines:
-        print(f"[Arduino] {line}")
+def decode_packet(packet: bytes) -> Optional[Tuple[Tuple[int, ...], bool]]:
+    if len(packet) < 12 or packet[0] != SYNC:
+        return None
+    checksum = 0
+    for byte in packet[:-1]:
+        checksum ^= byte
+    if checksum != packet[-1]:
+        return None
+    axes = struct.unpack("bbbbbb", packet[3:9])
+    armed = bool(packet[2] & 0x01)
+    return axes, armed
 
 
-def main(argv: Optional[Iterable[str]] = None) -> int:
-    parser = argparse.ArgumentParser(
-        description="Send newline-delimited commands to the Arduino over serial.",
-    )
-    parser.add_argument("--port", "-p", help="Serial port to open (auto-detects if omitted).")
-    parser.add_argument(
-        "--baud",
-        "-b",
-        type=int,
-        default=115200,
-        help="Baud rate for the connection (default: 115200).",
-    )
-    parser.add_argument(
-        "--list-ports",
-        action="store_true",
-        help="List detected serial ports and exit without opening anything.",
-    )
-    args = parser.parse_args(list(argv) if argv is not None else None)
+def _open_link() -> serialCommands:
+    while True:
+        try:
+            return serialCommands()
+        except Exception as exc:
+            print(f"Arduino not found ({exc}); retrying in 1s...")
+            time.sleep(1.0)
 
-    if args.list_ports:
-        list_serial_ports()
-        return 0
 
-    try:
-        link = serialCommands(port=args.port, baudrate=args.baud)
-    except Exception as exc:
-        print(f"Failed to open serial connection: {exc}", file=sys.stderr)
-        return 1
+def main() -> None:
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.bind(LISTEN_ADDR)
 
-    print("Connected to Arduino. Type commands; 'exit' or 'quit' closes the session.")
-
-    exit_code = 0
+    link: Optional[serialCommands] = None
     try:
         while True:
-            drain_serial(link)
-            try:
-                raw = input("> ")
-            except EOFError:
-                print()
-                break
-            except KeyboardInterrupt:
-                print("\nInterrupted by user.")
-                break
-
-            command = raw.strip()
-            if not command:
+            if link is None:
+                link = _open_link()
+            data, _ = sock.recvfrom(64)
+            decoded = decode_packet(data)
+            if decoded is None:
                 continue
-            if command.lower() in {"exit", "quit"}:
-                break
+            axes, armed = decoded
+            throttle = clamp_i8(int(axes[1]))
+            steer = clamp_i8(int(axes[0]))
+            left = clamp_i8(throttle + steer)
+            right = clamp_i8(throttle - steer)
+            arm = clamp_i8(int(axes[3]))
+            bucket = clamp_i8(int(axes[4]))
+            if not armed:
+                left = right = arm = bucket = 0
 
             try:
-                link.send_serial(command)
+                print(f"M: right={right} left={left}")
+                link.send_command("M", [right, left])
+                print(f"A: arm={arm} bucket={bucket}")
+                link.send_command("A", [-1, -1, -1, -1, 0, -bucket])
+                try:
+                    lines = link.read_serial()
+                except Exception as exc:
+                    print(f"Serial read failed ({exc})")
+                else:
+                    if lines:
+                        for line in lines:
+                            print(f"[Arduino] {line}")
             except Exception as exc:
-                print(f"Failed to send command: {exc}", file=sys.stderr)
-                exit_code = 1
-                break
-
-            time.sleep(0.05)  # Give the Arduino a moment to respond.
-            drain_serial(link)
+                print(f"Serial send failed ({exc}); reconnecting...")
+                try:
+                    link.close_serial()
+                except Exception:
+                    pass
+                link = None
+                time.sleep(1.0)
     finally:
-        link.close_serial()
-
-    print("Disconnected.")
-    return exit_code
+        if link is not None:
+            link.close_serial()
+        sock.close()
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    main()
