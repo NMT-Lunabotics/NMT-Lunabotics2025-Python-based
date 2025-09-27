@@ -48,12 +48,13 @@ if [ -z "$CONTAINER_ID" ]; then
 
     # Base Docker flags for privileged access, devices, working directory
     DOCKER_FLAGS=(
-        --net=host                # Use host networking
-        --privileged              # Give container privileged access
-        --group-add video         # Give video group access
-        --device /dev:/dev        # Map devices
-        -v $WORKING_DIR_HOST:$WORKING_DIR_CONTAINER   # Mount host folder
-        -w $WORKING_DIR_CONTAINER                       # Set working directory
+        #--net=host                                      # Use host networking
+        --privileged                                     # Give container privileged access
+        --group-add video                                # Give video group access
+        --device /dev:/dev                               # Map devices  
+        -v $WORKING_DIR_HOST:$WORKING_DIR_CONTAINER      # Mount host folder
+        -w $WORKING_DIR_CONTAINER                        # Set working directory
+        -p 10001:10001/udp                               # Map UDP port so GUI can reach it                 
     )
 
     # Enable display if requested and $DISPLAY is set
