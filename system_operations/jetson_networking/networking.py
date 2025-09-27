@@ -7,7 +7,7 @@ class NetworkingOperations:
     def __init__(self, port: int = 10001):
         """Setup initial variables and UDP socket."""
         PORT = port                                                         # GUI command port
-        self.address="127.0.0.1:"+str(PORT)                                 # Localhost address                                          
+        self.address=("127.0.0.1", PORT)                                    # Localhost address                                          
         self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)           # Create UDP socket
         self.s.bind(("0.0.0.0", PORT))                                      # Bind to all interfaces
 
