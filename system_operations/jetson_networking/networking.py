@@ -7,6 +7,7 @@ class NetworkingOperations:
     def __init__(self, port: int = 10001):
         """Setup initial variables and UDP socket."""
         PORT = port                                                         # GUI command port
+        self.address="127.0.0.1:"+str(PORT)                                 # Localhost address                                          
         self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)           # Create UDP socket
         self.s.bind(("0.0.0.0", PORT))                                      # Bind to all interfaces
 
@@ -16,9 +17,9 @@ class NetworkingOperations:
             args = shlex.split(command)                                     # Split command into arguments
             result = subprocess.run(args, capture_output=True, text=True)   # Execute command
             if result.stdout:                                               # Output command result
-                print(result.stdout.strip())
+                self.send_data(result.stdout.strip())
             if result.stderr:                                               # Output command errors
-                print(f"[Error] {result.stderr.strip()}")
+                self.send_data(result.stderr.strip())
         except Exception as e:                                              # Catch any execution errors
             print(f"[Error] Failed to execute command: {e}")
 
