@@ -1,36 +1,39 @@
 #!/bin/bash
 set -e
 
-# Set default flags/settings of containor
+# Set default flags/settings of container
 IMAGE_NAME="luna/python-robot:latest"
 DISPLAY_ENABLED=false
 BUILD_IMAGE=false
 RESTART_CONTAINER=false
+START_SYSTEM_CONTROL=false
 
+# Container working directory and mount
 WORKING_DIR_CONTAINER="/home/luna/NMT-Lunabotics2025-Python-based"
 WORKING_DIR_HOST="$(pwd)" 
-: "${DISPLAY:=$DISPLAY}"
-export XAUTHORITY=${XAUTHORITY:-$HOME/.Xauthority}
-export DISPLAY=${DISPLAY:-localhost:10.0}
-# should be the root of NMT-Lunabotics2025-Python-based
 
-# Set up phrase flags for running the script
+# Use current environment variables if available, fallback to defaults
+: "${DISPLAY:=$DISPLAY}"
+: "${XAUTHORITY:=$HOME/.Xauthority}"
+
+# Parse input flags
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
-        -d|--display) DISPLAY_ENABLED=true; shift ;;
-        -b|--build) BUILD_IMAGE=true; shift ;;
-        -r|--restart) RESTART_CONTAINER=true; shift ;;
+        -d|--display) DISPLAY_ENABLED=true; shift ;;   # Enable GUI forwarding
+        -b|--build) BUILD_IMAGE=true; shift ;;         # Force image rebuild
+        -r|--restart) RESTART_CONTAINER=true; shift ;; # Remove old containers first
+        -s|--start) START_SYSTEM_CONTROL=true; shift ;; # Start system control script
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
 done
 
-# Build image if image is not built yet.
+# Build image if needed
 if [ "$BUILD_IMAGE" = true ] || ! docker image inspect $IMAGE_NAME >/dev/null 2>&1; then
     echo "Building Docker image: $IMAGE_NAME"
     docker build -t $IMAGE_NAME .
 fi
 
-# If the image is being rebuilt stop all other containors
+# Remove old containers if requested
 if [ "$RESTART_CONTAINER" = true ]; then
     OLD_CONTAINERS=$(docker ps -aq -f ancestor=$IMAGE_NAME)
     if [ -n "$OLD_CONTAINERS" ]; then
@@ -38,35 +41,40 @@ if [ "$RESTART_CONTAINER" = true ]; then
     fi
 fi
 
-# Checks if a container is already running, if it is it attaches to it, if not it starts a new one.
+# Check if container already exists
 CONTAINER_ID=$(docker ps -q -f ancestor=$IMAGE_NAME | head -n1)
 if [ -z "$CONTAINER_ID" ]; then
     echo "Starting Docker container..."
-if [[ "$OS" != "Windows_NT" ]]; then
+
+    # Base Docker flags for privileged access, devices, working directory
     DOCKER_FLAGS=(
-        --net=host
-        --privileged
-        --group-add video
-        --device /dev:/dev
-        -v $WORKING_DIR_HOST:$WORKING_DIR_CONTAINER
-        -w $WORKING_DIR_CONTAINER
-        -v $XAUTHORITY:$XAUTHORITY:rw 
-        -e XAUTHORITY=$XAUTHORITY 
+        --net=host                # Use host networking
+        --privileged              # Give container privileged access
+        --group-add video         # Give video group access
+        --device /dev:/dev        # Map devices
+        -v $WORKING_DIR_HOST:$WORKING_DIR_CONTAINER   # Mount host folder
+        -w $WORKING_DIR_CONTAINER                       # Set working directory
     )
-fi
-    if [ "$DISPLAY_ENABLED" = true ]; then
+
+    # Enable display if requested and $DISPLAY is set
+    if [ "$DISPLAY_ENABLED" = true ] && [ -n "$DISPLAY" ]; then
         DOCKER_FLAGS+=(
-            -e DISPLAY=$DISPLAY 
-            -v /tmp/.X11-unix:/tmp/.X11-unix:rw 
+            -e DISPLAY=$DISPLAY                          # Forward display
+            -v $XAUTHORITY:$XAUTHORITY:ro                # Forward Xauthority
+            -e XAUTHORITY=$XAUTHORITY
         )
-        xhost +local:docker
     fi
 
-    # Start container detached with host folder mounted
+    # Start container detached
     CONTAINER_ID=$(docker run -dit "${DOCKER_FLAGS[@]}" $IMAGE_NAME bash)
 fi
 
-echo "Container ID: $CONTAINER_ID"
+# Start system control script if requested 
+if [ "$START_SYSTEM_CONTROL" = true ]; then
+    echo "Starting heartbeat script inside container..."
+    docker exec -it $CONTAINER_ID python3 system_operations/temp_dockertest/heartbeat.py
+    exit 0
+fi
 
-# attach containor to shell
+# Attach to container shell
 docker exec -it $CONTAINER_ID bash
