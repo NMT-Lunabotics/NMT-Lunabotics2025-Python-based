@@ -31,24 +31,28 @@ while [[ "$#" -gt 0 ]]; do
     esac
 done
 
-# Mount to host repository flag is used
+# Mount to host repository --mount flag is used
 if [ -n "$MOUNT_USERNAME" ] && [ -n "$MOUNT_HOST_PATH" ] && [ "$MOUNT_USERNAME" != "false" ] && [ "$MOUNT_HOST_PATH" != "false" ]; then
     PC_IP=$(echo $SSH_CLIENT | awk '{print $1}')
     MOUNT_POINT=~/$REPOSITORY_NAME
     mkdir -p "$MOUNT_POINT"
     HOST_REPO_PATH="$MOUNT_HOST_PATH/$REPOSITORY_NAME"
-    sshfs -o reconnect,allow_other "$MOUNT_USERNAME@$PC_IP:$HOST_REPO_PATH" "$MOUNT_POINT" || echo "[Error] Failed to mount host repo"
+    if mountpoint -q "$MOUNT_POINT"; then
+        echo "[Info] Host repository already mounted at $MOUNT_POINT"
+    else
+        sshfs -o reconnect,allow_other "$MOUNT_USERNAME@$PC_IP:$HOST_REPO_PATH" "$MOUNT_POINT" || echo "[Error] Failed to mount host repo"
+    fi
     #rsync -av --exclude-from='exclude-list.txt' "$MOUNT_POINT/" /path/in/container/
 fi
 
 
-# Build image if needed
+# Build image if needed or if --build flag is used
 if [ "$BUILD_IMAGE" = true ] || ! docker image inspect $IMAGE_NAME >/dev/null 2>&1; then
     echo "Building Docker image: $IMAGE_NAME"
     docker build -t $IMAGE_NAME .
 fi
 
-# Remove old containers if requested
+# If --restart flag is used, restart all containors
 if [ "$RESTART_CONTAINER" = true ]; then
     OLD_CONTAINERS=$(docker ps -aq)  
     if [ -n "$OLD_CONTAINERS" ]; then
@@ -84,7 +88,7 @@ if [ -z "$CONTAINER_ID" ]; then
     CONTAINER_ID=$(docker run -dit "${DOCKER_FLAGS[@]}" $IMAGE_NAME bash)
 fi
 
-# Start system control script if requested 
+# Start main system control python script if --start flag is used 
 if [ "$START_SYSTEM_CONTROL" = true ]; then
     echo "Starting main system control script..."
     docker exec -it $CONTAINER_ID python3 system_operations/main/main.py
