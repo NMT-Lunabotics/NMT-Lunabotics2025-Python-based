@@ -19,20 +19,22 @@ from system_operations.arduino_serial_commuication.arduino_serial_commuication i
 def main() -> None:
     link = serialCommands()
     try:
-        while True:
+        
+        # Command 'M' expects [left_speed, right_speed]; 1 keeps motion minimal.
+        link.send_command("A", [-1, -1, -1, -1, 0, -10])
+        time.sleep(0.01)
+        link.send_command("M", [5, 5])
+        time.sleep(4)
+        link.send_command("M", [0, 0])
+        time.sleep(1)
+        link.send_command("A", [-1, -1, -1, -1, 0, 10])
+        time.sleep(0.01)
+        link.send_command("M", [-5, -5])
+        time.sleep(4)
+        link.send_command("M", [0, 0])
+        time.sleep(1)
+
             
-            # Command 'M' expects [left_speed, right_speed]; 1 keeps motion minimal.
-            link.send_command("A", [-1, -1, -1, -1, 0, -10])
-            for i in range(500):
-                speed = int(round(i / 1000 * 30))
-                link.send_command("M", [speed, speed])
-
-                time.sleep(0.01)
-            for i in range(500):
-                speed = int(round(i / 1000 * 30))
-                link.send_command("M", [15-speed, 15-speed])
-
-                time.sleep(0.01)
     finally:
         link.close_serial()
 

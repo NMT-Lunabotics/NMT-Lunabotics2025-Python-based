@@ -11,6 +11,8 @@ LEDs.
 from __future__ import annotations
 
 import argparse
+import json
+import math
 import socket
 import struct
 import sys
@@ -240,6 +242,34 @@ class SimpleCameraServer:
             return self._frame
 
 
+class TelemetryGenerator:
+    """Produces synthetic telemetry data for the driver station."""
+
+    def __init__(self) -> None:
+        self._phase = 0.0
+
+    def sample(self) -> dict:
+        self._phase = (self._phase + 0.12) % (2 * math.pi)
+        phase = self._phase
+        temps = [25.0 + 4.5 * math.sin(phase + i * 0.4) for i in range(6)]
+        strain = [math.sin(phase * 1.5 + i * 0.6) for i in range(6)]
+        hall = [45.0 + 6.0 * math.cos(phase + i * 0.5) for i in range(6)]
+        actuator = 35.0 + 28.0 * math.sin(phase * 0.8)
+        voltage = 12.2 + 0.3 * math.sin(phase * 0.3)
+        current = 2.4 + 0.4 * math.cos(phase * 0.5)
+        payload = {
+            "timestamp": time.time(),
+            "voltage": round(voltage, 2),
+            "current": round(current, 2),
+            "temperature": round(temps[0], 2),
+            "actuator_position": round(actuator, 2),
+            "temperatures": [round(t, 2) for t in temps],
+            "strain": [round(s, 3) for s in strain],
+            "hall": [round(h, 2) for h in hall],
+        }
+        return payload
+
+
 def clamp_int8(value: int) -> int:
     return max(-128, min(127, int(value)))
 
@@ -400,6 +430,22 @@ def run_server(args: argparse.Namespace) -> None:
         )
         camera_server.start()
 
+    telemetry_sock: Optional[socket.socket] = None
+    telemetry_dest: Optional[Tuple[str, int]] = None
+    telemetry_interval = 1.0 / max(0.1, args.telemetry_rate)
+    telemetry_next = time.monotonic()
+    telemetry_gen = TelemetryGenerator()
+    if args.telemetry_dest:
+        telemetry_dest = parse_host_port(args.telemetry_dest)
+        telemetry_sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        telemetry_sock.setblocking(False)
+        initial_payload = telemetry_gen.sample()
+        try:
+            telemetry_sock.sendto(json.dumps(initial_payload).encode("utf-8"), telemetry_dest)
+        except OSError:
+            pass
+        telemetry_next = time.monotonic() + telemetry_interval
+
     if args.upload:
         sketch_path = ROOT / "system_operations" / "system_control" / "system_control.ino"
         if arduinoConsole is None:
@@ -418,6 +464,20 @@ def run_server(args: argparse.Namespace) -> None:
     max_rate_hz = 100.0
     min_interval = 1.0 / max_rate_hz
     last_send_time = 0.0
+
+    def maybe_send_dummy(force: bool = False) -> None:
+        nonlocal telemetry_next
+        if telemetry_sock is None or telemetry_dest is None:
+            return
+        now = time.monotonic()
+        if not force and now < telemetry_next:
+            return
+        payload = telemetry_gen.sample()
+        try:
+            telemetry_sock.sendto(json.dumps(payload).encode("utf-8"), telemetry_dest)
+        except OSError:
+            pass
+        telemetry_next = now + telemetry_interval
 
     def ensure_serial() -> bool:
         if SERIAL_IMPORT_ERROR is not None:
@@ -492,6 +552,7 @@ def run_server(args: argparse.Namespace) -> None:
                         left, right = compute_motor_outputs(idle_state, mapping)
                         send_serial('M', (right, left))
                         last_packet_time = 0.0
+                maybe_send_dummy()
                 continue
             except KeyboardInterrupt:
                 print("Interrupted; exiting")
@@ -516,13 +577,19 @@ def run_server(args: argparse.Namespace) -> None:
             actuator = compute_actuator_outputs(state, mapping)
             if actuator is not None:
                 arm_vel, bucket_vel = actuator
-                send_serial('A', (-1,-1,-1,-1, arm_vel, bucket_vel))
+                send_serial('A', (-1, -1, -1, -1, arm_vel, bucket_vel))
+            maybe_send_dummy()
 
     finally:
         close_serial()
         sock.close()
         if camera_server is not None:
             camera_server.stop()
+        if telemetry_sock is not None:
+            try:
+                telemetry_sock.close()
+            except OSError:
+                pass
 
 
 def parse_host_port(value: str) -> Tuple[str, int]:
@@ -598,20 +665,31 @@ def build_argument_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--camera-fps",
         type=float,
-        default=8.0,
-        help="Capture/update rate for the camera stream (default 8 Hz)",
+        default=6.0,
+        help="Capture/update rate for the camera stream (default 6 Hz)",
     )
     parser.add_argument(
         "--camera-width",
         type=int,
-        default=360,
-        help="Resize camera frames to this width before encoding (default 360)",
+        default=320,
+        help="Resize camera frames to this width before encoding (default 320)",
     )
     parser.add_argument(
         "--camera-quality",
         type=int,
-        default=50,
-        help="JPEG quality (10-95) for the camera stream (default 50)",
+        default=45,
+        help="JPEG quality (10-95) for the camera stream (default 45)",
+    )
+    parser.add_argument(
+        "--telemetry-dest",
+        default="127.0.0.1:10000",
+        help="host:port to send telemetry JSON (set empty to disable)",
+    )
+    parser.add_argument(
+        "--telemetry-rate",
+        type=float,
+        default=2.0,
+        help="Telemetry send rate in Hz (default 2)",
     )
     return parser
 

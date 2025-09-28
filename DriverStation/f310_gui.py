@@ -57,7 +57,7 @@ MAX_DISPLAY_AXES = 6
 MAX_DISPLAY_BUTTONS = 12
 TELEMETRY_LISTEN: Tuple[str, int] = ("0.0.0.0", 10000)
 COMMAND_DESTINATION: Tuple[str, int] = ("127.0.0.1", 10001)
-CAMERA_REFRESH_HZ = 8.0
+CAMERA_REFRESH_HZ = 6.0
 CAMERA_DEFAULT_URL: Optional[str] = "http://127.0.0.1:8081/frame"
 KEEPALIVE_INTERVAL = 0.5  # seconds between forced resend of identical packet
 
@@ -185,13 +185,13 @@ class TelemetrySnapshot:
 
 
 class RateTracker:
-    """Thread-safe exponential moving average of byte rates."""
+    """Thread-safe sliding window average of bitrate measurements."""
 
-    def __init__(self, decay: float = 0.2, timeout: float = 1.0) -> None:
+    def __init__(self, max_samples: int = 50, timeout: float = 1.0) -> None:
         self._lock = threading.Lock()
-        self._rate = 0.0
+        self._samples: List[float] = []
+        self._max_samples = max(1, max_samples)
         self._last_time = time.monotonic()
-        self._decay = max(0.01, decay)
         self._timeout = max(0.2, timeout)
 
     def record(self, byte_count: int) -> None:
@@ -204,18 +204,19 @@ class RateTracker:
                 self._last_time = now
                 return
             instant = (byte_count * 8) / elapsed
-            if self._rate <= 0.0:
-                self._rate = instant
-            else:
-                alpha = min(1.0, self._decay / max(elapsed, 1e-6))
-                self._rate = alpha * instant + (1.0 - alpha) * self._rate
+            self._samples.append(instant)
+            if len(self._samples) > self._max_samples:
+                self._samples.pop(0)
             self._last_time = now
 
     def rate(self) -> float:
         with self._lock:
             if time.monotonic() - self._last_time > self._timeout:
+                self._samples.clear()
                 return 0.0
-            return self._rate
+            if not self._samples:
+                return 0.0
+            return sum(self._samples) / len(self._samples)
 
 class JoystickWorker:
     """Background reader that keeps track of the current joystick state."""
