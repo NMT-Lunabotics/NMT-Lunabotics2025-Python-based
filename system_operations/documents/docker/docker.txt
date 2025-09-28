@@ -28,7 +28,11 @@ docker exec -it <container_id> bash     # Enter containor with terminal
 
 
 
------SHH SERVER VOLUME MOUNT-----
+-----SHH SERVER VOLUME MOUNT: ADVANCED USERS ONLY-----
+This create a live volume link meaning you should only use this for local testing, without an ssh link the jetson will revert to it's default files.
+No file changes are saved localaly on the jetson, but the update time can be as quick as ~1-5s, updates most on the host pc and jetson sync which allows
+for more internal testing, note this can delete your whole local copy of the repository so push to github often.
+------------------------------------------------------
 Install openssh-server and start the service on host pc(console can be closed after and it will run untill a device restart)
 ---------------------------------
 sudo apt update

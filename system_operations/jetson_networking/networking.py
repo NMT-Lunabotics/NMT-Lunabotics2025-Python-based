@@ -10,6 +10,7 @@ class NetworkingOperations:
         self.address=("127.0.0.1",PORT)                                     # Localhost address                                          
         self.s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)           # Create UDP socket
         self.s.bind(("0.0.0.0", PORT))                                      # Bind to all interfaces
+        self.s.setblocking(False)                                           # Set socket to non-blocking mode
 
     def run_command(self, command: str):
         """Take a user defined CMD and execute it safely in the shell terminal."""
