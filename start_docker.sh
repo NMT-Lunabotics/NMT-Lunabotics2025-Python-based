@@ -9,7 +9,10 @@ RESTART_CONTAINER=false
 START_SYSTEM_CONTROL=false
 
 # Container working directory and mount
-WORKING_DIR_CONTAINER="/home/luna/NMT-Lunabotics2025-Python-based"
+MOUNT_USERNAME=false
+MOUNT_HOST_PATH=false
+REPOSITORY_NAME="NMT-Lunabotics2025-Python-based"
+WORKING_DIR_CONTAINER="/home/luna/$REPOSITORY_NAME"
 WORKING_DIR_HOST="$(pwd)" 
 
 # Use current environment variables if available, fallback to defaults
@@ -19,13 +22,25 @@ WORKING_DIR_HOST="$(pwd)"
 # Parse input flags
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
-        -d|--display) DISPLAY_ENABLED=true; shift ;;   # Enable GUI forwarding
-        -b|--build) BUILD_IMAGE=true; shift ;;         # Force image rebuild
-        -r|--restart) RESTART_CONTAINER=true; shift ;; # Remove old containers first
+        -d|--display) DISPLAY_ENABLED=true; shift ;;    # Enable GUI forwarding
+        -b|--build) BUILD_IMAGE=true; shift ;;          # Force image rebuild
+        -r|--restart) RESTART_CONTAINER=true; shift ;;  # Remove old containers first
         -s|--start) START_SYSTEM_CONTROL=true; shift ;; # Start system control script
+        -mm|--mount) [[ "$#" -lt 3 ]] && { echo "Error: --mount <username> <host_path>"; exit 1; }; MOUNT_USERNAME="$2"; MOUNT_HOST_PATH="$3"; shift 3 ;; # Custom mount point
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
 done
+
+# Mount to host repository flag is used
+if [ -n "$MOUNT_USERNAME" ] && [ -n "$MOUNT_HOST_PATH" ] && [ "$MOUNT_USERNAME" != "false" ] && [ "$MOUNT_HOST_PATH" != "false" ]; then
+    PC_IP=$(echo $SSH_CLIENT | awk '{print $1}')
+    MOUNT_POINT=~/$REPOSITORY_NAME
+    mkdir -p "$MOUNT_POINT"
+    HOST_REPO_PATH="$MOUNT_HOST_PATH/$REPOSITORY_NAME"
+    sshfs -o reconnect,allow_other "$MOUNT_USERNAME@$PC_IP:$HOST_REPO_PATH" "$MOUNT_POINT" || echo "[Error] Failed to mount host repo"
+    #rsync -av --exclude-from='exclude-list.txt' "$MOUNT_POINT/" /path/in/container/
+fi
+
 
 # Build image if needed
 if [ "$BUILD_IMAGE" = true ] || ! docker image inspect $IMAGE_NAME >/dev/null 2>&1; then
@@ -35,7 +50,7 @@ fi
 
 # Remove old containers if requested
 if [ "$RESTART_CONTAINER" = true ]; then
-    OLD_CONTAINERS=$(docker ps -aq -f ancestor=$IMAGE_NAME)
+    OLD_CONTAINERS=$(docker ps -aq)  
     if [ -n "$OLD_CONTAINERS" ]; then
         docker rm -f $OLD_CONTAINERS
     fi

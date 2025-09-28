@@ -24,3 +24,19 @@ docker stop <container_id>              # Stop a running container
 docker start <container_id>             # Start a stopped container
 docker restart <container_id>           # Restart a container
 docker exec -it <container_id> bash     # Enter containor with terminal
+
+
+
+
+-----SHH SERVER VOLUME MOUNT-----
+Install openssh-server and start the service on host pc(console can be closed after and it will run untill a device restart)
+---------------------------------
+sudo apt update
+sudo apt install openssh-server
+sudo systemctl start ssh
+---------------------------------
+When containor is entered for the first time use this ./start_docker.sh command to start the volume link.
+
+--mount <username> <repository path>
+
+./start_docker.sh -b -r --mount benjamin /home/benjamin
