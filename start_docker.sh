@@ -71,7 +71,7 @@ fi
 
 # Start system control script if requested 
 if [ "$START_SYSTEM_CONTROL" = true ]; then
-    echo "Starting heartbeat script inside container..."
+    echo "Starting main system control script..."
     docker exec -it $CONTAINER_ID python3 system_operations/main/main.py
     exit 0
 fi
