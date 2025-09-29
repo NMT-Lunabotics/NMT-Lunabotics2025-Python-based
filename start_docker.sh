@@ -15,7 +15,16 @@ MOUNT_HOST_PATH=false
 REPOSITORY_NAME="NMT-Lunabotics2025-Python-based"
 WORKING_DIR_CONTAINER="/home/luna/$REPOSITORY_NAME"
 WORKING_DIR_HOST="$(pwd)" 
-EXCLUDE_FROM_PULL=("ros/" "DriverStation/" "README.md" "LiDAR_Project/" "SLAM/")
+EXCLUDE_FROM_PULL=(
+    "ros/" 
+    "DriverStation/" 
+    "README.md" 
+    "LiDAR_Project/" 
+    "SLAM/" 
+    "system_operations/component_tests/" 
+    "system_operations/documents/" 
+    "system_operations/remote_rc_serial/"
+    )
 export EXCLUDE_FROM_PULL_STR="${EXCLUDE_FROM_PULL[@]}"
 
 # Use current environment variables if available, fallback to defaults
