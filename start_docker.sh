@@ -7,10 +7,25 @@ DISPLAY_ENABLED=false
 BUILD_IMAGE=false
 RESTART_CONTAINER=false
 START_SYSTEM_CONTROL=false
+GITHUB_PULL=false
 
 # Container working directory and mount
-WORKING_DIR_CONTAINER="/home/luna/NMT-Lunabotics2025-Python-based"
+MOUNT_USERNAME=false
+MOUNT_HOST_PATH=false
+REPOSITORY_NAME="NMT-Lunabotics2025-Python-based"
+WORKING_DIR_CONTAINER="/home/luna/$REPOSITORY_NAME"
 WORKING_DIR_HOST="$(pwd)" 
+EXCLUDE_FROM_PULL=(
+    "ros/" 
+    "DriverStation/" 
+    "README.md" 
+    "LiDAR_Project/" 
+    "SLAM/" 
+    "system_operations/component_tests/" 
+    "system_operations/documents/" 
+    "system_operations/remote_rc_serial/"
+    )
+export EXCLUDE_FROM_PULL_STR="${EXCLUDE_FROM_PULL[@]}"
 
 # Use current environment variables if available, fallback to defaults
 : "${DISPLAY:=$DISPLAY}"
@@ -19,23 +34,66 @@ WORKING_DIR_HOST="$(pwd)"
 # Parse input flags
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
-        -d|--display) DISPLAY_ENABLED=true; shift ;;   # Enable GUI forwarding
-        -b|--build) BUILD_IMAGE=true; shift ;;         # Force image rebuild
-        -r|--restart) RESTART_CONTAINER=true; shift ;; # Remove old containers first
+        -d|--display) DISPLAY_ENABLED=true; shift ;;    # Enable GUI forwarding
+        -b|--build) BUILD_IMAGE=true; shift ;;          # Force image rebuild
+        -r|--restart) RESTART_CONTAINER=true; shift ;;  # Remove old containers first
         -s|--start) START_SYSTEM_CONTROL=true; shift ;; # Start system control script
+        -p|--pull) GITHUB_PULL=true; shift ;;           # Pull github changes before building
+        -mm|--mount) [[ "$#" -lt 3 ]] && { echo "Error: --mount <username> <host_path>"; exit 1; }; MOUNT_USERNAME="$2"; MOUNT_HOST_PATH="$3"; shift 3 ;; # Custom mount point
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
 done
 
-# Build image if needed
+# Mount to host repository --mount flag is used
+if [ -n "$MOUNT_USERNAME" ] && [ -n "$MOUNT_HOST_PATH" ] && [ "$MOUNT_USERNAME" != "false" ] && [ "$MOUNT_HOST_PATH" != "false" ]; then
+    PC_IP=$(echo $SSH_CLIENT | awk '{print $1}')
+    MOUNT_POINT=~/$REPOSITORY_NAME
+    mkdir -p "$MOUNT_POINT"
+    HOST_REPO_PATH="$MOUNT_HOST_PATH/$REPOSITORY_NAME"
+    if mountpoint -q "$MOUNT_POINT"; then
+        echo "[Info] Host repository already mounted at $MOUNT_POINT"
+    else
+        sshfs -o reconnect,allow_other "$MOUNT_USERNAME@$PC_IP:$HOST_REPO_PATH" "$MOUNT_POINT" || echo "[Error] Failed to mount host repo"
+    fi
+    #rsync -av --exclude-from='exclude-list.txt' "$MOUNT_POINT/" /path/in/container/
+fi
+
+# Pull latest changes from GitHub if --pull flag is used
+if [ "$GITHUB_PULL" = true ]; then
+    git config --global user.email "benjamin.peterson@student.nmt.edu"
+    git config --global user.name "benjamin-p15"
+    git remote add origin git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git 2>/dev/null || true
+    git fetch origin
+    git sparse-checkout init --no-cone
+    ALL_FILES=$(git ls-tree -r --name-only origin/main)
+    INCLUDE=()
+    while IFS= read -r f; do
+        skip=false
+        for excl in "${EXCLUDE_FROM_PULL[@]}"; do
+            [[ "$f" == "$excl"* || "$f" == "$excl" ]] && skip=true && break
+        done
+        if [ "$skip" = false ]; then
+            INCLUDE+=("$f")
+        fi
+    done <<< "$ALL_FILES"
+    git sparse-checkout set "${INCLUDE[@]}"
+    git reset --hard origin/main
+    git clean -fdx
+    RESTART_CONTAINER=true
+    BUILD_IMAGE=true
+fi
+
+
+
+# Build image if needed or if --build flag is used
 if [ "$BUILD_IMAGE" = true ] || ! docker image inspect $IMAGE_NAME >/dev/null 2>&1; then
     echo "Building Docker image: $IMAGE_NAME"
     docker build -t $IMAGE_NAME .
 fi
 
-# Remove old containers if requested
+# If --restart flag is used, restart all containors
 if [ "$RESTART_CONTAINER" = true ]; then
-    OLD_CONTAINERS=$(docker ps -aq -f ancestor=$IMAGE_NAME)
+    OLD_CONTAINERS=$(docker ps -aq)  
     if [ -n "$OLD_CONTAINERS" ]; then
         docker rm -f $OLD_CONTAINERS
     fi
@@ -69,9 +127,9 @@ if [ -z "$CONTAINER_ID" ]; then
     CONTAINER_ID=$(docker run -dit "${DOCKER_FLAGS[@]}" $IMAGE_NAME bash)
 fi
 
-# Start system control script if requested 
+# Start main system control python script if --start flag is used 
 if [ "$START_SYSTEM_CONTROL" = true ]; then
-    echo "Starting heartbeat script inside container..."
+    echo "Starting main system control script..."
     docker exec -it $CONTAINER_ID python3 system_operations/main/main.py
     exit 0
 fi
