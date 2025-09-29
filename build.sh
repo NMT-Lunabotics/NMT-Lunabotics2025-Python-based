@@ -1,8 +1,6 @@
 #!/bin/bash
 set -e
 
-WORKDIR="/"
-
 # Default: do everything
 PULL_FROM_GITHUB=true
 BUILD_PROJECT=false
