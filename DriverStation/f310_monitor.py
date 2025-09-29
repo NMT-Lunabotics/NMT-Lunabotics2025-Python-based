@@ -21,6 +21,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable, Optional, Sequence, Tuple
+from typing import Iterable, Optional, Sequence, Tuple
 
 try:
     import cv2  # type: ignore
@@ -269,6 +270,119 @@ class TelemetryGenerator:
         }
         return payload
 
+<<<<<<< ours
+=======
+    def set_mode(self, mode: Optional[str]) -> None:
+        self._mode = mode or "manual"
+
+
+class AutoRunner:
+    """Loads and executes predefined autonomous scripts."""
+
+    def __init__(
+        self,
+        send_serial: Callable[[str, Iterable[int]], None],
+        telemetry: TelemetryGenerator,
+        maybe_send_dummy: Callable[[bool], None],
+    ) -> None:
+        self._send_serial = send_serial
+        self._telemetry = telemetry
+        self._maybe_send_dummy = maybe_send_dummy
+        self._stop_event = threading.Event()
+        self._thread: Optional[threading.Thread] = None
+        self._lock = threading.Lock()
+        self._active: Optional[str] = None
+
+    def start(self, script: str) -> str:
+        script = script.lower()
+        with self._lock:
+            if self._active == script and self._thread and self._thread.is_alive():
+                return f"auto '{script}' already running"
+            self.stop()
+            module_name = f"DriverStation.autonomous.{script}"
+            try:
+                module = importlib.import_module(module_name)
+            except ModuleNotFoundError:
+                return f"unknown auto script '{script}'"
+            if hasattr(module, "get_sequence") and callable(module.get_sequence):
+                sequence = module.get_sequence()
+            elif hasattr(module, "SEQUENCE"):
+                sequence = module.SEQUENCE  # type: ignore[attr-defined]
+            else:
+                return f"script '{script}' missing SEQUENCE"
+            if not isinstance(sequence, Iterable):
+                return f"script '{script}' returned invalid sequence"
+            self._stop_event.clear()
+            self._thread = threading.Thread(
+                target=self._run,
+                args=(script, list(sequence)),
+                name=f"AutoRunner-{script}",
+                daemon=True,
+            )
+            self._thread.start()
+            self._active = script
+            self._telemetry.set_mode(script)
+            return f"auto '{script}' started"
+
+    def stop(self) -> str:
+        with self._lock:
+            thread = self._thread
+            if thread is None:
+                self._active = None
+                self._telemetry.set_mode(None)
+                return "no auto run active"
+            self._stop_event.set()
+        thread.join(timeout=2.0)
+        self._stop_event.clear()
+        with self._lock:
+            self._thread = None
+            self._active = None
+            self._telemetry.set_mode(None)
+        self._send_serial('M', [0, 0])
+        self._send_serial('A', [-1, -1, -1, -1, 0, 0])
+        self._maybe_send_dummy(True)
+        return "auto run stopped"
+
+    def is_active(self) -> bool:
+        with self._lock:
+            return self._thread is not None and self._thread.is_alive()
+
+    def current(self) -> Optional[str]:
+        with self._lock:
+            return self._active
+
+    def _run(self, script: str, sequence: List[dict]) -> None:
+        try:
+            for step in sequence:
+                if self._stop_event.is_set():
+                    break
+                command = step.get("command")
+                values = step.get("values", [])
+                duration = float(step.get("duration", 0.0))
+                if command:
+                    try:
+                        self._send_serial(command, values)
+                    except Exception as exc:
+                        print(f"Auto '{script}' send failed: {exc}")
+                        break
+                    self._maybe_send_dummy(True)
+                if duration > 0:
+                    end = time.monotonic() + duration
+                    while not self._stop_event.is_set() and time.monotonic() < end:
+                        remaining = end - time.monotonic()
+                        time.sleep(min(0.1, max(0.01, remaining)))
+                        self._maybe_send_dummy(True)
+        finally:
+            self._send_serial('M', [0, 0])
+            self._send_serial('A', [-1, -1, -1, -1, 0, 0])
+            self._maybe_send_dummy(True)
+            with self._lock:
+                self._thread = None
+                self._active = None
+                self._telemetry.set_mode(None)
+            self._stop_event.clear()
+
+>>>>>>> theirs
 
 def clamp_int8(value: int) -> int:
     return max(-128, min(127, int(value)))
@@ -572,6 +686,33 @@ def run_server(args: argparse.Namespace) -> None:
                 f"buttons=0x{state.buttons_mask:04X}",
                 flush=True,
             )
+<<<<<<< ours
+<<<<<<< ours
+<<<<<<< ours
+=======
+            if auto_runner.is_active():
+                maybe_send_dummy()
+                continue
+<<<<<<< ours
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+>>>>>>> theirs
+=======
+            if auto_runner.is_active():
+<<<<<<< ours
+                if state.armed or state.buttons_mask:
+                    print("[command] manual override requested; stopping auto")
+                    auto_runner.stop()
+                else:
+                    maybe_send_dummy()
+                    continue
+>>>>>>> theirs
+=======
+                maybe_send_dummy()
+                continue
+>>>>>>> theirs
             left, right = compute_motor_outputs(state, mapping)
             send_serial('M', (right, left))
             actuator = compute_actuator_outputs(state, mapping)
