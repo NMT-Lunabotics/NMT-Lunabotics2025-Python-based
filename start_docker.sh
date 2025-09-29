@@ -55,23 +55,24 @@ if [ "$GITHUB_PULL" = true ]; then
     git config --global user.name "benjamin-p15"
     git remote add origin git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git 2>/dev/null || true
     git fetch origin
-    git sparse-checkout init --cone
+    git sparse-checkout init --no-cone
     ALL_FILES=$(git ls-tree -r --name-only origin/main)
     INCLUDE=()
-    for f in $ALL_FILES; do
+    while IFS= read -r f; do
         skip=false
         for excl in "${EXCLUDE_FROM_PULL[@]}"; do
-            [[ "$f" == "$excl"* ]] && skip=true && break
+            [[ "$f" == "$excl"* || "$f" == "$excl" ]] && skip=true && break
         done
-        $skip || INCLUDE+=("$f")
-    done
+        if [ "$skip" = false ]; then
+            INCLUDE+=("$f")
+        fi
+    done <<< "$ALL_FILES"
     git sparse-checkout set "${INCLUDE[@]}"
     git reset --hard origin/main
     git clean -fdx
     RESTART_CONTAINER=true
     BUILD_IMAGE=true
 fi
-
 
 
 
