@@ -15,7 +15,7 @@ MOUNT_HOST_PATH=false
 REPOSITORY_NAME="NMT-Lunabotics2025-Python-based"
 WORKING_DIR_CONTAINER="/home/luna/$REPOSITORY_NAME"
 WORKING_DIR_HOST="$(pwd)" 
-EXCLUDE_FROM_PULL=("ros/", "DriverStation/", "README.md", "LiDAR Simulator", "LiDAR_Project/")
+EXCLUDE_FROM_PULL=("ros/" "DriverStation/" "README.md" "LiDAR_Project/" "SLAM/")
 export EXCLUDE_FROM_PULL_STR="${EXCLUDE_FROM_PULL[*]}"
 
 # Use current environment variables if available, fallback to defaults
@@ -71,6 +71,7 @@ if [ "$GITHUB_PULL" = true ]; then
     RESTART_CONTAINER=true
     BUILD_IMAGE=true
 fi
+
 
 
 
