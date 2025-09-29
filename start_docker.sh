@@ -7,6 +7,7 @@ DISPLAY_ENABLED=false
 BUILD_IMAGE=false
 RESTART_CONTAINER=false
 START_SYSTEM_CONTROL=false
+GITHUB_PULL=false
 
 # Container working directory and mount
 MOUNT_USERNAME=false
@@ -26,6 +27,7 @@ while [[ "$#" -gt 0 ]]; do
         -b|--build) BUILD_IMAGE=true; shift ;;          # Force image rebuild
         -r|--restart) RESTART_CONTAINER=true; shift ;;  # Remove old containers first
         -s|--start) START_SYSTEM_CONTROL=true; shift ;; # Start system control script
+        -p|--pull) GITHUB_PULL=true; shift ;;           # Pull github changes before building
         -mm|--mount) [[ "$#" -lt 3 ]] && { echo "Error: --mount <username> <host_path>"; exit 1; }; MOUNT_USERNAME="$2"; MOUNT_HOST_PATH="$3"; shift 3 ;; # Custom mount point
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
@@ -43,6 +45,18 @@ if [ -n "$MOUNT_USERNAME" ] && [ -n "$MOUNT_HOST_PATH" ] && [ "$MOUNT_USERNAME" 
         sshfs -o reconnect,allow_other "$MOUNT_USERNAME@$PC_IP:$HOST_REPO_PATH" "$MOUNT_POINT" || echo "[Error] Failed to mount host repo"
     fi
     #rsync -av --exclude-from='exclude-list.txt' "$MOUNT_POINT/" /path/in/container/
+fi
+
+# Pull latest changes from GitHub if --pull flag is used
+if [ "$GITHUB_PULL" = true ]; then
+    git config --global user.email "benjamin.peterson@student.nmt.edu"
+    git config --global user.name "benjamin-p15"
+    git remote add origin git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git 2>/dev/null || true
+    git fetch origin
+    git reset --hard origin/main
+    git clean -fdx
+    RESTART_CONTAINER=true
+    BUILD_IMAGE=true
 fi
 
 
