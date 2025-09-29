@@ -16,7 +16,7 @@ REPOSITORY_NAME="NMT-Lunabotics2025-Python-based"
 WORKING_DIR_CONTAINER="/home/luna/$REPOSITORY_NAME"
 WORKING_DIR_HOST="$(pwd)" 
 EXCLUDE_FROM_PULL=("ros/" "DriverStation/" "README.md" "LiDAR_Project/" "SLAM/")
-export EXCLUDE_FROM_PULL_STR="${EXCLUDE_FROM_PULL[*]}"
+export EXCLUDE_FROM_PULL_STR="${EXCLUDE_FROM_PULL[@]}"
 
 # Use current environment variables if available, fallback to defaults
 : "${DISPLAY:=$DISPLAY}"
