@@ -38,13 +38,14 @@ RUN pip install --no-cache-dir \
     pyserial 
 
 # Install used github distros(cli libray)
-USER luna
-ENV PATH="/home/luna/bin:${PATH}"
 RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh \
-    && mkdir -p /home/luna/.arduino15 \
-    && arduino-cli config init --config-file /home/luna/.arduino15/arduino-cli.yaml \
+    && mkdir -p /home/luna/.arduino15
+USER luna
+ENV PATH="/root/bin:${PATH}"
+RUN arduino-cli config init --config-file /home/luna/.arduino15/arduino-cli.yaml \
     && arduino-cli core update-index \
     && arduino-cli core install arduino:avr
+
 
 # Copy start_docker.sh into docker and make executable for accessing the containor
 USER root
