@@ -39,11 +39,12 @@ RUN pip install --no-cache-dir \
 
 # Install used github distros(cli libray)
 ENV PATH="/root/bin:${PATH}"
-RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh \
+RUN mkdir -p /home/luna/.arduino15 \
+    && chown -R luna:luna /home/luna/.arduino15 \
+    && arduino-cli config init --config-file /home/luna/.arduino15/arduino-cli.yaml \
     && arduino-cli core update-index \
-    && arduino-cli core install arduino:avr \
-    && rm -rf /root/.arduino15/staging
-
+    && arduino-cli core install arduino:avr
+    
 # Copy start_docker.sh into docker and make executable for accessing the containor
 COPY start_docker.sh /usr/local/bin/start_docker
 RUN chmod +x /usr/local/bin/start_docker \
