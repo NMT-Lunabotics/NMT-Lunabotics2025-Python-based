@@ -38,10 +38,10 @@ RUN pip install --no-cache-dir \
     pyserial 
 
 # Install used github distros(cli libray)
-RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh \
-    && mkdir -p /home/luna/.arduino15
+RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
 USER luna
 ENV PATH="/root/bin:${PATH}"
+RUN mkdir -p /home/luna/.arduino15 && chmod -R 777 /home/luna/.arduino15
 RUN arduino-cli config init --config-file /home/luna/.arduino15/arduino-cli.yaml \
     && arduino-cli core update-index \
     && arduino-cli core install arduino:avr
