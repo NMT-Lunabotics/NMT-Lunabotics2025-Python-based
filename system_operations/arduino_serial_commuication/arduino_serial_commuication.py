@@ -30,6 +30,10 @@ class serialCommands:
         if self.ser:
             self.ser.close()
             self.ser = None
+
+    def read_raw_serial(self):
+        """Reads the raw audio byte stream from Arduino"""
+        return self.ser.read(self.ser.in_waiting or 1)
     
     def read_serial(self):
         """Read all available lines from Arduino and return as a list"""
