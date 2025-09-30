@@ -37,8 +37,12 @@ RUN pip install --no-cache-dir \
     #Essiental packages .ie fundelmental compatition package that are required to run the robot
     pyserial 
 
-# Install used github distros
-RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
+# Install used github distros(cli libray)
+ENV PATH="/root/bin:${PATH}"
+RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh \
+    && arduino-cli core update-index \
+    && arduino-cli core install arduino:avr \
+    && rm -rf /root/.arduino15/staging
 
 # Copy start_docker.sh into docker and make executable for accessing the containor
 COPY start_docker.sh /usr/local/bin/start_docker
