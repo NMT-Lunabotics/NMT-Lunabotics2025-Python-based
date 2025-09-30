@@ -19,10 +19,24 @@ from system_operations.arduino_serial_commuication.arduino_serial_commuication i
     serialCommands,
 )
 from DriverStation.autonomous.excavation import get_sequence as get_excavation_sequence
+from DriverStation.autonomous.dump import get_sequence as get_dump_sequence
+from DriverStation.autonomous.transverse import get_sequence as get_transverse_sequence
 
 SYNC = 0xA6
 LISTEN_ADDR: Tuple[str, int] = ("0.0.0.0", 11000)
 SEND_RATE_HZ = 50.0
+
+AUTO_PROGRAMS = {
+    "excavation": get_excavation_sequence,
+    "dump": get_dump_sequence,
+    "transverse": get_transverse_sequence,
+}
+
+AUTO_BUTTONS = {
+    0: "excavation",
+    1: "dump",
+    2: "transverse",
+}
 
 
 def clamp_i8(value: int) -> int:
@@ -74,6 +88,7 @@ def _receiver(sock: socket.socket, shared: dict, stop_event: threading.Event) ->
         axes, buttons, armed = decoded
         now = time.monotonic()
         cancel_auto = False
+        requested_program: Optional[str] = None
         with shared["lock"]:
             prev = shared["last_udp"]
             prev_buttons = shared.get("buttons", tuple())
@@ -83,11 +98,18 @@ def _receiver(sock: socket.socket, shared: dict, stop_event: threading.Event) ->
             shared["last_udp"] = now
             shared["net_dt"] = 0.0 if prev == 0.0 else now - prev
             if buttons:
-                prev0 = prev_buttons[0] if prev_buttons else 0
-                if buttons[0] and not prev0 and not shared.get("auto_active", False):
-                    shared["auto_requested"] = True
+                for idx, program in AUTO_BUTTONS.items():
+                    prev_val = prev_buttons[idx] if len(prev_buttons) > idx else 0
+                    curr_val = buttons[idx] if len(buttons) > idx else 0
+                    if curr_val and not prev_val and not shared.get("auto_active", False):
+                        requested_program = program
+                        break
                 if len(buttons) > 4 and buttons[4] and shared.get("auto_active", False):
                     cancel_auto = True
+
+        if requested_program:
+            with shared["lock"]:
+                shared["auto_requested"] = requested_program
 
         if cancel_auto:
             _stop_auto(shared, "autonomous cancelled (armed)")
@@ -95,14 +117,23 @@ def _receiver(sock: socket.socket, shared: dict, stop_event: threading.Event) ->
 
 def _maybe_start_auto(shared: dict, now: float) -> None:
     with shared["lock"]:
-        if not shared.get("auto_requested"):
+        requested = shared.get("auto_requested")
+        if not requested:
             return
-        shared["auto_requested"] = False
         if shared.get("auto_active"):
             return
-        sequence = list(get_excavation_sequence())
-        if not sequence:
+        sequence_loader = AUTO_PROGRAMS.get(str(requested))
+        try:
+            sequence = list(sequence_loader()) if sequence_loader else []
+        except Exception as exc:
+            shared["serial_status"] = f"auto load failed: {exc}"
+            shared["auto_requested"] = None
             return
+        if not sequence:
+            shared["serial_status"] = f"auto unavailable: {requested}" if requested else "auto unavailable"
+            shared["auto_requested"] = None
+            return
+        shared["auto_requested"] = None
         shared["auto_sequence"] = sequence
         shared["auto_total_steps"] = len(sequence)
         shared["auto_step"] = 0
@@ -115,14 +146,15 @@ def _maybe_start_auto(shared: dict, now: float) -> None:
         shared["auto_command"] = ""
         shared["auto_values"] = []
         shared["auto_time_remaining"] = 0.0
+        shared["auto_program"] = str(requested)
         shared["control_mode"] = "auto"
-        shared["serial_status"] = "running excavation"
+        shared["serial_status"] = f"running {requested}"
 
 
 def _stop_auto(shared: dict, reason: str) -> None:
     with shared["lock"]:
         shared["auto_active"] = False
-        shared["auto_requested"] = False
+        shared["auto_requested"] = None
         shared["control_mode"] = "manual"
         shared["serial_status"] = reason
         shared["auto_time_remaining"] = 0.0
@@ -134,6 +166,7 @@ def _stop_auto(shared: dict, reason: str) -> None:
         shared["auto_step_start"] = 0.0
         shared["auto_step_end"] = 0.0
         shared["auto_step"] = shared.get("auto_total_steps", 0)
+        shared["auto_program"] = ""
 
 
 def _update_auto_state(shared: dict, now: float) -> Optional[Tuple[List[int], List[int]]]:
@@ -335,6 +368,7 @@ def _render_display(shared: dict) -> str:
         auto_values = list(shared.get("auto_values", []))
         auto_m_values = list(shared.get("auto_m_values", []))
         auto_a_values = list(shared.get("auto_a_values", []))
+        auto_program = str(shared.get("auto_program", ""))
 
     axes_str = " ".join(f"{val:4d}" for val in axes)
     if not buttons:
@@ -356,7 +390,7 @@ def _render_display(shared: dict) -> str:
 
     lines = [
         "F310 Monitor",
-        f"Mode: {control_mode.upper():5}  Armed: {int(armed)}  Outputs: {'ON ' if outputs_enabled else 'OFF'}  Stale: {int(stale)}",
+        f"Mode: {control_mode.upper():5}  Prog: {(auto_program or '-'):<10}  Armed: {int(armed)}  Outputs: {'ON ' if outputs_enabled else 'OFF'}  Stale: {int(stale)}",
         f"Net dt: {net_dt:6.3f}s  Send dt: {last_send_dt:6.3f}s",
         f"Axes : {axes_str}",
         f"Btns : {buttons_str}",
@@ -404,7 +438,7 @@ def main() -> None:
         "serial_status": "disconnected",
         "serial_rx": "",
         "control_mode": "manual",
-        "auto_requested": False,
+        "auto_requested": None,
         "auto_active": False,
         "auto_sequence": [],
         "auto_total_steps": 0,
@@ -417,6 +451,7 @@ def main() -> None:
         "auto_values": [],
         "auto_m_values": [0, 0],
         "auto_a_values": [0, 0, 0, 0, 0, 0],
+        "auto_program": "",
         "lock": threading.Lock(),
     }
     stop_event = threading.Event()
