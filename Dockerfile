@@ -39,6 +39,7 @@ RUN pip install --no-cache-dir \
 
 # Install used github distros(cli libray)
 USER luna
+ENV PATH="/home/luna/bin:${PATH}"
 RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh \
     && mkdir -p /home/luna/.arduino15 \
     && arduino-cli config init --config-file /home/luna/.arduino15/arduino-cli.yaml \
