@@ -178,6 +178,7 @@ void setup() {
 }
 
 void loop() {
+  Serial.print("test");
   current_time = millis();
   // if (Serial.available() > 0) {
   //     if (Serial.read() == 0x02) { // Start byte
