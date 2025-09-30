@@ -162,7 +162,6 @@ void fault();
 
 void setup() {
   delay(5);
-
   Serial.begin(115200);
   Serial.flush();
   // ledr_pin.write(1);
@@ -175,10 +174,10 @@ void setup() {
     aR_pos = act_right.update_pos();
     aB_pos = act_bucket.update_pos();
   }
+  Serial.println("Arduino system_control.ino started.")
 }
 
 void loop() {
-  Serial.println("test");
   current_time = millis();
   // if (Serial.available() > 0) {
   //     if (Serial.read() == 0x02) { // Start byte
