@@ -174,7 +174,7 @@ void setup() {
     aR_pos = act_right.update_pos();
     aB_pos = act_bucket.update_pos();
   }
-  Serial.println("Arduino system_control.ino started.")
+  Serial.println("Arduino system_control.ino started.");
 }
 
 void loop() {
