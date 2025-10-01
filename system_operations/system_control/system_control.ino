@@ -3,8 +3,8 @@
 
 //--------------- Debug settings ---------------
 
-bool debug_mode = true;  // Debug mode flag
-bool disable_estop = true; //Disable all e-stops for non full actuator tests.
+bool debug_mode = false;  // Debug mode flag
+bool disable_estop = false; //Disable all e-stops for non full actuator tests.
 bool rc_controller = false;
 
 //--------------- Actuators ---------------
@@ -365,11 +365,11 @@ void processMessage(byte *data, int length) {
     Serial.print("Length: ");
     Serial.println(length);
     Serial.print("Data: ");
-    for (int i = 0; i < length; i++) {
-      Serial.print(data[i], HEX);
-      Serial.print(" ");
-    }
-    Serial.println();
+    //for (int i = 0; i < length; i++) {
+    //  Serial.print(data[i], HEX);
+    //  Serial.print(" ");
+    //}
+    //Serial.println();
   }
   switch (type) {
     case 'A':
