@@ -45,7 +45,7 @@ try:
 except ImportError as exc:  # pragma: no cover - tkinter unavailable on some envs
     raise SystemExit(f"tkinter is required for this GUI: {exc}")
 
-# --- Controller/UDP configuration -------------------------------------------------
+# --- Controller/UDP configuration test-------------------------------------------------
 
 TARGET_CONTROLLER_NAME = "Logitech Gamepad F310"
 UDP_DESTINATION: Tuple[str, int] = ("127.0.0.1", 11000)
