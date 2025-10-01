@@ -8,7 +8,7 @@ int16_t softZones[4] = { 50, 250, 50, 50 };            // Joy stick Drift ranges
 int16_t maxJoyValues[4] = { 1971, 1976, 2000, 2000 };  // Joy stick max range
 int16_t minJoyValues[4] = { 1000, 1040, 1087, 1064 };  // Joy sick min ranges
 
-
+unsigned long lastSend = 0;
 
 void setup() {
   delay(5);
@@ -17,20 +17,29 @@ void setup() {
   Serial2.begin(115200);
   Serial.begin(115200);
   Serial.flush();
+  Serial.println("RC controller initialized")
 }
 
 void loop() {
-    if(Serial2.available()){
+  // Process IBUS data for joystick and return all data.
   int16_t *joystick = processIbus();
-  if (joystick != nullptr) {
-    //Motor commands
-    uint8_t joystickData[4] = { joystick[2], joystick[3] };
-    sendSerialCommand('M', joystickData, sizeof(joystickData) / sizeof(joystickData[0]));
-    //Actuator commands
-    //uint8_t joystickData[4] = { -1,-1,-1,-1, joystick[0], joystick[1] };
-    //sendSerialCommand('A', joystickData, sizeof(joystickData) / sizeof(joystickData[0]));
+
+  // Limit number of packages sent to not overload the USB serial connection.
+  if (millis() - lastSend >= 1) {
+    lastSend = millis();
+
+    if (joystick != nullptr) {
+      uint8_t joystickData[3] = { joystick[1], joystick[2], joystick[3] }; 
+      sendSerialCommand('L', joystickData, sizeof(joystickData));
+      // Turn joystick data into byte arrays to send all at once
+      //uint8_t motorData[2] = { (uint8_t)joystick[2], (uint8_t)joystick[3] };
+      //uint8_t actuatorData[2] = { (uint8_t)joystick[0], (uint8_t)joystick[1] };
+      //char commands[2] = { 'M', 'A' };
+      //uint8_t* dataArrays[2] = { motorData, actuatorData };
+      //size_t dataLens[2] = { sizeof(motorData), sizeof(actuatorData) };
+      //sendSerialCommands(2, commands, dataArrays, dataLens);
+    }
   }
-}
 }
 
 // Read serial communication from RC controller and set system variables to output
@@ -41,14 +50,14 @@ int16_t *processIbus() {
   static uint8_t buffer[32];
   static int idx = 0;
 
-  while (Serial2.available()) {
+  if (Serial2.available()) {
     uint8_t val = Serial2.read();
     // Check if buffer index matches the data index for the first and last index to unsure we received a valid data stream.
     if (idx == 0 && val != 0x20)
-      continue;
+      return nullptr;
     if (idx == 1 && val != 0x40) {
       idx = 0;
-      continue;
+      return nullptr;
     }
     buffer[idx++] = val;
     // Once we recive whole stream convert data values from between 1000-2000 to 0-255
@@ -96,24 +105,52 @@ int16_t *processIbus() {
   return nullptr;
 }
 
+// Send a single message (NOT USED)
 void sendSerialCommand(char command, uint8_t* data, size_t dataLen) {
   const uint8_t startByte = 0x02; // STX
   const uint8_t endByte   = 0x03; // ETX
 
-  uint8_t length = dataLen + 1; // command byte + data bytes
+  uint8_t buf[64];   // max size for USB CDC packet
+  size_t idx = 0;
 
-  // Make sure Serial is ready (important on Leonardo/Micro)
-  while (!Serial) { ; }
-
-  Serial.write(startByte);       // start byte
-  Serial.write(length);          // length byte
-  Serial.write((uint8_t)command); // command byte
+  buf[idx++] = startByte;
+  buf[idx++] = dataLen + 1; // length (command + data)
+  buf[idx++] = command;
 
   for (size_t i = 0; i < dataLen; i++) {
-      Serial.write(data[i]);    // data bytes
+    buf[idx++] = data[i];
   }
 
-  Serial.write(endByte);         // end byte
-  Serial.flush();                // ensure all bytes are sent
+  buf[idx++] = endByte;
+
+  Serial.write(buf, idx);   // one USB transfer
+  //Serial.flush();           // block until transmitted
+  //delay(1);
 }
 
+// Send multiple messages in one USB transfer
+void sendSerialCommands(uint8_t numMessages, char* commands, uint8_t** dataArrays, size_t* dataLens) {
+  const uint8_t startByte = 0x02; // STX
+  const uint8_t endByte   = 0x03; // ETX
+
+  uint8_t buf[128];   // large enough to hold multiple messages
+  size_t idx = 0;
+
+  buf[idx++] = startByte; // start of overall packet
+
+  // Add each message sequentially
+  for (uint8_t i = 0; i < numMessages; i++) {
+    buf[idx++] = dataLens[i] + 1;   // length for this message (command + data)
+    buf[idx++] = commands[i];       // command byte
+
+    for (size_t j = 0; j < dataLens[i]; j++) {
+      buf[idx++] = dataArrays[i][j];  // data bytes
+    }
+  }
+
+  buf[idx++] = endByte; // end of overall packet
+
+  Serial.write(buf, idx); // send all messages in one USB transfer
+  //Serial.flush();        // optional, can block
+  //delay(1);              // not needed
+}
