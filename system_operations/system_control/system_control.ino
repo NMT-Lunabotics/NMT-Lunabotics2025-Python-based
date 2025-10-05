@@ -317,14 +317,14 @@ void loop() {
     // Run motors and actuators
     if (!emergency_stop) {
       // Timeout motors and actuators if a command isn't recived within the timeout period
-      if(component_timeout_faults==true&&last_motor_cmd_time-current_time>=motor_timeout&&(mR_speed!=0||mL_speed!=0||mLR_rotation_speed!=0||mLR_rotation!=0)){
+      if(component_timeout_faults==true&&current_time-last_motor_cmd_time>=motor_timeout&&(mR_speed!=0||mL_speed!=0||mLR_rotation_speed!=0||mLR_rotation!=0)){
         mR_speed=0;
         mL_speed=0;
         mLR_rotation_speed=0;
         mLR_rotation=0;
         systemFault(false,"","Motors timed out, no motor command received within "+ String(motor_timeout/1000)+"s", NONE, NONE, NONE);
       }
-       if(component_timeout_faults==true&&last_actuator_cmd_time-current_time>=actuator_timeout && (aL_speed!=0 || aR_speed !=0 || aB_speed!=0 || aLR_tgt != -1 || aB_tgt != -1 )){
+       if(component_timeout_faults==true&&current_time-last_actuator_cmd_time>=actuator_timeout && (aL_speed!=0 || aR_speed !=0 || aB_speed!=0 || aLR_tgt != -1 || aB_tgt != -1 )){
         aLR_tgt = -1;
         aB_tgt = -1;
         aL_speed = 0;
@@ -516,7 +516,7 @@ void stop_all() {
 }
 
 // Change led state, and blink led if requested
-void updateLed(OutPin &led, const LedState &state, int interval=500) {
+void updateLed(OutPin &led, const LedState &state, int interval=250) {
   if(state==NONE) return;
     if (state == OFF || state == ON) {
         led.write(state == ON ? 1 : 0);
