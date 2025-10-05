@@ -10,6 +10,7 @@ class serialCommands:
         self.ser = serial.Serial(self.port, self.baudrate, timeout=0.1)
         self.startByte=2
         self.endbyte=3
+        self._read_buffer = bytearray()
         time.sleep(2)
 
     def find_arduino(self):
@@ -57,3 +58,27 @@ class serialCommands:
         self.ser.write(msg)
         self.ser.flush()
         time.sleep(0.001)
+
+    def read_command_feedback(self):
+        """Read feedback from command operations"""
+        packets = []
+        while self.ser.in_waiting > 0:
+            b = self.ser.read(1)[0]
+            self._read_buffer.append(b)
+            buffer = self._read_buffer
+
+            if len(buffer) == 1 and buffer[0] != self.startByte:                    # Wait for start byte
+                self._read_buffer.clear()
+                continue
+            if len(buffer) == 2:                                                    # Log the size of the incomming packet from length byte
+                expected_length = buffer[1]
+                continue                                                                  
+            if len(buffer) >= expected_length + 3:                                  # Check to make sure incomming byte meets expected size
+                if buffer[expected_length + 2] == self.endbyte:
+                    command = chr(buffer[2])
+                    data = list(buffer[3:3 + expected_length - 1])
+                    packets.append({"command": command, "data": data})              # Add data and command to list
+                    self._read_buffer = self._read_buffer[expected_length + 3:]     # Remove processed packet
+                else:
+                    self._read_buffer = self._read_buffer[1:]                       # Invalid packet, drop first byte and try again
+        return packets if packets else None                                         # Return data if there is any

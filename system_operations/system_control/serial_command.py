@@ -21,7 +21,11 @@ serial = serialCommands()
     #Bucket Actuator needs positions between 0 and 128.
 
 while True:
-    #serial.send_command("A", [-1, -1,-1,-1, 0,-10])
+    #serial.send_command("A", [-1, -1,-1,-1, 0,-10]) 
+    #serial.send_command("M", [1, -1])
+    #serial.send_command("R", [10, 90, 1, true])
+
+
     serial.send_command("M", [1, -1])
     value = serial.read_serial()
     if value: print(value)  

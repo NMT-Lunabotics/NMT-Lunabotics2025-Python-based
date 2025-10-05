@@ -3,6 +3,7 @@
 #define ARDUINO_LIB_H
 
 #include <Arduino.h>
+#include <Wire.h>
 
 #define sign(i) (((i) > 0) - ((i) < 0))
 
@@ -57,6 +58,9 @@ public:
         break;
       }
     }
+  }
+  bool read() {
+    return digitalRead(num) == HIGH;
   }
 
   void write(bool value) { digitalWrite(num, value ? HIGH : LOW); }
@@ -188,5 +192,6 @@ public:
 //   attachInterrupt(digitalPinToInterrupt(num), callback_interrupt<num, Func>,
 //                   mode);
 // }
+
 
 #endif // ARDUINO_LIB_H

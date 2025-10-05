@@ -239,4 +239,53 @@ public:
 
 };
 
+///////// MPU6050 IMU Class /////////
+class MPU6050 {
+public:
+    MPU6050(uint8_t address = 0x68) : _address(address) {}
+    void initialize() {
+        Wire.begin();
+        // Wake up MPU6050
+        writeRegister(0x6B, 0x00); // PWR_MGMT_1 = 0 (wake up)
+    }
+    bool testConnection() {
+        uint8_t whoAmI = readRegister(0x75);
+        return (whoAmI == 0x68);
+    }
+    // Read raw gyro values (deg/s)
+    void getRotation(int16_t *gx, int16_t *gy, int16_t *gz) {
+        *gx = readRegister16(0x43);
+        *gy = readRegister16(0x45);
+        *gz = readRegister16(0x47);
+    }
+    // Read raw accelerometer values
+    void getAcceleration(int16_t *ax, int16_t *ay, int16_t *az) {
+        *ax = readRegister16(0x3B);
+        *ay = readRegister16(0x3D);
+        *az = readRegister16(0x3F);
+    }
+private:
+    uint8_t _address;
+    void writeRegister(uint8_t reg, uint8_t value) {
+        Wire.beginTransmission(_address);
+        Wire.write(reg);
+        Wire.write(value);
+        Wire.endTransmission(true);
+    }
+    uint8_t readRegister(uint8_t reg) {
+        Wire.beginTransmission(_address);
+        Wire.write(reg);
+        Wire.endTransmission(false);
+        Wire.requestFrom(_address, (uint8_t)1);
+        return Wire.read();
+    }
+    int16_t readRegister16(uint8_t reg) {
+        Wire.beginTransmission(_address);
+        Wire.write(reg);
+        Wire.endTransmission(false);
+        Wire.requestFrom(_address, (uint8_t)2);
+        int16_t val = (Wire.read() << 8) | Wire.read();
+        return val;
+    }
+};
 #endif
