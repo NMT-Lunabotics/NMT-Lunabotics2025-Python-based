@@ -5,15 +5,15 @@ MPU6050 IMU;
 //--------------- Debug settings ---------------
 
 // List of components flags to enable/disable for testing
-bool error_leds_enabled = false;
+bool error_leds_enabled = true;
 bool motors_enabled = true;
 bool backet_actuator_enabled = false;
 bool arm_actuators_enabled = false;
-bool servo_motor_enabled = false;
+bool servo_motor_enabled = true;
 
 // List of faults to disable
-bool serial_communication_timeout_fault = false;
-bool component_timeout_faults = false;
+bool serial_communication_timeout_fault = true;
+bool component_timeout_faults = true;
 
 // Debug mode flag
 bool debug_mode = false; 
@@ -204,6 +204,7 @@ void stop_all();
 void systemFault(bool criticalError = false,String fault_msg="", String error_msg="", LedState y =NONE, LedState g =NONE, LedState b=NONE);
 void calibrateIMU();
 void updateIMUData(bool useHomeBias=false);
+void sendSerialFeedback(char command, uint8_t* data, size_t dataLen);
 
 void setup() {
   delay(5);
@@ -219,11 +220,6 @@ void setup() {
     aB_pos = act_bucket.update_pos();
   }
   Serial.println("Arduino system_control.ino started.");
-
-  mLR_rotation_speed = 10; 
-  mLR_rotation = 90;
-  reset_IMU_local_home = false;
-  update_IMU_raw_home=false;
 }
 
 void loop() {
@@ -370,8 +366,12 @@ void loop() {
             mLR_rotation_speed=0;
             if(reset_IMU_local_home==false) IMU_local_home_bias=IMU_yaw;
             update_IMU_raw_home=true;
+            if(debug_mode==true){
+              Serial.print("Final unchanged yaw: ");
+              Serial.println(IMU_yaw,6);
+            }
             updateIMUData(true);
-            sendSerialCommand('R', (uint8_t[]){}, 0);
+            sendSerialFeedback('R', nullptr, 0);
           } 
         }
         else{
@@ -401,8 +401,6 @@ void loop() {
   systemFault(false, "","", NONE, NONE, NONE);
   if(update_IMU_raw_home==true) updateIMUData(true);
   else updateIMUData(false);
-  Serial.print("Yaw: ");
-  Serial.println(IMU_yaw,6);
 }
 
 // Read serial communication from autonomy computer and set system variables to output.
@@ -545,7 +543,7 @@ BLUE BLINKING: System started, iding, waiting for communication data stream to s
 */
 
 // Handles rotbot critical faults(E-STOP), errors, and led ON/OFF and BLINKING
-void systemFault(bool criticalError,String fault_msg, String error_msg LedState y, LedState g, LedState b) {
+void systemFault(bool criticalError,String fault_msg, String error_msg, LedState y, LedState g, LedState b) {
   // A criticalError means full robot shutdown, also this logs the shutdown error.
   if(criticalError==true) emergency_stop=true;
   if(fault_msg!="") system_fault_msg=fault_msg;

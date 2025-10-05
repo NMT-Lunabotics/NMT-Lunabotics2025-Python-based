@@ -32,8 +32,6 @@ while True:
     #if console_message: print(f"[message] {console_message}")
 
     # Read and print out error arduino serial messages
-
-    if rotate: serial.send_command("R", [10, 90, 0, True])
     #serial_message = serial.read_serial()
     #if serial_message: print(serial_message)  
 
@@ -43,5 +41,7 @@ while True:
             if packet["command"] == 'R': 
                 print("Robot rotation compleated")
                 rotate=False
+
+    if rotate: serial.send_command("R", [10, 90, 0, True])
     
     time.sleep(0.01)
