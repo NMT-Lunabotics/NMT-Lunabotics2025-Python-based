@@ -362,12 +362,12 @@ void loop() {
             motor_right.motor_ctrl(mR_velocity);
           }
           else if(mLR_rotation>0){
-            motor_left.motor_ctrl(mLR_rotation_speed);
-            motor_right.motor_ctrl(-mLR_rotation_speed);
-          }
-          else if(mLR_rotation<0){
             motor_left.motor_ctrl(-mLR_rotation_speed);
             motor_right.motor_ctrl(mLR_rotation_speed);
+          }
+          else if(mLR_rotation<0){
+            motor_left.motor_ctrl(mLR_rotation_speed);
+            motor_right.motor_ctrl(-mLR_rotation_speed);
           }
           if((mLR_rotation<0&&IMU_yaw<=mLR_rotation)||(mLR_rotation>0&&IMU_yaw>=mLR_rotation)){
             motor_left.stop();
