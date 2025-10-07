@@ -219,6 +219,10 @@ void setup() {
   systemFault(false,"","", NONE, BLINK, BLINK);
   // Calibrate the IMU sensors drift factor
   calibrateIMU();
+  Serial.print("IMU_pitch_angle_bias: ");
+  Serial.print(IMU_pitch_angle_bias);
+  Serial.print(" IMU_roll_angle_bias: ");
+  Serial.println(IMU_roll_angle_bias);
   calibrateIMUAngle();
   for (int i = 0; i < 10; i++) {
     aL_pos = act_left.update_pos();
@@ -604,33 +608,17 @@ void calibrateIMU() {
     IMU_offset_bias=IMU_sample_sum/IMU_offset_bias_samples;
 }
 
-void updateIMUData(bool useHomeBias){
+void updateIMUData(bool useHomeBias){ 
   int16_t gx, gy, gz; 
-  int16_t ax, ay, az;
-  IMU.getRotation(&gx, &gy, &gz);
-  IMU.getAcceleration(&ax, &ay, &az);
-
-  float ax_f = (float)ax;
-  float ay_f = (float)ay;
-  float az_f = (float)az;
-
-  // Compute pitch and roll from accelerometer
-  float pitch = atan2(-ax_f, sqrt(ay_f*ay_f + az_f*az_f)) - IMU_pitch_angle_bias;
-  float roll  = atan2(ay_f, az_f) - IMU_roll_angle_bias;
-
-  float dt = (current_time - last_IMU_time) / 1000.0;
-  if(dt <= 0) dt = 0.001;
-  float alpha = dt / (IMU_filter_constant + dt);
-
-  // Tilt-compensated yaw rate
-  float rate_raw = (gz/131.0) * cos(pitch) - (gx/131.0) * sin(roll) * sin(pitch) + (gy/131.0) * cos(roll) * sin(pitch);
-  IMU_filter_rate = alpha * rate_raw + (1-alpha) * IMU_filter_rate;
-  last_IMU_time = current_time;
-
-  if(useHomeBias) IMU_raw_home_bias = IMU_rate;
-
-  IMU_rate += (IMU_filter_rate - IMU_offset_bias) * dt;
-  IMU_yaw = (IMU_rate - IMU_raw_home_bias) + IMU_local_home_bias;
+  IMU.getRotation(&gx, &gy, &gz); 
+  float rate_raw = gz / 131.0; 
+  float dt = (current_time - last_IMU_time) / 1000.0; 
+  float alpha = dt / (IMU_filter_constant + dt); 
+  IMU_filter_rate = alpha * rate_raw + (1 - alpha) * IMU_filter_rate; 
+  last_IMU_time = current_time; 
+  if(useHomeBias==true) IMU_raw_home_bias=IMU_rate; 
+  IMU_rate += (IMU_filter_rate - IMU_offset_bias) * dt; 
+  IMU_yaw = (IMU_rate - IMU_raw_home_bias) + IMU_local_home_bias; 
 }
 
 void sendSerialFeedback(char command, uint8_t* data, size_t dataLen) {
