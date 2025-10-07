@@ -38,7 +38,7 @@ while True:
                 print("Robot rotation compleated")
                 rotate=False
 
-    if rotate: serial.send_command("R", [1, 90, 0, True])
+    if rotate: serial.send_command("R", [1, -90, 0, True])
 
     # Read and print out error arduino serial messages
     time.sleep(0.01)

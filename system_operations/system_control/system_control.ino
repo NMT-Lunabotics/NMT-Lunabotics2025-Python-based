@@ -361,11 +361,11 @@ void loop() {
             motor_left.motor_ctrl(mL_velocity);
             motor_right.motor_ctrl(mR_velocity);
           }
-          else if(mLR_rotation_speed>=0){
+          else if(mLR_rotation>0){
             motor_left.motor_ctrl(mLR_rotation_speed);
             motor_right.motor_ctrl(-mLR_rotation_speed);
           }
-          else if(mLR_rotation_speed<0){
+          else if(mLR_rotation<0){
             motor_left.motor_ctrl(mLR_rotation_speed);
             motor_right.motor_ctrl(-mLR_rotation_speed);
           }
