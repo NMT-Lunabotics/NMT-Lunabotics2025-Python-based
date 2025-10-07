@@ -59,33 +59,33 @@ class serialCommands:
         self.ser.flush()
         time.sleep(0.001)
 
-def read_command_feedback(self):
-    """Read feedback from command operations"""
-    packets = []
-    while self.ser.in_waiting > 0:
-        b = self.ser.read(1)[0]
-        self._read_buffer.append(b)
+    def read_command_feedback(self):
+        """Read feedback from command operations"""
+        packets = []
+        while self.ser.in_waiting > 0:
+            b = self.ser.read(1)[0]
+            self._read_buffer.append(b)
 
-        # Wait for start byte
-        if len(self._read_buffer) == 1 and self._read_buffer[0] != self.startByte:
-            self._read_buffer.clear()
-            continue
+            # Wait for start byte
+            if len(self._read_buffer) == 1 and self._read_buffer[0] != self.startByte:
+                self._read_buffer.clear()
+                continue
 
-        # Get expected length
-        if len(self._read_buffer) == 2:
+            # Get expected length
+            if len(self._read_buffer) == 2:
+                expected_length = self._read_buffer[1]
+                continue
+
+            # Check if full packet received
             expected_length = self._read_buffer[1]
-            continue
-
-        # Check if full packet received
-        expected_length = self._read_buffer[1]
-        if len(self._read_buffer) >= expected_length + 3:  # start + length + command/data + end
-            if self._read_buffer[expected_length + 2] == self.endbyte:
-                command = chr(self._read_buffer[2])
-                data = list(self._read_buffer[3:3 + expected_length - 1])
-                packets.append({"command": command, "data": data})
-                # Remove the processed packet from buffer
-                self._read_buffer = self._read_buffer[expected_length + 3:]
-            else:
-                # Bad packet, discard first byte
-                self._read_buffer = self._read_buffer[1:]
-    return packets if packets else None
+            if len(self._read_buffer) >= expected_length + 3:  # start + length + command/data + end
+                if self._read_buffer[expected_length + 2] == self.endbyte:
+                    command = chr(self._read_buffer[2])
+                    data = list(self._read_buffer[3:3 + expected_length - 1])
+                    packets.append({"command": command, "data": data})
+                    # Remove the processed packet from buffer
+                    self._read_buffer = self._read_buffer[expected_length + 3:]
+                else:
+                    # Bad packet, discard first byte
+                    self._read_buffer = self._read_buffer[1:]
+        return packets if packets else None
