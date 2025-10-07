@@ -637,7 +637,7 @@ void updateIMUData(bool useHomeBias){
   last_IMU_time = current_time; 
   if(useHomeBias==true) IMU_raw_home_bias=IMU_rate; 
   IMU_rate += (IMU_filter_rate - IMU_offset_bias) * dt; 
-  IMU_yaw = ((IMU_rate - IMU_raw_home_bias) + IMU_local_home_bias)*IMU_yaw_scale; 
+  IMU_yaw = ((IMU_rate - IMU_raw_home_bias) + IMU_local_home_bias)/IMU_yaw_scale; 
 }
 
 void sendSerialFeedback(char command, uint8_t* data, size_t dataLen) {
