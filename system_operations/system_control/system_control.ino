@@ -630,17 +630,14 @@ void calibrateIMUAngle() {
 void updateIMUData(bool useHomeBias){ 
   int16_t gx, gy, gz; 
   IMU.getRotation(&gx, &gy, &gz); 
-  float gz_rate = gz / 131.0; 
+  float rate_raw = gz / 131.0; 
   float dt = (current_time - last_IMU_time) / 1000.0; 
-  last_IMU_time = current_time; 
   float alpha = dt / (IMU_filter_constant + dt); 
-  IMU_filter_rate = alpha * gz_rate + (1 - alpha) * IMU_filter_rate; 
-  if(useHomeBias) IMU_raw_home_bias = IMU_rate; 
-  float gz_world = IMU_filter_rate * IMU_yaw_scale;
-  IMU_rate += (gz_world - IMU_offset_bias) * dt; 
-  IMU_yaw = (IMU_rate - IMU_raw_home_bias) + IMU_local_home_bias;
-  if(IMU_yaw > 180) IMU_yaw -= 360;
-  if(IMU_yaw < -180) IMU_yaw += 360;
+  IMU_filter_rate = alpha * rate_raw + (1 - alpha) * IMU_filter_rate; 
+  last_IMU_time = current_time; 
+  if(useHomeBias==true) IMU_raw_home_bias=IMU_rate; 
+  IMU_rate += (IMU_filter_rate - IMU_offset_bias) * dt; 
+  IMU_yaw = ((IMU_rate - IMU_raw_home_bias) + IMU_local_home_bias)*IMU_yaw_scale; 
 }
 
 void sendSerialFeedback(char command, uint8_t* data, size_t dataLen) {
