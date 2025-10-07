@@ -609,23 +609,36 @@ void updateIMUData(bool useHomeBias){
   int16_t gx,gy,gz;int16_t ax,ay,az;
   IMU.getRotation(&gx,&gy,&gz);
   IMU.getAcceleration(&ax,&ay,&az);
-  float rate_raw=gz/131.0;
-  float dt=(current_time-last_IMU_time)/1000.0;
-  if(dt<=0)dt=0.001;
-  float alpha=dt/(IMU_filter_constant+dt);
-  IMU_filter_rate=alpha*rate_raw+(1-alpha)*IMU_filter_rate;
+  float dt=(current_time-last_IMU_time)/1000.0;if(dt<=0)dt=0.001;
   last_IMU_time=current_time;
-  if(useHomeBias)IMU_raw_home_bias=IMU_rate;
-  IMU_rate+=(IMU_filter_rate-IMU_offset_bias)*dt;
-  IMU_yaw=(IMU_rate-IMU_raw_home_bias)+IMU_local_home_bias;
-  float ax_f=(float)ax;
-  float ay_f=(float)ay;
-  float az_f=(float)az;
+
+  // Convert gyro to deg/s
+  float gx_f = gx / 131.0;
+  float gy_f = gy / 131.0;
+  float gz_f = gz / 131.0;
+
+  // Get raw pitch/roll from accel
+  float ax_f=(float)ax;float ay_f=(float)ay;float az_f=(float)az;
   float pitch_raw=atan2(-ax_f,sqrt(ay_f*ay_f+az_f*az_f));
   float roll_raw=atan2(ay_f,az_f);
   float pitch=pitch_raw-IMU_pitch_angle_bias;
   float roll=roll_raw-IMU_roll_angle_bias;
-  }
+
+  // Tilt-compensated yaw rate
+  float gz_world = gz_f*cos(pitch)*cos(roll) + gy_f*sin(roll) + gx_f*sin(pitch)*cos(roll);
+
+  // Complementary filter (if you want to filter yaw rate)
+  float alpha = dt / (IMU_filter_constant + dt);
+  IMU_filter_rate = alpha*gz_world + (1-alpha)*IMU_filter_rate;
+
+  // Home bias
+  if(useHomeBias) IMU_raw_home_bias = IMU_rate;
+
+  // Integrate yaw
+  IMU_rate += (IMU_filter_rate - IMU_offset_bias)*dt;
+  IMU_yaw = (IMU_rate - IMU_raw_home_bias) + IMU_local_home_bias;
+}
+
    
 
 void sendSerialFeedback(char command, uint8_t* data, size_t dataLen) {
