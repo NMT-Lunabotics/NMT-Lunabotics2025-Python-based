@@ -94,7 +94,7 @@ int mR_speed = 0;
 int mLR_rotation_speed = 0;
 int mLR_rotation = 0;
 int mLR_arc_radius = 0;
-float robot_width =1.5; //m
+float robot_width = 7.276186; //m
 
 // TODO implement servo logic
 //  #define SERVO_PIN 22
