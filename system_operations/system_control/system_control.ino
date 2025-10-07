@@ -219,10 +219,6 @@ void setup() {
   // Calibrate the IMU sensors drift factor
   calibrateIMU();
   calibrateIMUAngle();
-  Serial.print("IMU_pitch_angle_bias: ");
-  Serial.print(IMU_pitch_angle_bias);
-  Serial.print(" IMU_roll_angle_bias: ");
-  Serial.println(IMU_roll_angle_bias);
   for (int i = 0; i < 10; i++) {
     aL_pos = act_left.update_pos();
     aR_pos = act_right.update_pos();
@@ -623,6 +619,12 @@ void calibrateIMUAngle() {
   float IMU_pitch_angle_bias = atan2(-ax_avg, sqrt(ay_avg * ay_avg + az_avg * az_avg));
   float IMU_roll_angle_bias = atan2(ay_avg, az_avg);
   IMU_yaw_scale = cos(IMU_pitch_angle_bias) * cos(IMU_roll_angle_bias);
+  Serial.print("IMU_pitch_angle_bias: ");
+  Serial.print(IMU_pitch_angle_bias);
+  Serial.print(" IMU_roll_angle_bias: ");
+  Serial.println(IMU_roll_angle_bias);
+  Serial.print(" IMU_yaw_scale: ");
+  Serial.println(IMU_yaw_scale);
 }
 
 void updateIMUData(bool useHomeBias){ 
