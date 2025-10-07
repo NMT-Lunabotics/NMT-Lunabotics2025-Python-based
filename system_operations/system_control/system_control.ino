@@ -207,7 +207,7 @@ OutPin ledb_pin(LEDB_PIN);
 void stop_all();
 void systemFault(bool criticalError = false,String fault_msg="", String error_msg="", LedState y =NONE, LedState g =NONE, LedState b=NONE);
 void calibrateIMU();
-calibrateIMUAngle();
+void calibrateIMUAngle();
 void updateIMUData(bool useHomeBias=false);
 void sendSerialFeedback(char command, uint8_t* data, size_t dataLen);
 
