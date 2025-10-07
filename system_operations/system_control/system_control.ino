@@ -132,8 +132,7 @@ bool update_IMU_raw_home=true;
 float IMU_filter_rate=0;
 
 #define IMU_angle_bias_samples 25
-float IMU_pitch_angle_bias = 0;
-float IMU_roll_angle_bias = 0;
+float IMU_yaw_scale=0;
 
 //--------------- SYSTEM VARIABLES ---------------
 
@@ -611,41 +610,15 @@ void calibrateIMU() {
 void updateIMUData(bool useHomeBias){ 
   int16_t gx, gy, gz; 
   IMU.getRotation(&gx, &gy, &gz); 
-
-  // Convert raw gyro to deg/s
-  float gx_rate = gx / 131.0;   // adjust if FS != ±250°/s
-  float gy_rate = gy / 131.0;
-  float gz_rate = gz / 131.0;
-
+  float rate_raw = gz / 131.0; 
   float dt = (current_time - last_IMU_time) / 1000.0; 
-  last_IMU_time = current_time; 
-
-  // Low-pass filter on gz
   float alpha = dt / (IMU_filter_constant + dt); 
-  IMU_filter_rate = alpha * gz_rate + (1 - alpha) * IMU_filter_rate; 
-
-  if(useHomeBias) IMU_raw_home_bias = IMU_rate; 
-
-  // --- Tilt compensation ---
-  float cos_pitch = cos(IMU_pitch_angle_bias);
-  float sin_pitch = sin(IMU_pitch_angle_bias);
-  float cos_roll  = cos(IMU_roll_angle_bias);
-  float sin_roll  = sin(IMU_roll_angle_bias);
-
-  // Project the z-axis rotation into the horizontal plane (world-aligned yaw)
-  float gz_world = gz_rate * cos_pitch * cos_roll
-                 - gx_rate * sin_roll
-                 - gy_rate * sin_pitch * cos_roll;
-
-  // Integrate world-aligned gyro to get yaw
-  IMU_rate += (gz_world - IMU_offset_bias) * dt; 
+  IMU_filter_rate = alpha * rate_raw + (1 - alpha) * IMU_filter_rate; 
+  last_IMU_time = current_time; 
+  if(useHomeBias==true) IMU_raw_home_bias=IMU_rate; 
+  IMU_rate += ((gz_rate - IMU_offset_bias) * IMU_yaw_scale) * dt;
   IMU_yaw = (IMU_rate - IMU_raw_home_bias) + IMU_local_home_bias;
-
-  // Optional: wrap yaw to -180..180
-  if(IMU_yaw > 180) IMU_yaw -= 360;
-  if(IMU_yaw < -180) IMU_yaw += 360;
 }
-
 
 void calibrateIMUAngle() {
   int16_t ax, ay, az;
@@ -660,8 +633,10 @@ void calibrateIMUAngle() {
   float ax_avg = (float)ax_sum / IMU_angle_bias_samples;
   float ay_avg = (float)ay_sum / IMU_angle_bias_samples;
   float az_avg = (float)az_sum / IMU_angle_bias_samples;
-  IMU_pitch_angle_bias = atan2(-ax_avg, sqrt(ay_avg * ay_avg + az_avg * az_avg));
-  IMU_roll_angle_bias  = atan2(ay_avg, az_avg);
+  float IMU_pitch_angle_bias = atan2(-ax_avg, sqrt(ay_avg * ay_avg + az_avg * az_avg));
+  float IMU_roll_angle_bias  = atan2(ay_avg, az_avg);
+  IMU_yaw_scale = cos(IMU_pitch_angle_bias) * cos(IMU_roll_angle_bias);
+
 }
 
 void sendSerialFeedback(char command, uint8_t* data, size_t dataLen) {
