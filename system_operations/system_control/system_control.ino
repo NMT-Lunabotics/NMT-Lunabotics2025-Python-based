@@ -401,9 +401,6 @@ void loop() {
   systemFault(false, "","", NONE, NONE, NONE);
   if(update_IMU_raw_home==true) updateIMUData(true);
   else updateIMUData(false);
-
-  Serial.print("Final unchanged yaw: ");
-  Serial.println(IMU_yaw,6);
 }
 
 // Read serial communication from autonomy computer and set system variables to output.
