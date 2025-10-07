@@ -17,7 +17,7 @@ bool component_timeout_faults = true;
 
 // Debug mode flag
 bool debug_mode = false; 
-bool sensor_output = 1; //1: IMU
+bool sensor_output = 0; //1: IMU
 
 //--------------- Actuators ---------------
 
