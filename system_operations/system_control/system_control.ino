@@ -361,7 +361,11 @@ void loop() {
             motor_left.motor_ctrl(mL_velocity);
             motor_right.motor_ctrl(mR_velocity);
           }
-          else{
+          else if(mLR_rotation_speed>=0){
+            motor_left.motor_ctrl(mLR_rotation_speed);
+            motor_right.motor_ctrl(-mLR_rotation_speed);
+          }
+          else if(mLR_rotation_speed<0){
             motor_left.motor_ctrl(mLR_rotation_speed);
             motor_right.motor_ctrl(-mLR_rotation_speed);
           }
@@ -460,6 +464,8 @@ void processMessage(byte *data, int length) {
     case 'R': 
       {                                                 // (R, rotate) Recvives a rotation speed, angle, radius, and home reset, to allow arc or stationary turns       
         mLR_rotation_speed = (int8_t)data[1]; 
+        if(mLR_rotation_speed>0&&mLR_rotation_speed>motor_max_vel) mLR_rotation_speed=motor_max_vel;
+        else if(mLR_rotation_speed<0&&mLR_rotation_speed<-motor_max_vel) mLR_rotation_speed=-motor_max_vel;
         mLR_rotation = -(int8_t)data[2];
         mLR_arc_radius = (int8_t)data[3];
         reset_IMU_local_home = (int8_t)data[4];

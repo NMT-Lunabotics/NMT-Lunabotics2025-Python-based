@@ -27,8 +27,6 @@ serial = serialCommands()
 #-----------------------------------------------------------------
 
 rotate=True
-serial_message = serial.read_serial()
-if serial_message: print(serial_message) 
 while True:
     #console_message=network.receive_data()
     #if console_message: print(f"[message] {console_message}")
@@ -44,7 +42,5 @@ while True:
 
     # Read and print out error arduino serial messages
     time.sleep(0.01)
-    serial_message = serial.read_serial()
-    if serial_message: print(serial_message)  
-    
-    time.sleep(0.01)
+    #serial_message = serial.read_serial()
+    #if serial_message: print(serial_message)  
