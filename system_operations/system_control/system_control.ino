@@ -131,6 +131,10 @@ bool reset_IMU_local_home=false;
 bool update_IMU_raw_home=true;
 float IMU_filter_rate=0;
 
+#define IMU_angle_bias_samples 25
+float IMU_pitch_angle_bias=0;
+float IMU_roll_angle_bias=0;
+
 //--------------- SYSTEM VARIABLES ---------------
 
 // Timing
@@ -203,6 +207,7 @@ OutPin ledb_pin(LEDB_PIN);
 void stop_all();
 void systemFault(bool criticalError = false,String fault_msg="", String error_msg="", LedState y =NONE, LedState g =NONE, LedState b=NONE);
 void calibrateIMU();
+calibrateIMUAngle();
 void updateIMUData(bool useHomeBias=false);
 void sendSerialFeedback(char command, uint8_t* data, size_t dataLen);
 
@@ -212,7 +217,8 @@ void setup() {
   Serial.flush();
   // Set default led status
   systemFault(false,"","", NONE, BLINK, BLINK);
-  // Calibrate the IMU sensors drift factor
+  // Calibrate the IMU sensors drift factor and start angle
+  calibrateIMUAngle();
   calibrateIMU();
   for (int i = 0; i < 10; i++) {
     aL_pos = act_left.update_pos();
@@ -595,17 +601,27 @@ void calibrateIMU() {
 }
 
 void updateIMUData(bool useHomeBias){
-  int16_t gx, gy, gz; 
-  IMU.getRotation(&gx, &gy, &gz);
-  float rate_raw = gz / 131.0;
-  float dt = (current_time - last_IMU_time) / 1000.0;
-  float alpha = dt / (IMU_filter_constant + dt);
-  IMU_filter_rate = alpha * rate_raw + (1 - alpha) * IMU_filter_rate;
-  last_IMU_time = current_time;
-  if(useHomeBias==true) IMU_raw_home_bias=IMU_rate;
-  IMU_rate += (IMU_filter_rate - IMU_offset_bias) * dt;
-  IMU_yaw = (IMU_rate - IMU_raw_home_bias) + IMU_local_home_bias;
-}  
+  int16_t gx,gy,gz;int16_t ax,ay,az;
+  IMU.getRotation(&gx,&gy,&gz);
+  IMU.getAcceleration(&ax,&ay,&az);
+  float rate_raw=gz/131.0;
+  float dt=(current_time-last_IMU_time)/1000.0;
+  if(dt<=0)dt=0.001;
+  float alpha=dt/(IMU_filter_constant+dt);
+  IMU_filter_rate=alpha*rate_raw+(1-alpha)*IMU_filter_rate;
+  last_IMU_time=current_time;
+  if(useHomeBias)IMU_raw_home_bias=IMU_rate;
+  IMU_rate+=(IMU_filter_rate-IMU_offset_bias)*dt;
+  IMU_yaw=(IMU_rate-IMU_raw_home_bias)+IMU_local_home_bias;
+  float ax_f=(float)ax;
+  float ay_f=(float)ay;
+  float az_f=(float)az;
+  float pitch_raw=atan2(-ax_f,sqrt(ay_f*ay_f+az_f*az_f));
+  float roll_raw=atan2(ay_f,az_f);
+  float pitch=pitch_raw-IMU_pitch_angle_bias;
+  float roll=roll_raw-IMU_roll_angle_bias;
+  }
+   
 
 void sendSerialFeedback(char command, uint8_t* data, size_t dataLen) {
   const uint8_t startByte = 0x02; // Start byte
@@ -620,4 +636,21 @@ void sendSerialFeedback(char command, uint8_t* data, size_t dataLen) {
   }
   buf[idx++] = endByte;
   Serial.write(buf, idx);   // Write data to serial
+}
+
+void calibrateIMUAngle() {
+  int16_t ax, ay, az;
+  long ax_sum = 0, ay_sum = 0, az_sum = 0;
+  for (int i = 0; i < IMU_angle_bias_samples; i++) {
+      IMU.getAcceleration(&ax, &ay, &az);
+      ax_sum += ax;
+      ay_sum += ay;
+      az_sum += az;
+      delay(10);
+  }
+  float ax_avg = (float)ax_sum / IMU_angle_bias_samples;
+  float ay_avg = (float)ay_sum / IMU_angle_bias_samples;
+  float az_avg = (float)az_sum / IMU_angle_bias_samples;
+  IMU_pitch_angle_bias = atan2(-ax_avg, sqrt(ay_avg * ay_avg + az_avg * az_avg));
+  IMU_rool_angle_bias  = atan2(ay_avg, az_avg);
 }
