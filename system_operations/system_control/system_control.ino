@@ -219,11 +219,11 @@ void setup() {
   systemFault(false,"","", NONE, BLINK, BLINK);
   // Calibrate the IMU sensors drift factor
   calibrateIMU();
+  calibrateIMUAngle();
   Serial.print("IMU_pitch_angle_bias: ");
   Serial.print(IMU_pitch_angle_bias);
   Serial.print(" IMU_roll_angle_bias: ");
   Serial.println(IMU_roll_angle_bias);
-  calibrateIMUAngle();
   for (int i = 0; i < 10; i++) {
     aL_pos = act_left.update_pos();
     aR_pos = act_right.update_pos();

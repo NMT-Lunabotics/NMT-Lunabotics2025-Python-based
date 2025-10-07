@@ -27,6 +27,8 @@ serial = serialCommands()
 #-----------------------------------------------------------------
 
 rotate=True
+serial_message = serial.read_serial()
+if serial_message: print(serial_message) 
 while True:
     #console_message=network.receive_data()
     #if console_message: print(f"[message] {console_message}")
