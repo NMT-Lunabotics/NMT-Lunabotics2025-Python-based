@@ -611,30 +611,41 @@ void calibrateIMU() {
 void updateIMUData(bool useHomeBias){ 
   int16_t gx, gy, gz; 
   IMU.getRotation(&gx, &gy, &gz); 
-  float rate_raw = gz / 131.0; 
+
+  // Convert raw gyro to deg/s
+  float gx_rate = gx / 131.0;   // adjust if FS != ±250°/s
+  float gy_rate = gy / 131.0;
+  float gz_rate = gz / 131.0;
+
   float dt = (current_time - last_IMU_time) / 1000.0; 
-  float alpha = dt / (IMU_filter_constant + dt); 
-  IMU_filter_rate = alpha * rate_raw + (1 - alpha) * IMU_filter_rate; 
   last_IMU_time = current_time; 
-  if(useHomeBias==true) IMU_raw_home_bias=IMU_rate; 
-  IMU_rate += (IMU_filter_rate - IMU_offset_bias) * dt; 
-  IMU_yaw = (IMU_rate - IMU_raw_home_bias) + IMU_local_home_bias; 
+
+  // Low-pass filter on gz
+  float alpha = dt / (IMU_filter_constant + dt); 
+  IMU_filter_rate = alpha * gz_rate + (1 - alpha) * IMU_filter_rate; 
+
+  if(useHomeBias) IMU_raw_home_bias = IMU_rate; 
+
+  // --- Tilt compensation ---
+  float cos_pitch = cos(IMU_pitch_angle_bias);
+  float sin_pitch = sin(IMU_pitch_angle_bias);
+  float cos_roll  = cos(IMU_roll_angle_bias);
+  float sin_roll  = sin(IMU_roll_angle_bias);
+
+  // Project the z-axis rotation into the horizontal plane (world-aligned yaw)
+  float gz_world = gz_rate * cos_pitch * cos_roll
+                 - gx_rate * sin_roll
+                 - gy_rate * sin_pitch * cos_roll;
+
+  // Integrate world-aligned gyro to get yaw
+  IMU_rate += (gz_world - IMU_offset_bias) * dt; 
+  IMU_yaw = (IMU_rate - IMU_raw_home_bias) + IMU_local_home_bias;
+
+  // Optional: wrap yaw to -180..180
+  if(IMU_yaw > 180) IMU_yaw -= 360;
+  if(IMU_yaw < -180) IMU_yaw += 360;
 }
 
-void sendSerialFeedback(char command, uint8_t* data, size_t dataLen) {
-  const uint8_t startByte = 0x02; // Start byte
-  const uint8_t endByte   = 0x03; // End Byte
-  uint8_t buf[64];   // max size for USB CDC packet
-  size_t idx = 0;
-  buf[idx++] = startByte; // Create data buffer and push all required data to buffer
-  buf[idx++] = dataLen + 1; // length (command + data)
-  buf[idx++] = command;
-  for (size_t i = 0; i < dataLen; i++) { 
-    buf[idx++] = data[i];
-  }
-  buf[idx++] = endByte;
-  Serial.write(buf, idx);   // Write data to serial
-}
 
 void calibrateIMUAngle() {
   int16_t ax, ay, az;
@@ -651,4 +662,19 @@ void calibrateIMUAngle() {
   float az_avg = (float)az_sum / IMU_angle_bias_samples;
   IMU_pitch_angle_bias = atan2(-ax_avg, sqrt(ay_avg * ay_avg + az_avg * az_avg));
   IMU_roll_angle_bias  = atan2(ay_avg, az_avg);
+}
+
+void sendSerialFeedback(char command, uint8_t* data, size_t dataLen) {
+  const uint8_t startByte = 0x02; // Start byte
+  const uint8_t endByte   = 0x03; // End Byte
+  uint8_t buf[64];   // max size for USB CDC packet
+  size_t idx = 0;
+  buf[idx++] = startByte; // Create data buffer and push all required data to buffer
+  buf[idx++] = dataLen + 1; // length (command + data)
+  buf[idx++] = command;
+  for (size_t i = 0; i < dataLen; i++) { 
+    buf[idx++] = data[i];
+  }
+  buf[idx++] = endByte;
+  Serial.write(buf, idx);   // Write data to serial
 }
