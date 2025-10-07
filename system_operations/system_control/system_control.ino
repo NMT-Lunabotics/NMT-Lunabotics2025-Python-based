@@ -207,6 +207,7 @@ OutPin ledb_pin(LEDB_PIN);
 void stop_all();
 void systemFault(bool criticalError = false,String fault_msg="", String error_msg="", LedState y =NONE, LedState g =NONE, LedState b=NONE);
 void calibrateIMU();
+void calibrateIMUAngle();
 void updateIMUData(bool useHomeBias=false);
 void sendSerialFeedback(char command, uint8_t* data, size_t dataLen);
 
@@ -218,6 +219,7 @@ void setup() {
   systemFault(false,"","", NONE, BLINK, BLINK);
   // Calibrate the IMU sensors drift factor
   calibrateIMU();
+  calibrateIMUAngle();
   for (int i = 0; i < 10; i++) {
     aL_pos = act_left.update_pos();
     aR_pos = act_right.update_pos();

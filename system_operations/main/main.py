@@ -42,6 +42,6 @@ while True:
                 print("Robot rotation compleated")
                 rotate=False
 
-    if rotate: serial.send_command("R", [5, 10, 0, True])
+    if rotate: serial.send_command("R", [1, 10, 0, True])
     
     time.sleep(0.01)
