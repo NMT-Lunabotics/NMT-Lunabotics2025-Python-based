@@ -17,6 +17,7 @@ bool component_timeout_faults = true;
 
 // Debug mode flag
 bool debug_mode = false; 
+bool sensor_data = 1; //1: IMU
 
 
 //--------------- Actuators ---------------
@@ -407,6 +408,10 @@ void loop() {
   systemFault(false, "","", NONE, NONE, NONE);
   if(update_IMU_raw_home==true) updateIMUData(true);
   else updateIMUData(false);
+  if(sensor_data==1){
+    Serial.print("Yaw: ");
+    Serial.println(IMU_yaw,6);
+  }
 }
 
 // Read serial communication from autonomy computer and set system variables to output.
