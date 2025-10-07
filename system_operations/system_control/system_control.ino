@@ -451,7 +451,7 @@ void processMessage(byte *data, int length) {
     case 'R': 
       {                                                 // (R, rotate) Recvives a rotation speed, angle, radius, and home reset, to allow arc or stationary turns       
         mLR_rotation_speed = (int8_t)data[1]; 
-        mLR_rotation = (int8_t)data[2];
+        mLR_rotation = -(int8_t)data[2];
         mLR_arc_radius = (int8_t)data[3];
         reset_IMU_local_home = (int8_t)data[4];
         update_IMU_raw_home=false;
