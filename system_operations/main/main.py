@@ -41,6 +41,7 @@ while True:
     if rotate: serial.send_command("R", [1, 5, 0, True])
 
     # Read and print out error arduino serial messages
+    time.sleep(0.01)
     serial_message = serial.read_serial()
     if serial_message: print(serial_message)  
     
