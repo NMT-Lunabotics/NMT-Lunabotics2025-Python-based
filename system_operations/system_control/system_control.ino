@@ -607,19 +607,6 @@ void calibrateIMU() {
     IMU_offset_bias=IMU_sample_sum/IMU_offset_bias_samples;
 }
 
-void updateIMUData(bool useHomeBias){ 
-  int16_t gx, gy, gz; 
-  IMU.getRotation(&gx, &gy, &gz); 
-  float rate_raw = gz / 131.0; 
-  float dt = (current_time - last_IMU_time) / 1000.0; 
-  float alpha = dt / (IMU_filter_constant + dt); 
-  IMU_filter_rate = alpha * rate_raw + (1 - alpha) * IMU_filter_rate; 
-  last_IMU_time = current_time; 
-  if(useHomeBias==true) IMU_raw_home_bias=IMU_rate; 
-  IMU_rate += ((rate_raw - IMU_offset_bias) * IMU_yaw_scale) * dt;
-  IMU_yaw = (IMU_rate - IMU_raw_home_bias) + IMU_local_home_bias;
-}
-
 void calibrateIMUAngle() {
   int16_t ax, ay, az;
   long ax_sum = 0, ay_sum = 0, az_sum = 0;
@@ -634,9 +621,24 @@ void calibrateIMUAngle() {
   float ay_avg = (float)ay_sum / IMU_angle_bias_samples;
   float az_avg = (float)az_sum / IMU_angle_bias_samples;
   float IMU_pitch_angle_bias = atan2(-ax_avg, sqrt(ay_avg * ay_avg + az_avg * az_avg));
-  float IMU_roll_angle_bias  = atan2(ay_avg, az_avg);
+  float IMU_roll_angle_bias = atan2(ay_avg, az_avg);
   IMU_yaw_scale = cos(IMU_pitch_angle_bias) * cos(IMU_roll_angle_bias);
+}
 
+void updateIMUData(bool useHomeBias){ 
+  int16_t gx, gy, gz; 
+  IMU.getRotation(&gx, &gy, &gz); 
+  float gz_rate = gz / 131.0; 
+  float dt = (current_time - last_IMU_time) / 1000.0; 
+  last_IMU_time = current_time; 
+  float alpha = dt / (IMU_filter_constant + dt); 
+  IMU_filter_rate = alpha * gz_rate + (1 - alpha) * IMU_filter_rate; 
+  if(useHomeBias) IMU_raw_home_bias = IMU_rate; 
+  float gz_world = IMU_filter_rate * IMU_yaw_scale;
+  IMU_rate += (gz_world - IMU_offset_bias) * dt; 
+  IMU_yaw = (IMU_rate - IMU_raw_home_bias) + IMU_local_home_bias;
+  if(IMU_yaw > 180) IMU_yaw -= 360;
+  if(IMU_yaw < -180) IMU_yaw += 360;
 }
 
 void sendSerialFeedback(char command, uint8_t* data, size_t dataLen) {
