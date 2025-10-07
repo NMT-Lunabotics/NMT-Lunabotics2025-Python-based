@@ -26,22 +26,22 @@ serial = serialCommands()
 # <command, [rotation_speed, rotation_angle, rotation_radius, reset home position]>
 #-----------------------------------------------------------------
 
-rotate = True
-command_sent = False
-
+rotate=True
 while True:
+    #console_message=network.receive_data()
+    #if console_message: print(f"[message] {console_message}")
+
+    # Read and print out error arduino serial messages
     serial_message = serial.read_serial()
-    if serial_message: print(serial_message)
+    if serial_message: print(serial_message)  
 
     feedback = serial.read_command_feedback()
     if feedback:
         for packet in feedback:
-            if packet["command"] == 'R':
-                print("Robot rotation completed")
-                rotate = False
+            if packet["command"] == 'R': 
+                print("Robot rotation compleated")
+                rotate=False
 
-    if rotate and not command_sent:
-        serial.send_command("R", [1, 5, 0, True])
-        command_sent = True
-
+    if rotate: serial.send_command("R", [1, 5, 0, True])
+    
     time.sleep(0.01)

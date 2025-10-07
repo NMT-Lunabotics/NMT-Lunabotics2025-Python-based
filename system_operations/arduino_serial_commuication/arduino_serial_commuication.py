@@ -79,8 +79,8 @@ class serialCommands:
                     command = chr(self._read_buffer[2])
                     data = list(self._read_buffer[3:3 + expected_length - 1])
                     packets.append({"command": command, "data": data})           # Add data and command to list
-                    self._read_buffer = self._read_buffer[expected_length + 3:]  # Remove processed packet
+                    # remove only the exact processed packet to avoid duplicates
+                    self._read_buffer = self._read_buffer[expected_length + 3:]
                 else:
                     self._read_buffer.pop(0)                                      # Invalid packet, drop first byte and try again
         return packets if packets else None                                     # Return data if there is any
-                                        # Return data if there is any
