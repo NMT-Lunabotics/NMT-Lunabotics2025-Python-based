@@ -652,5 +652,5 @@ void calibrateIMUAngle() {
   float ay_avg = (float)ay_sum / IMU_angle_bias_samples;
   float az_avg = (float)az_sum / IMU_angle_bias_samples;
   IMU_pitch_angle_bias = atan2(-ax_avg, sqrt(ay_avg * ay_avg + az_avg * az_avg));
-  IMU_rool_angle_bias  = atan2(ay_avg, az_avg);
+  IMU_roll_angle_bias  = atan2(ay_avg, az_avg);
 }
