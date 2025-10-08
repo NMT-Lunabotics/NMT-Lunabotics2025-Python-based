@@ -9,7 +9,6 @@ EXCLUDE_FROM_PULL=(
     "SLAM/" 
     "system_operations/component_tests/" 
     "system_operations/documents/" 
-    "system_operations/remote_rc_serial/"
     )
 
 git config --global user.email "benjamin.peterson@student.nmt.edu"

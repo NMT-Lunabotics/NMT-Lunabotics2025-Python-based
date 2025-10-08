@@ -15,17 +15,6 @@ MOUNT_HOST_PATH=false
 REPOSITORY_NAME="NMT-Lunabotics2025-Python-based"
 WORKING_DIR_CONTAINER="/home/luna/$REPOSITORY_NAME"
 WORKING_DIR_HOST="$(pwd)" 
-EXCLUDE_FROM_PULL=(
-    "ros/" 
-    "DriverStation/" 
-    "README.md" 
-    "LiDAR_Project/" 
-    "SLAM/" 
-    "system_operations/component_tests/" 
-    "system_operations/documents/" 
-    "system_operations/remote_rc_serial/"
-    )
-export EXCLUDE_FROM_PULL_STR="${EXCLUDE_FROM_PULL[@]}"
 
 # Use current environment variables if available, fallback to defaults
 : "${DISPLAY:=$DISPLAY}"
@@ -60,25 +49,6 @@ fi
 
 # Pull latest changes from GitHub if --pull flag is used
 if [ "$GITHUB_PULL" = true ]; then
-    #git config --global user.email "benjamin.peterson@student.nmt.edu"
-    #git config --global user.name "benjamin-p15"
-    #git remote add origin git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git 2>/dev/null || true
-    #git fetch origin
-    #git sparse-checkout init --no-cone
-    #ALL_FILES=$(git ls-tree -r --name-only origin/main)
-    #INCLUDE=()
-    #while IFS= read -r f; do
-    #    skip=false
-    #    for excl in "${EXCLUDE_FROM_PULL[@]}"; do
-    #        [[ "$f" == "$excl"* || "$f" == "$excl" ]] && skip=true && break
-    #    done
-    #    if [ "$skip" = false ]; then
-    #        INCLUDE+=("$f")
-    #    fi
-    #done <<< "$ALL_FILES"
-    #git sparse-checkout set "${INCLUDE[@]}"
-    #git reset --hard origin/main
-    #git clean -fdx
     ./pull.sh
     RESTART_CONTAINER=true
     BUILD_IMAGE=true
