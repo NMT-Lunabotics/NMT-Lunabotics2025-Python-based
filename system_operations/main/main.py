@@ -4,7 +4,7 @@ from system_operations.jetson_networking import NetworkingOperations            
 from system_operations.arduino_cli import arduinoConsole                                                    # Import arduino cli package for compiling and uploading code to arduino
 from system_operations.arduino_serial_commuication import serialCommands                                    # Import arduino serial package commucation with the arduino
 
-arduino1_port = "/dev/ttyACM1"  # Arduino 1 (system control)
+arduino1_port = "/dev/ttyACM2"  # Arduino 1 (system control)
 arduino2_port = "/dev/ttyACM0"  # Arduino 2 (rc transmitsion)
 
 # Initialize classes with default options
@@ -57,5 +57,5 @@ while True:
 
     # Read and print out error arduino serial messages
     time.sleep(0.01)
-    serial_message = serial2.read_serial()
-    if serial_message: print(serial_message)  
+    #serial_message = serial2.read_serial()
+    #if serial_message: print(serial_message)  

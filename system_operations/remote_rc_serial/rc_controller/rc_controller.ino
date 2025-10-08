@@ -125,6 +125,6 @@ void sendSerialCommand(char command, uint8_t* data, size_t dataLen) {
   buf[idx++] = endByte;
 
   Serial.write(buf, idx);   // one USB transfer
-  //Serial.flush();           // block until transmitted
+  Serial.flush();           // block until transmitted
   //delay(1);
 }
