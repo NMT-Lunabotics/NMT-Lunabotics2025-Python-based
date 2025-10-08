@@ -26,7 +26,7 @@ void loop() {
   int16_t *joystick = processIbus();
 
   // Limit number of packages sent to not overload the USB serial connection.
-  if (millis() - lastSend >= 1) {
+  if (millis() - lastSend >= 50) {
     lastSend = millis();
 
     if (joystick != nullptr) {
