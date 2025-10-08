@@ -48,10 +48,8 @@ while True:
     #if rotate: serial.send_command("R", [1, -90, 0, True])
     #serial.send_command("L", [0, 255, 255])
 
-    packets = serial2.read_command_feedback()
-    if packets:
-        for packet in packets:
-            serial.send_command(packet["command"], packet["data"])
+    packet = serial2.read_command_feedback()
+    if packet: serial.send_command(packet["command"], packet["data"])
 
 
 
