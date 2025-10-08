@@ -4,8 +4,8 @@ from system_operations.jetson_networking import NetworkingOperations            
 from system_operations.arduino_cli import arduinoConsole                                                    # Import arduino cli package for compiling and uploading code to arduino
 from system_operations.arduino_serial_commuication import serialCommands                                    # Import arduino serial package commucation with the arduino
 
-arduino1_port = "/dev/ttyUSB0"  # Arduino 1 (system control)
-arduino2_port = "/dev/ttyUSB1"  # Arduino 2 (rc transmitsion)
+arduino1_port = "/dev/ttyACM1"  # Arduino 1 (system control)
+arduino2_port = "/dev/ttyACM0"  # Arduino 2 (rc transmitsion)
 
 # Initialize classes with default options
 arduino = arduinoConsole(sketch_path = ROOT/"system_operations"/"system_control"/"system_control.ino",board="arduino:avr:mega", port=arduino1_port)    
