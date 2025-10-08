@@ -1,6 +1,4 @@
 //This code is pushed to an external adruino, then by connecting it to the system control arduino the external adruino will take rc controller inputs and send serial
-#include <SoftwareSerial.h> 
-SoftwareSerial Serial2(8, 9);
 //--------------- RC controller ---------------
 
 // MotorX, MotorY, actuatorX, actuatorY
@@ -8,8 +6,6 @@ int16_t centers[4] = { 1640, 1615, 1624, 1622 };       // Center of each joystic
 int16_t softZones[4] = { 50, 250, 50, 50 };            // Joy stick Drift ranges
 int16_t maxJoyValues[4] = { 1971, 1976, 2000, 2000 };  // Joy stick max range
 int16_t minJoyValues[4] = { 1000, 1040, 1087, 1064 };  // Joy sick min ranges
-
-unsigned long lastSend = 0;
 
 void setup() {
   delay(5);
@@ -25,10 +21,6 @@ void loop() {
   // Process IBUS data for joystick and return all data.
   int16_t *joystick = processIbus();
 
-  // Limit number of packages sent to not overload the USB serial connection.
-  if (millis() - lastSend >= 50) {
-    lastSend = millis();
-
     if (joystick != nullptr) {
       uint8_t joystickData[3] = { joystick[1], joystick[2], joystick[3] }; 
       sendSerialCommand('L', joystickData, sizeof(joystickData));
@@ -40,7 +32,6 @@ void loop() {
       //size_t dataLens[2] = { sizeof(motorData), sizeof(actuatorData) };
       //sendSerialCommands(2, commands, dataArrays, dataLens);
     }
-  }
 }
 
 // Read serial communication from RC controller and set system variables to output
@@ -125,6 +116,6 @@ void sendSerialCommand(char command, uint8_t* data, size_t dataLen) {
   buf[idx++] = endByte;
 
   Serial.write(buf, idx);   // one USB transfer
-  Serial.flush();           // block until transmitted
+  //Serial.flush();           // block until transmitted
   //delay(1);
 }

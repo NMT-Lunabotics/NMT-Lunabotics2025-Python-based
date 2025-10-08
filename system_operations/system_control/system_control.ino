@@ -2,9 +2,9 @@
 MPU6050 IMU;
 // #include <Servo.h>
 
-int test_led_pin_red=5;
-int test_led_pin_green=4;
-int test_led_pin_blue=3;
+int test_led_pin_red=3;
+int test_led_pin_green=5;
+int test_led_pin_blue=6;
 int test_led_red=255;
 int test_led_green=255;
 int test_led_blue=255;
