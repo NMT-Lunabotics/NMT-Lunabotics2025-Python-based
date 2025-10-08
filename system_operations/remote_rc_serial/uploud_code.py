@@ -7,11 +7,18 @@ from system_operations.arduino_cli import arduinoConsole
 from system_operations.arduino_serial_commuication import serialCommands
 
 # Initialize arduino and serial classes with our deseried settings, and run our compile/upload function.
-arduino = arduinoConsole(sketch_path = ROOT/"system_operations"/"remote_rc_serial"/"rc_controller", board="arduino:avr:mega")
+arduino = arduinoConsole(sketch_path = ROOT/"system_operations"/"remote_rc_serial"/"rc_controller/rc_controller.ino", board="arduino:avr:uno")
 serial = serialCommands()
 arduino.compile_and_upload()
 
 
 while True:
-    value = serial.read_serial_bytes()
+    #feedback = serial.read_command_feedback()
+    #if feedback:
+    #    for packet in feedback: 
+    #        print(packet)
+
+
+    value = serial.read_raw_serial()
     if value: print(value)
+    

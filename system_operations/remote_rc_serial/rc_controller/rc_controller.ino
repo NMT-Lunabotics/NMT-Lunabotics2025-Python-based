@@ -1,5 +1,6 @@
 //This code is pushed to an external adruino, then by connecting it to the system control arduino the external adruino will take rc controller inputs and send serial
-
+#include <SoftwareSerial.h> 
+SoftwareSerial Serial2(8, 9);
 //--------------- RC controller ---------------
 
 // MotorX, MotorY, actuatorX, actuatorY
@@ -17,7 +18,7 @@ void setup() {
   Serial2.begin(115200);
   Serial.begin(115200);
   Serial.flush();
-  Serial.println("RC controller initialized")
+  Serial.println("RC controller initialized");
 }
 
 void loop() {
@@ -105,7 +106,7 @@ int16_t *processIbus() {
   return nullptr;
 }
 
-// Send a single message (NOT USED)
+// Send a single message
 void sendSerialCommand(char command, uint8_t* data, size_t dataLen) {
   const uint8_t startByte = 0x02; // STX
   const uint8_t endByte   = 0x03; // ETX
@@ -126,31 +127,4 @@ void sendSerialCommand(char command, uint8_t* data, size_t dataLen) {
   Serial.write(buf, idx);   // one USB transfer
   //Serial.flush();           // block until transmitted
   //delay(1);
-}
-
-// Send multiple messages in one USB transfer
-void sendSerialCommands(uint8_t numMessages, char* commands, uint8_t** dataArrays, size_t* dataLens) {
-  const uint8_t startByte = 0x02; // STX
-  const uint8_t endByte   = 0x03; // ETX
-
-  uint8_t buf[128];   // large enough to hold multiple messages
-  size_t idx = 0;
-
-  buf[idx++] = startByte; // start of overall packet
-
-  // Add each message sequentially
-  for (uint8_t i = 0; i < numMessages; i++) {
-    buf[idx++] = dataLens[i] + 1;   // length for this message (command + data)
-    buf[idx++] = commands[i];       // command byte
-
-    for (size_t j = 0; j < dataLens[i]; j++) {
-      buf[idx++] = dataArrays[i][j];  // data bytes
-    }
-  }
-
-  buf[idx++] = endByte; // end of overall packet
-
-  Serial.write(buf, idx); // send all messages in one USB transfer
-  //Serial.flush();        // optional, can block
-  //delay(1);              // not needed
 }
