@@ -1,12 +1,5 @@
 //This code is pushed to an external adruino, then by connecting it to the system control arduino the external adruino will take rc controller inputs and send serial
 //--------------- RC controller ---------------
-#include <usbhub.h>    // Core USB host support
-#include <cdcacm.h>    // USB CDC (serial) devices
-
-USB Usb;               // Main USB host object
-CDCAsyncOper AsyncOper; // Async operations for CDC
-ACM UsbSerial(&Usb, &AsyncOper); // CDC serial device
-USBHub Hub(&Usb);       // Optional if using a USB hub
 
 // MotorX, MotorY, actuatorX, actuatorY
 int16_t centers[4] = { 1640, 1615, 1624, 1622 };       // Center of each joystick
@@ -25,7 +18,6 @@ void setup() {
 }
 
 void loop() {
-  Usb.Task();
   // Process IBUS data for joystick and return all data.
   int16_t *joystick = processIbus();
 
@@ -107,6 +99,7 @@ int16_t *processIbus() {
 
 // Send a single message
 void sendSerialCommand(char command, uint8_t* data, size_t dataLen) {
+  Serial.print("test");
   const uint8_t startByte = 0x02; // STX
   const uint8_t endByte   = 0x03; // ETX
 
@@ -122,8 +115,7 @@ void sendSerialCommand(char command, uint8_t* data, size_t dataLen) {
   }
 
   buf[idx++] = endByte;
-
-  if (UsbSerial.isReady()) UsbSerial.SndData(idx, buf);
+  Serial2.write(buf, idx); 
 
   //Serial.write(buf, idx);   // one USB transfer
   //Serial.flush();           // block until transmitted
