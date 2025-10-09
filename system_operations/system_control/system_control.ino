@@ -2,13 +2,6 @@
 MPU6050 IMU;
 // #include <Servo.h>
 
-int test_led_pin_red=3;
-int test_led_pin_green=5;
-int test_led_pin_blue=6;
-int test_led_red=255;
-int test_led_green=255;
-int test_led_blue=255;
-
 //--------------- Debug settings ---------------
 
 // List of components flags to enable/disable for testing
@@ -16,7 +9,7 @@ bool error_leds_enabled = true;
 bool motors_enabled = true;
 bool backet_actuator_enabled = false;
 bool arm_actuators_enabled = false;
-bool servo_motor_enabled = false;
+bool servo_motor_enabled = true;
 
 // List of faults to disable
 bool serial_communication_timeout_fault = true;
@@ -128,7 +121,6 @@ enum LedState { OFF = 0, NONE = -1, ON = 1, BLINK = 2 };
 // IMU gyroscope and accelerometer variables for robot rotations
 #define IMU_offset_bias_samples 25
 #define IMU_filter_constant 0.2
-#define IMU_angle_bias_samples 25
 float IMU_offset_bias=0;
 float IMU_rate = 0;
 float IMU_yaw=0;
@@ -138,9 +130,9 @@ float IMU_local_home_bias = 0;
 bool reset_IMU_local_home=false;
 bool update_IMU_raw_home=true;
 float IMU_filter_rate=0;
+
+#define IMU_angle_bias_samples 25
 float IMU_yaw_scale=0;
-//TODO Implament angluar velocity into main motor command. 
-float mLR_rotation_rate = 0;
 
 //--------------- SYSTEM VARIABLES ---------------
 
@@ -224,7 +216,7 @@ void setup() {
   Serial.flush();
   // Set default led status
   systemFault(false,"","", NONE, BLINK, BLINK);
-  // Calibrate the IMU sensors drift factor, and calulate it's angle to apply an correction.
+  // Calibrate the IMU sensors drift factor
   calibrateIMU();
   calibrateIMUAngle();
   for (int i = 0; i < 10; i++) {
@@ -233,16 +225,9 @@ void setup() {
     aB_pos = act_bucket.update_pos();
   }
   Serial.println("Arduino system_control.ino started.");
-
-  //pinMode(test_led_pin_red, OUTPUT);
-  //pinMode(test_led_pin_green, OUTPUT);
-  //pinMode(test_led_pin_blue, OUTPUT);
 }
 
 void loop() {
-  analogWrite(test_led_pin_red, test_led_red);  
-  analogWrite(test_led_pin_green, test_led_green);   
-  analogWrite(test_led_pin_blue, test_led_blue);    
   current_time = millis();
   // Read serial and process messages while being Non-blocking 
   while (Serial.available() > 0) {
@@ -506,11 +491,12 @@ void processMessage(byte *data, int length) {
         }
         break;
       }
-    case 'L':
+    /*case 'L':
       {                   
-        test_led_red = data[1];  
-        test_led_green = data[2];
-        test_led_blue = data[3];
+        //led_r = data[1];  
+        //led_y = data[2];
+        //led_g = data[3];
+        //led_b = data[4];
         if (debug_mode) {
           Serial.print("Red: ");
           Serial.print(led_r);
@@ -522,7 +508,7 @@ void processMessage(byte *data, int length) {
           Serial.println(led_b);
         }
         break;
-      }
+      }*/
     default:
       Serial.println("Unknown message type");
       cmd_triggered=false;

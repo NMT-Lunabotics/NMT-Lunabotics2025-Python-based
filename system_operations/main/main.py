@@ -25,4 +25,4 @@ serial = serialCommands()
 #-----------------------------------------------------------------
 
 while True:
-    serial.send_command("R", [10, 90, 1, True])
+    serial.send_command("M", [30, 30])
