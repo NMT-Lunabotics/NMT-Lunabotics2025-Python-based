@@ -48,7 +48,7 @@ except ImportError as exc:  # pragma: no cover - tkinter unavailable on some env
 # --- Controller/UDP configuration test-------------------------------------------------
 
 TARGET_CONTROLLER_NAME = "Logitech Gamepad F310"
-UDP_DESTINATION: Tuple[str, int] = ("127.0.0.1", 11000)
+UDP_DESTINATION: Tuple[str, int] = ("192.168.0.207", 11000)
 SEND_RATE_HZ = 50.0
 IDLE_RATE_HZ = 50.0  # kee p the outbound stream at a constant 50 Hz
 DEADZONE = 0.10
@@ -56,7 +56,7 @@ HOLD_BUTTON_INDEX = 4  # LB acts as deadman switch by default
 MAX_DISPLAY_AXES = 6
 MAX_DISPLAY_BUTTONS = 12
 TELEMETRY_LISTEN: Tuple[str, int] = ("0.0.0.0", 10000)
-COMMAND_DESTINATION: Tuple[str, int] = ("192.168.0.207", 10001)
+COMMAND_DESTINATION: Tuple[str, int] = ("0.0.0.0", 10001)
 CAMERA_REFRESH_HZ = 6.0
 CAMERA_DEFAULT_URL: Optional[str] = "http://127.0.0.1:8081/frame"
 KEEPALIVE_INTERVAL = 0.5  # seconds between forced resend of identical packet
