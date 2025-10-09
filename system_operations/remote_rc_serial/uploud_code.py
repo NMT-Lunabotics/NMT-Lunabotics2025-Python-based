@@ -7,7 +7,7 @@ from system_operations.arduino_cli import arduinoConsole
 from system_operations.arduino_serial_commuication import serialCommands
 
 # Initialize arduino and serial classes with our deseried settings, and run our compile/upload function.
-arduino = arduinoConsole(sketch_path = ROOT/"system_operations"/"remote_rc_serial"/"rc_controller/rc_controller.ino", board="arduino:avr:uno")
+arduino = arduinoConsole(sketch_path = ROOT/"system_operations"/"remote_rc_serial"/"rc_controller"/"rc_controller.ino", board="arduino:avr:mega")
 serial = serialCommands()
 arduino.compile_and_upload()
 
