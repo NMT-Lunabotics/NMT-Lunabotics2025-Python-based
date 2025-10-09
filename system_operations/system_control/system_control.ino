@@ -16,7 +16,7 @@ bool serial_communication_timeout_fault = true;
 bool component_timeout_faults = true;
 
 // Debug mode flag
-bool debug_mode = false; 
+bool debug_mode = true; 
 bool sensor_output = 0; //1: IMU
 
 //--------------- Actuators ---------------
