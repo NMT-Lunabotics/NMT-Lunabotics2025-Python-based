@@ -317,7 +317,7 @@ void loop() {
       act_left.stop();
       act_right.stop();
       ledy_pin.write(0);
-    } else if (lr_err >= act_max_err) systemFault(true,"Actuator relative error too large: " + String(aL_pos) + " " + String(aR_pos),"", NONE, NONE, NONE);
+    } //else if (lr_err >= act_max_err) systemFault(true,"Actuator relative error too large: " + String(aL_pos) + " " + String(aR_pos),"", NONE, NONE, NONE);
   }
     // Run motors and actuators
     if (!emergency_stop) {
