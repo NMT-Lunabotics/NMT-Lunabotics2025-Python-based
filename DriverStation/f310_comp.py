@@ -269,7 +269,7 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
                 steer = clamp_i8(int(axes[4] / 4))
                 left = clamp_i8(throttle + steer)
                 right = clamp_i8(throttle - steer)
-                arm = clamp_i8(int(axes[0] / 4))
+                arm = clamp_i8(int(axes[1] / 4))
                 bucket = clamp_i8(int(axes[1] / 4))
 
                 send_dt = now - last_udp
@@ -312,7 +312,7 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
                     shared["bucket_cmd"] = send_a[5]
                     shared["control_mode"] = "auto"
 
-            try:
+            try: 
                 link.send_command("M", send_m)
                 link.send_command("A", send_a)
                 lines = link.read_serial()
