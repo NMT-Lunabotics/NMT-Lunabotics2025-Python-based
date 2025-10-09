@@ -8,15 +8,15 @@ arduino1_port = "/dev/ttyACM2"  # Arduino 1 (system control)
 arduino2_port = "/dev/ttyACM0"  # Arduino 2 (rc transmitsion)
 
 # Initialize classes with default options
-arduino = arduinoConsole(sketch_path = ROOT/"system_operations"/"system_control"/"system_control.ino",board="arduino:avr:mega", port=arduino1_port)  
-arduino2 = arduinoConsole(sketch_path = ROOT/"system_operations"/"remote_rc_serial"/"rc_controller"/"rc_controller.ino",board="arduino:avr:uno", port=arduino2_port)   
+arduino = arduinoConsole(sketch_path = ROOT/"system_operations"/"system_control"/"system_control.ino",board="arduino:avr:mega")  
+#arduino2 = arduinoConsole(sketch_path = ROOT/"system_operations"/"remote_rc_serial"/"rc_controller"/"rc_controller.ino",board="arduino:avr:mega", port=arduino2_port)   
 network = NetworkingOperations()
 
 # Uplude latest pulled code to arduino. We uploude the code here intead of start_docker.sh or entery_point.sh to allow us to see compile errors.
 arduino.compile_and_upload()
-arduino2.compile_and_upload()
+#arduino2.compile_and_upload()
 serial = serialCommands(port=arduino1_port)
-serial2 = serialCommands(port=arduino2_port)
+#serial2 = serialCommands(port=arduino2_port)
 
 # Main loop
 
@@ -46,10 +46,10 @@ while True:
     #                rotate=False
 
     #if rotate: serial.send_command("R", [1, -90, 0, True])
-    #serial.send_command("L", [0, 255, 255])
+    serial.send_command("M", [1, 1])
 
-    packet = serial2.read_command_feedback()
-    if packet: serial.send_command(packet["command"], packet["data"])
+    #packet = serial2.read_command_feedback()
+    #if packet: serial.send_command(packet["command"], packet["data"])
 
 
 
