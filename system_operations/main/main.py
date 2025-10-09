@@ -24,5 +24,5 @@ serial = serialCommands()
 # <command, [rotation_speed, rotation_angle, rotation_radius, reset home position]>
 #-----------------------------------------------------------------
 
-while True:
-    serial.send_command("M", [30, 30])
+#while True:
+    #serial.send_command("M", [1, 1])
