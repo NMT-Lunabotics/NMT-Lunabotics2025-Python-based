@@ -12,15 +12,15 @@ int test_led_blue=255;
 //--------------- Debug settings ---------------
 
 // List of components flags to enable/disable for testing
-bool error_leds_enabled = false;
-bool motors_enabled = false;
+bool error_leds_enabled = true;
+bool motors_enabled = true;
 bool backet_actuator_enabled = false;
 bool arm_actuators_enabled = false;
 bool servo_motor_enabled = false;
 
 // List of faults to disable
-bool serial_communication_timeout_fault = false;
-bool component_timeout_faults = false;
+bool serial_communication_timeout_fault = true;
+bool component_timeout_faults = true;
 
 // Debug mode flag
 bool debug_mode = false; 
@@ -234,9 +234,9 @@ void setup() {
   }
   Serial.println("Arduino system_control.ino started.");
 
-  pinMode(test_led_pin_red, OUTPUT);
-  pinMode(test_led_pin_green, OUTPUT);
-  pinMode(test_led_pin_blue, OUTPUT);
+  //pinMode(test_led_pin_red, OUTPUT);
+  //pinMode(test_led_pin_green, OUTPUT);
+  //pinMode(test_led_pin_blue, OUTPUT);
 }
 
 void loop() {

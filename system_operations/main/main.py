@@ -15,7 +15,7 @@ network = NetworkingOperations()
 # Uplude latest pulled code to arduino. We uploude the code here intead of start_docker.sh or entery_point.sh to allow us to see compile errors.
 arduino.compile_and_upload()
 #arduino2.compile_and_upload()
-serial = serialCommands(port=arduino1_port)
+serial = serialCommands()
 #serial2 = serialCommands(port=arduino2_port)
 
 # Main loop
