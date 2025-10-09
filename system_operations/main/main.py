@@ -4,19 +4,11 @@ from system_operations.jetson_networking import NetworkingOperations            
 from system_operations.arduino_cli import arduinoConsole                                                    # Import arduino cli package for compiling and uploading code to arduino
 from system_operations.arduino_serial_commuication import serialCommands                                    # Import arduino serial package commucation with the arduino
 
-arduino1_port = "/dev/ttyACM2"  # Arduino 1 (system control)
-arduino2_port = "/dev/ttyACM0"  # Arduino 2 (rc transmitsion)
-
-# Initialize classes with default options
-arduino = arduinoConsole(sketch_path = ROOT/"system_operations"/"system_control"/"system_control.ino",board="arduino:avr:mega")  
-#arduino2 = arduinoConsole(sketch_path = ROOT/"system_operations"/"remote_rc_serial"/"rc_controller"/"rc_controller.ino",board="arduino:avr:mega", port=arduino2_port)   
+arduino = arduinoConsole(sketch_path = ROOT/"system_operations"/"system_control"/"system_control.ino",board="arduino:avr:mega")    
 network = NetworkingOperations()
-
-# Uplude latest pulled code to arduino. We uploude the code here intead of start_docker.sh or entery_point.sh to allow us to see compile errors.
 arduino.compile_and_upload()
-#arduino2.compile_and_upload()
 serial = serialCommands()
-#serial2 = serialCommands(port=arduino2_port)
+
 
 # Main loop
 
@@ -32,28 +24,5 @@ serial = serialCommands()
 # <command, [rotation_speed, rotation_angle, rotation_radius, reset home position]>
 #-----------------------------------------------------------------
 
-#rotate=True
 while True:
-    #TODO robot cannot revice feedback data at same time as serial messages
-    #console_message=network.receive_data()
-    #if console_message: print(f"[message] {console_message}")
-
-    #feedback = serial.read_command_feedback()
-    #    if feedback:
-    #        for packet in feedback:
-    #            if packet["command"] == 'R': 
-    #                print("Robot rotation compleated")
-    #                rotate=False
-
-    #if rotate: serial.send_command("R", [1, -90, 0, True])
-    serial.send_command("M", [1, 1])
-
-    #packet = serial2.read_command_feedback()
-    #if packet: serial.send_command(packet["command"], packet["data"])
-
-
-
-    # Read and print out error arduino serial messages
-    time.sleep(0.01)
-    #serial_message = serial2.read_serial()
-    #if serial_message: print(serial_message)  
+    serial.send_command("R", [10, 90, 1, True])
