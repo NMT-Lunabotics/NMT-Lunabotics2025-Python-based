@@ -300,7 +300,7 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
                 if len(send_m) < 2:
                     send_m = (send_m + [0, 0])[:2]
                 if len(send_a) < 6:
-                    send_a = (send_a + [0, 0, 0, 0, 0, 0])[:6]
+                    send_a = (send_a + [-1, -1, -1, -1, 0, 0])[:6]
 
                 with shared["lock"]:
                     shared["stale"] = False
