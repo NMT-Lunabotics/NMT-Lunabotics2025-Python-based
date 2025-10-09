@@ -7,8 +7,8 @@ MPU6050 IMU;
 // List of components flags to enable/disable for testing
 bool error_leds_enabled = true;
 bool motors_enabled = true;
-bool backet_actuator_enabled = false;
-bool arm_actuators_enabled = false;
+bool backet_actuator_enabled = true;
+bool arm_actuators_enabled = true;
 bool servo_motor_enabled = true;
 
 // List of faults to disable
