@@ -1,0 +1,51 @@
+Info on code structure for running the robot, 
+the robot is split into 4 main sections which run the while system. 
+
+
+
+1. docker (jetson virtual enveriment)
+------------------------------------------------------------
+Docker is the isolated enveriment that the robot system runs off of, 
+and it consists several files for running everything.
+------------------------------------------------------------
+(Dockerfile, entery_point.sh, pull.sh, start_docker.sh)
+
+Dockerfile is how each docker image is made. Most importantly that is where all 
+(system), (arduino), and (python) packages/librays/repsoitorys for any 
+imported code must be defined, that is the centeral package location.
+
+entery_point.sh con be ignored compleatly. 
+
+pull.sh defines how the docker containor pulls from github, the only thing
+to note is this is where you tell docker what files not to add to the containor.
+
+start_docker.s this is how you tell the jetson to start a containor, 
+system_operations/documents/docker/start_docker.txt has a guide on the start commands.
+
+
+
+2. system_operations (jetson system controller)
+------------------------------------------------------------
+This is how the main system runs, the (main.py) script located 
+in the (main) folder is the jetsons python operating system,
+that script uses all of the packages like arduino_cli, jetson_networking 
+that are located in the same folder to run autonomy, to talk to the Driverstation, 
+and to talk to the arduino. Basiclly the jetson system controller.
+------------------------------------------------------------
+
+
+
+3. system_control (adruino system controller)
+------------------------------------------------------------
+This is how the arduino system runs, the (system_control.ino)
+and other hpp files is what runs all of the arduino operations,
+the adruino system controller.
+------------------------------------------------------------
+
+
+
+4. Driverstation (visual user system controller)
+------------------------------------------------------------
+This starts a visual gui which can talk to the robot, 
+run f310_gui.py to open the gui 
+------------------------------------------------------------

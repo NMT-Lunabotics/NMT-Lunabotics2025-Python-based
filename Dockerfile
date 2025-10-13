@@ -44,8 +44,7 @@ ENV PATH="/root/bin:${PATH}"
 RUN mkdir -p /home/luna/.arduino15 && chmod -R 777 /home/luna/.arduino15
 RUN arduino-cli config init --config-file /home/luna/.arduino15/arduino-cli.yaml \
     && arduino-cli core update-index \
-    && arduino-cli core install arduino:avr \
-    && arduino-cli lib install "USB Host Shield Library 2.0"
+    && arduino-cli core install arduino:avr
 
 
 # Copy start_docker.sh into docker and make executable for accessing the containor

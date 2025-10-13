@@ -1,0 +1,16 @@
+This is the arduino cli package, this package is what the jetson uses to 
+uploud skeaches to the arduino and is what is used to listen to skeach errors.
+This class includes the following methiods:
+
+
+
+find_arduino()
+------------------------------------------------------------
+This is an internal methiod that just finds a availible arduino 
+board port to uploud the skeach to if a port is not provided.
+
+
+
+compile_and_upload()
+------------------------------------------------------------
+This takes the skeach from a spcfifced path and uploudes it to the arduino.

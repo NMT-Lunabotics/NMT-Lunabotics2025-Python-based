@@ -1,0 +1,51 @@
+This is the arduino serial package, this package is what the jetson uses to 
+read and write the usb serial to talk with the arduino, and listen to errors.
+This class includes the following methiods:
+
+
+
+find_arduino()
+------------------------------------------------------------
+This is an internal methiod that just finds a availible arduino 
+board port to use serial with if a port is not provided.
+
+
+
+send_serial(message)
+------------------------------------------------------------
+This sends a pure serial messages to the arduino.
+
+
+
+close_serial()
+------------------------------------------------------------
+This just closes the serial connection.
+
+
+
+read_raw_serial()
+------------------------------------------------------------
+This will read the raw serial data that the arduino is sending
+through the serial like errors or single bytes.
+
+
+
+read_serial()
+------------------------------------------------------------
+This will read the serial but it will try to combine multiple
+bytes into an array if multiple are sent at once.
+
+
+
+send_command(command, data)
+------------------------------------------------------------
+This is the main command to use, this allows you to send a command
+to the adruino, you just list the command and an array of data.
+
+
+
+read_command_feedback()
+------------------------------------------------------------
+This Acts like the other serial read methiods but it combines
+data into nice objects for using inside of your code, with a few
+extra safty checks. 

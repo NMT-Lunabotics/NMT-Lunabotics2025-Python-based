@@ -7,7 +7,7 @@ from system_operations.arduino_cli import arduinoConsole
 from system_operations.arduino_serial_commuication import serialCommands
 
 # Initialize arduino and serial classes with our deseried settings, and run our compile/upload function.
-arduino = arduinoConsole(sketch_path = ROOT/"system_operations"/"system_control"/"system_control.ino")
+arduino = arduinoConsole(sketch_path = ROOT/"system_operations"/"system_control"/"system_control.ino", board="arduino:avr:mega")
 
 arduino.compile_and_upload()
 serial = serialCommands()
@@ -26,6 +26,7 @@ while True:
     #serial.send_command("R", [10, 90, 1, true])
 
 
-    serial.send_command("M", [1, -1])
+    #serial.send_command("M", [1, -1])
     value = serial.read_serial()
-    if value: print(value)  
+    if value: print(value) 
+    time.sleep(0.1) 
