@@ -276,8 +276,8 @@ void loop() {
       }
       Serial.println("");
     #endif
-    int16_t throttle = joy[0]; 
-    int16_t steering = joy[1];
+    int16_t throttle = joy[1]; 
+    int16_t steering = joy[0];
     mL_speed = constrain(throttle - steering, -30, 30);
     mR_speed = constrain(throttle + steering, -30, 30);
     aLR_tgt = -1;
