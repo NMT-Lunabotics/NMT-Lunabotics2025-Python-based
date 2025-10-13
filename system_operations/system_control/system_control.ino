@@ -5,15 +5,15 @@
 // List of components flags to enable/disable for testing
 #define ERROR_LEDS_ENABLED           1
 #define MOTORS_ENABLED               1
-#define BUCKET_ACTUATOR_ENABLED      1
-#define ARM_ACTUATORS_ENABLED        1
+#define BUCKET_ACTUATOR_ENABLED      0
+#define ARM_ACTUATORS_ENABLED        0
 #define SERVO_MOTOR_ENABLED          0
 #define IMU_SENSOR_ENABLED           0
 #define IBUS_REVIVER_ENABLED         1
 
 // List of faults to disable
-#define SERIAL_COMM_TIMEOUT_FAULT    1
-#define COMPONENT_TIMEOUT_FAULTS     1
+#define SERIAL_COMM_TIMEOUT_FAULT    0
+#define COMPONENT_TIMEOUT_FAULTS     0
 
 // Debug mode flags
 #define DEBUG_MODE                   0
