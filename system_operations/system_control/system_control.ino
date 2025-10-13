@@ -5,7 +5,7 @@
 // List of components flags to enable/disable for testing
 #define ERROR_LEDS_ENABLED           1
 #define MOTORS_ENABLED               1
-#define BUCKET_ACTUATOR_ENABLED      1
+#define BUCKET_ACTUATOR_ENABLED      0
 #define ARM_ACTUATORS_ENABLED        1
 #define SERVO_MOTOR_ENABLED          0
 #define IMU_SENSOR_ENABLED           0
@@ -283,7 +283,7 @@ void loop() {
     aLR_tgt = -1;
     aB_tgt = -1;
     aL_speed = joy[2];
-    aR_speed = -aL_speed;
+    aR_speed = aL_speed;
     aB_speed = joy[3];
   } 
   #endif
