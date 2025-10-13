@@ -279,7 +279,7 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
                     left = right = arm = bucket = 0
 
                 send_m = [right, -left]
-                send_a = [-1, -1, -1, -1, 0, -bucket]
+                send_a = [-1, -1, -1, -1, arm, -bucket]
 
                 with shared["lock"]:
                     shared["motor_left"] = left
