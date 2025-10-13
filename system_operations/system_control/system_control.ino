@@ -5,8 +5,8 @@
 // List of components flags to enable/disable for testing
 #define ERROR_LEDS_ENABLED           1
 #define MOTORS_ENABLED               1
-#define BUCKET_ACTUATOR_ENABLED      0
-#define ARM_ACTUATORS_ENABLED        0
+#define BUCKET_ACTUATOR_ENABLED      1
+#define ARM_ACTUATORS_ENABLED        1
 #define SERVO_MOTOR_ENABLED          0
 #define IMU_SENSOR_ENABLED           0
 #define IBUS_REVIVER_ENABLED         1
@@ -25,7 +25,7 @@
 MPU6050 IMU; 
 #endif
 #if IBUS_REVIVER_ENABLED
-IBusReader ibus(Serial2);
+IBusReader ibus(Serial1);
 #endif
 
 //--------------- Actuators ---------------
@@ -278,8 +278,8 @@ void loop() {
     #endif
     int16_t throttle = joy[0]; 
     int16_t steering = joy[1];
-    mL_speed = constrain(throttle + steering, -30, 30);
-    mR_speed = constrain(throttle - steering, -30, 30);
+    mL_speed = constrain(throttle - steering, -30, 30);
+    mR_speed = constrain(throttle + steering, -30, 30);
     aLR_tgt = -1;
     aB_tgt = -1;
     aL_speed = joy[2];
