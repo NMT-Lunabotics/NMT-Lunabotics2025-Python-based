@@ -377,7 +377,7 @@ class IBusReader {
       int16_t maxJoyValues[4]=    {1979, 1971, 2000, 2000}; // Joystick max values
       int16_t minJoyValues[4]=    {1045, 1000, 1071, 1060}; // Joystick min values
       int16_t centers[4] =        {1627, 1614, 1621, 1622}; // Center of each joystick
-      int16_t softZones[4] =      {50, 250, 50, 50};        // Joystick drift ranges
+      int16_t softZones[4] =      {50, 50, 50, 50};        // Joystick drift ranges
       int16_t outMin[4] =         {-30, -30, -30, -30};     // Mapped min range
       int16_t outMax[4] =         {30, 30, 30, 30};         // Mapped max range
 };

@@ -7,13 +7,13 @@
 #define MOTORS_ENABLED               1
 #define BUCKET_ACTUATOR_ENABLED      1
 #define ARM_ACTUATORS_ENABLED        1
-#define SERVO_MOTOR_ENABLED          1
-#define IMU_SENSOR_ENABLED           1
+#define SERVO_MOTOR_ENABLED          0
+#define IMU_SENSOR_ENABLED           0
 #define IBUS_REVIVER_ENABLED         1
 
 // List of faults to disable
-#define SERIAL_COMM_TIMEOUT_FAULT    1
-#define COMPONENT_TIMEOUT_FAULTS     1
+#define SERIAL_COMM_TIMEOUT_FAULT    0
+#define COMPONENT_TIMEOUT_FAULTS     0
 
 // Debug mode flags
 #define DEBUG_MODE                   0
@@ -25,7 +25,7 @@
 MPU6050 IMU; 
 #endif
 #if IBUS_REVIVER_ENABLED
-IBusReader ibus(Serial2);
+IBusReader ibus(Serial1);
 #endif
 
 //--------------- Actuators ---------------
@@ -276,14 +276,14 @@ void loop() {
       }
       Serial.println("");
     #endif
-    int16_t throttle = joy[0]; 
-    int16_t steering = joy[1];
-    mL_speed = constrain(throttle + steering, -30, 30);
-    mR_speed = constrain(throttle - steering, -30, 30);
+    int16_t throttle = joy[1]; 
+    int16_t steering = joy[0];
+    mL_speed = constrain(throttle - steering, -30, 30);
+    mR_speed = constrain(throttle + steering, -30, 30);
     aLR_tgt = -1;
     aB_tgt = -1;
     aL_speed = joy[2];
-    aR_speed = -aL_speed;
+    aR_speed = aL_speed;
     aB_speed = joy[3];
   } 
   #endif
