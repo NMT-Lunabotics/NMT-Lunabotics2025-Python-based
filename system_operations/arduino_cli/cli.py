@@ -7,7 +7,7 @@ import serial.tools.list_ports
 # calling compile_and_upload() will compile and upload the sketch to the connected arduino, using your spcfifced skeach, board, baudrate and port.
 
 class arduinoConsole:
-    def __init__(self, sketch_path, board="arduino:avr:mega", baudrate=115200, port=None, errors=False):
+    def __init__(self, sketch_path: str, board: str="arduino:avr:mega", baudrate: int=115200, port:int=None, errors:bool=False) -> None:
         """Default function variables"""
         self.sketch_path = sketch_path
         self.board = board
@@ -16,7 +16,7 @@ class arduinoConsole:
         self.ser = None
         self.errors = errors
 
-    def find_arduino(self):
+    def find_arduino(self)->str:
         """Search currently used ports for Arduino"""
         ports = serial.tools.list_ports.comports()
         for port in ports:
@@ -24,7 +24,7 @@ class arduinoConsole:
                 return port.device
         raise RuntimeError("Arduino not found")
 
-    def compile_and_upload(self):
+    def compile_and_upload(self)->None:
         """Compile and upload the sketch to connected arduino"""
         verbose = "--verbose" if self.errors else ""
         subprocess.run(f'arduino-cli compile --fqbn {self.board} {verbose} "{self.sketch_path}"', shell=True, check=True)

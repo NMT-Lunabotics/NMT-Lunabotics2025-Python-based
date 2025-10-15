@@ -3,7 +3,7 @@ import serial
 import serial.tools.list_ports
 
 class serialCommands:
-    def __init__(self, port=None, baudrate=115200):
+    def __init__(self, port:int=None, baudrate:int=115200)->None:
         """Default function variables"""
         self.baudrate = baudrate
         self.port = port or self.find_arduino()
@@ -13,7 +13,7 @@ class serialCommands:
         self._read_buffer = bytearray()
         time.sleep(2)
 
-    def find_arduino(self):
+    def find_arduino(self)->str:
         """Auto-detect Arduino port"""
         ports = serial.tools.list_ports.comports()
         for port in ports:
@@ -21,22 +21,22 @@ class serialCommands:
                 return port.device
         raise RuntimeError("Arduino not found")
 
-    def send_serial(self, message: str):
+    def send_serial(self, message: str)->None:
         """Send a string to the Arduino"""
         self.ser.write((message + "\n").encode())
         self.ser.flush()
 
-    def close_serial(self):
+    def close_serial(self)->None:
         """Close the serial connection"""
         if self.ser:
             self.ser.close()
             self.ser = None
 
-    def read_raw_serial(self):
+    def read_raw_serial(self)->str:
         """Reads the raw audio byte stream from Arduino"""
         return self.ser.read(self.ser.in_waiting or 1)
     
-    def read_serial(self):
+    def read_serial(self)->list:
         """Read all available lines from Arduino and return as a list"""
         lines = []
         while self.ser.in_waiting > 0:
@@ -45,7 +45,7 @@ class serialCommands:
                 lines.append(line.decode(errors='ignore').strip())
         return lines if lines else None
     
-    def send_command(self, command: str, data: list):
+    def send_command(self, command: str, data: list)->None:
         """Send required data string command to arduino over serial."""
         length = len(data)+1 # Length = command byte + data bytes
         msg = bytearray()
@@ -59,7 +59,7 @@ class serialCommands:
         self.ser.flush()
         time.sleep(0.001)
 
-    def read_command_feedback(self):
+    def read_command_feedback(self)->list:
         """Read feedback from command operations"""
         packets = []
         expected_length = None
