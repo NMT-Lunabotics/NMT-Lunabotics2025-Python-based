@@ -245,7 +245,7 @@ OutPin motor_right_dac1(DACR1_PIN);
 OutPin motor_right_dac2(DACR2_PIN);
 OutPin motor_enable1(EN_PIN1);
 OutPin motor_enable2(EN_PIN2);
-Motor motor_left(motor_left_dac1, motor_left_dac2, motor_enable1, motor_max_vel, false);
+Motor motor_left(motor_left_dac1, motor_left_dac2, motor_enable1, motor_max_vel, true);
 Motor motor_right(motor_right_dac1, motor_right_dac2, motor_enable2, motor_max_vel, true);
 #endif
 #endif
