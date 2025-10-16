@@ -109,18 +109,6 @@ const int DACL2_PIN = 3;
 const int DACR1_PIN = 4;
 const int DACR2_PIN = 5;
 const int EN_PIN = 32;  // Common for both motors
-#else
-// Left motor
-const int DACL1_PIN = 4;  // A1
-const int DACL2_PIN = 6;  // B1
-const int EN_PIN1   = 9;  // P1
-
-// Right motor
-const int DACR1_PIN = 7;  // A2
-const int DACR2_PIN = 8;  // B2
-const int EN_PIN2   = 3;  // P2
-
-//3,4,5,6,7,8
 #endif
 
 // Max allowed motor velocity (rpm)
@@ -244,16 +232,8 @@ OutPin motor_enable(EN_PIN);
 Motor motor_left(motor_left_dac1, motor_left_dac2, motor_enable, motor_max_vel, false);
 Motor motor_right(motor_right_dac1, motor_right_dac2, motor_enable, motor_max_vel, true);
 #else
-OutPin motor_left_dac1(DACL1_PIN);
-OutPin motor_left_dac2(DACL2_PIN);
-//OutPin motor_right_dac1(DACR1_PIN);
-//OutPin motor_right_dac2(DACR2_PIN);
-OutPin motor_enable1(EN_PIN1);
-//OutPin motor_enable2(EN_PIN2);
-
-Motor motor_left(motor_left_dac1, motor_left_dac2, motor_enable1, motor_max_vel, false);
-//Motor motor_right(motor_right_dac1, motor_right_dac2, motor_enable2, motor_max_vel, true);
-
+SimpleMotor simpleMotorLeft(3, 4, 9);
+SimpleMotor simpleMotorRight(6, 7, 8);
 #endif
 #endif
 
@@ -280,6 +260,10 @@ void sendSerialFeedback(char command, uint8_t* data, size_t dataLen);
 void setup() {
   delay(5);
   Serial.begin(115200);
+  #if MAIN_ROBOT==0
+    simpleMotorLeft.begin();
+    simpleMotorRight.begin();
+  #endif
   #if IBUS_REVIVER_ENABLED
   ibus.begin(115200);
   #endif
@@ -445,32 +429,37 @@ void loop() {
             motor_left.motor_ctrl(mL_velocity);
             motor_right.motor_ctrl(mR_velocity);
             #else
-            motor_left.motor_ctrl_nuc(mL_velocity);
-            //motor_right.motor_ctrl_nuc(mR_velocity);
+              simpleMotorLeft.setSpeed(mL_velocity);   
+              simpleMotorRight.setSpeed(mR_velocity);
             #endif
           }
           else if(mLR_rotation>0){
             #if MAIN_ROBOT==1
-            motor_left.motor_ctrl(-mLR_rotation_speed);
-            motor_right.motor_ctrl(mLR_rotation_speed);
+              motor_left.motor_ctrl(-mLR_rotation_speed);
+              motor_right.motor_ctrl(mLR_rotation_speed);
             #else
-            motor_left.motor_ctrl_nuc(-mLR_rotation_speed);
-            //motor_right.motor_ctrl_nuc(mLR_rotation_speed);
+              simpleMotorLeft.setSpeed(-mLR_rotation_speed);   
+              simpleMotorRight.setSpeed(mLR_rotation_speed);
             #endif
           }
           else if(mLR_rotation<0){
             #if MAIN_ROBOT==1
-            motor_left.motor_ctrl(mLR_rotation_speed);
-            motor_right.motor_ctrl(-mLR_rotation_speed);
+              motor_left.motor_ctrl(mLR_rotation_speed);
+              motor_right.motor_ctrl(-mLR_rotation_speed);
             #else
-            motor_left.motor_ctrl_nuc(mLR_rotation_speed);
-            //motor_right.motor_ctrl_nuc(-mLR_rotation_speed);
+              simpleMotorLeft.setSpeed(mLR_rotation_speed);   
+              simpleMotorRight.setSpeed(-mLR_rotation_speed);
             #endif
           }
           #if IMU_SENSOR_ENABLED
           if((mLR_rotation<0&&IMU_yaw<=mLR_rotation)||(mLR_rotation>0&&IMU_yaw>=mLR_rotation)){
-            motor_left.stop();
-            motor_right.stop();
+            #if MAIN_ROBOT==1
+              motor_left.stop();
+              motor_right.stop();
+            #else
+              simpleMotorLeft.stop();
+              simpleMotorRight.stop();
+            #endif
             mLR_rotation_speed=0;
             if(reset_IMU_local_home==false) IMU_local_home_bias=IMU_yaw;
             update_IMU_raw_home=true;
@@ -484,8 +473,13 @@ void loop() {
           #endif
         }
         else{
-            motor_left.motor_ctrl_nuc(mL_speed);
-            //motor_right.motor_ctrl_nuc(mR_speed);
+          #if MAIN_ROBOT==1
+            motor_left.motor_ctrl(mL_speed);
+            motor_right.motor_ctrl(mR_speed);
+          #else
+            simpleMotorLeft.setSpeed(mL_speed);   
+            simpleMotorRight.setSpeed(mR_speed);
+          #endif
         }
       #endif
     } 
@@ -664,8 +658,13 @@ void stop_all() {
   motor_left.stop();
   #endif
   #if MOTORS_ENABLED
-  //motor_right.stop();
-  motor_left.stop();
+    #if MAIN_ROBOT==1
+      motor_right.stop();
+      motor_left.stop();
+    #else
+      simpleMotorLeft.stop();
+      simpleMotorRight.stop();
+    #endif
   #endif
 }
 
