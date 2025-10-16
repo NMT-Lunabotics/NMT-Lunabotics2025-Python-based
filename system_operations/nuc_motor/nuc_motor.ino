@@ -1,31 +1,31 @@
 // Left motor
-const int A1 = 4;
-const int B1 = 6;
-const int PWM1 = 9;
+const int LEFT_DAC1 = 4;  // A1 pin
+const int LEFT_DAC2 = 6;  // B1 pin
+const int LEFT_PWM  = 9;  // EN1 pin
 
 // Right motor
-const int A2 = 7;
-const int B2 = 8;
-const int PWM2 = 3;
+const int RIGHT_DAC1 = 7; // A2 pin
+const int RIGHT_DAC2 = 8; // B2 pin
+const int RIGHT_PWM  = 3; // EN2 pin
 
 void setup() {
-  pinMode(A1, OUTPUT);
-  pinMode(B1, OUTPUT);
-  pinMode(PWM1, OUTPUT);
+  pinMode(LEFT_DAC1, OUTPUT);
+  pinMode(LEFT_DAC2, OUTPUT);
+  pinMode(LEFT_PWM, OUTPUT);
 
-  pinMode(A2, OUTPUT);
-  pinMode(B2, OUTPUT);
-  pinMode(PWM2, OUTPUT);
+  pinMode(RIGHT_DAC1, OUTPUT);
+  pinMode(RIGHT_DAC2, OUTPUT);
+  pinMode(RIGHT_PWM, OUTPUT);
 
   // Forward direction
-  digitalWrite(A1, HIGH);
-  digitalWrite(B1, LOW);
-  digitalWrite(A2, HIGH);
-  digitalWrite(B2, LOW);
+  digitalWrite(LEFT_DAC1, HIGH);
+  digitalWrite(LEFT_DAC2, LOW);
+  digitalWrite(RIGHT_DAC1, HIGH);
+  digitalWrite(RIGHT_DAC2, LOW);
 }
 
 void loop() {
   // Run both motors very slowly
-  analogWrite(PWM1, 10);   // range = 0–255
-  analogWrite(PWM2, 10);
+  analogWrite(LEFT_PWM, 10);   // 0–255 PWM
+  analogWrite(RIGHT_PWM, 10);
 }
