@@ -10,6 +10,7 @@ To ssh into golith(nuc)
 ssh nuc@192.168.0.139
 123456789
 
+nuc weblogin: 129.138.171.51
 
 
 Ethnet:

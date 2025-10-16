@@ -103,12 +103,20 @@ float aR_pos = 0;
 float aB_pos = 0;
 
 //--------------- MOTORS ---------------
-
+#if MAIN_ROBOT==1
 const int DACL1_PIN = 2;
 const int DACL2_PIN = 3;
 const int DACR1_PIN = 4;
 const int DACR2_PIN = 5;
 const int EN_PIN = 32;  // Common for both motors
+#else
+const int DACL1_PIN = 3;
+const int DACL2_PIN = 4;
+const int DACR1_PIN = 6;
+const int DACR2_PIN = 7;
+const int EN_PIN1 = 5;  
+const int EN_PIN2 = 8;  
+#endif
 
 // Max allowed motor velocity (rpm)
 int motor_max_vel = 30; 
@@ -222,6 +230,7 @@ Actuator act_bucket(bucket_driver, pidB, POTB_PIN, AB_POT_MIN, AB_POT_MAX, AB_ST
 
 #if MOTORS_ENABLED
 // Set up motors
+#if MAIN_ROBOT==1
 OutPin motor_left_dac1(DACL1_PIN);
 OutPin motor_left_dac2(DACL2_PIN);
 OutPin motor_right_dac1(DACR1_PIN);
@@ -229,6 +238,16 @@ OutPin motor_right_dac2(DACR2_PIN);
 OutPin motor_enable(EN_PIN);
 Motor motor_left(motor_left_dac1, motor_left_dac2, motor_enable, motor_max_vel, false);
 Motor motor_right(motor_right_dac1, motor_right_dac2, motor_enable, motor_max_vel, true);
+#else
+OutPin motor_left_dac1(DACL1_PIN);
+OutPin motor_left_dac2(DACL2_PIN);
+OutPin motor_right_dac1(DACR1_PIN);
+OutPin motor_right_dac2(DACR2_PIN);
+OutPin motor_enable1(EN_PIN1);
+OutPin motor_enable2(EN_PIN2);
+Motor motor_left(motor_left_dac1, motor_left_dac2, motor_enable1, motor_max_vel, false);
+Motor motor_right(motor_right_dac1, motor_right_dac2, motor_enable2, motor_max_vel, true);
+#endif
 #endif
 
 #if ERROR_LEDS_ENABLED
