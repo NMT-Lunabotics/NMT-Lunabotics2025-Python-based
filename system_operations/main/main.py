@@ -4,7 +4,9 @@ from system_operations.jetson_networking import NetworkingOperations            
 from system_operations.arduino_cli import arduinoConsole                                                    # Import arduino cli package for compiling and uploading code to arduino
 from system_operations.arduino_serial_commuication import serialCommands                                    # Import arduino serial package commucation with the arduino
 
-arduino = arduinoConsole(sketch_path = ROOT/"system_operations"/"system_control"/"system_control.ino")    
+#arduino = arduinoConsole(sketch_path = ROOT/"system_operations"/"system_control"/"system_control.ino")    
+arduino = arduinoConsole(sketch_path = ROOT/"system_operations"/"nuc_motor"/"nuc_motor.ino") 
+
 network = NetworkingOperations()
 arduino.compile_and_upload()
 serial = serialCommands()
