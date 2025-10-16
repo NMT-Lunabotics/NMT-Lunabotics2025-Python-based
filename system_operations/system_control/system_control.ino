@@ -482,8 +482,8 @@ void loop() {
           #endif
         }
         else{
-            motor_left.motor_ctrl(mL_speed);
-            motor_right.motor_ctrl(mR_speed);
+            motor_left.motor_ctrl_nuc(mL_speed);
+            motor_right.motor_ctrl_nuc(mR_speed);
         }
       #endif
     } 
