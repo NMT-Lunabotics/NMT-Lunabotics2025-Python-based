@@ -14,8 +14,8 @@
 #define IBUS_REVIVER_ENABLED         1
 
 // List of faults to disable
-#define SERIAL_COMM_TIMEOUT_FAULT    0
-#define COMPONENT_TIMEOUT_FAULTS     0
+#define SERIAL_COMM_TIMEOUT_FAULT    1
+#define COMPONENT_TIMEOUT_FAULTS     1
 
 // Debug mode flags
 #define DEBUG_MODE                   0
