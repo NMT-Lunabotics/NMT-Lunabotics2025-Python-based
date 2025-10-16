@@ -2,7 +2,7 @@
 #define MAIN_ROBOT                   0
 
 //--------------- MAIN ROBOT SETTINGS ---------------
-#if MAIN_ROBOT==0
+#if MAIN_ROBOT==1
 
 // List of components flags to enable/disable for testing
 #define ERROR_LEDS_ENABLED           1
