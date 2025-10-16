@@ -477,8 +477,13 @@ void loop() {
           #endif
         }
         else{
-            motor_left.motor_ctrl(mL_speed);
-            motor_right.motor_ctrl(mR_speed);
+          #if MAIN_ROBOT==1
+          motor_left.motor_ctrl(mL_speed);
+          motor_right.motor_ctrl(mR_speed);
+          #else
+          motor_left.motor_ctrl_nuc(mL_speed);
+          motor_right.motor_ctrl_nuc(-mR_speed);
+          #endif
         }
       #endif
     } 
