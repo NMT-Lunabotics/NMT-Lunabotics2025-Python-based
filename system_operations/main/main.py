@@ -11,6 +11,32 @@ network = NetworkingOperations()
 arduino.compile_and_upload()
 serial = serialCommands()
 
+def run_test():
+    while True:
+        start_time = time.time()
+        while time.time() - start_time < 1:
+            serial.send_command("M", [5, 5])
+            time.sleep(0.1)
+        start_time = time.time()
+        while time.time() - start_time < 1:
+            serial.send_command("M", [-5, -5])
+            time.sleep(0.5)
+        start_time = time.time()
+        while time.time() - start_time < 1:
+            serial.send_command("M", [5, -5])
+            time.sleep(0.5)
+            
+def rotate():
+    rotate=True
+    while True:
+        feedback = serial.read_command_feedback()
+        if feedback:
+            for packet in feedback:
+                if packet["command"] == 'R': 
+                    print("Robot rotation compleated")
+                    rotate=False
+        if rotate: serial.send_command("R", [5, -90, 0, True])
+
 
 # Main loop
 
@@ -25,16 +51,8 @@ serial = serialCommands()
 # serial.send_command("R", [10, 90, 1, true])
 # <command, [rotation_speed, rotation_angle, rotation_radius, reset home position]>
 #-----------------------------------------------------------------
-rotate=True
-while True:
-    feedback = serial.read_command_feedback()
-    if feedback:
-        for packet in feedback:
-            if packet["command"] == 'R': 
-                print("Robot rotation compleated")
-                rotate=False
 
-    if rotate: serial.send_command("R", [5, -90, 0, True])
+run_test()
 
 #while True:
     #console_message=network.receive_data()
@@ -43,19 +61,3 @@ while True:
 
     #value = serial.read_serial()
     #if value: print(value) 
-
-#while True:
-#    start_time = time.time()
-#    while time.time() - start_time < 1:
-#        serial.send_command("M", [5, 5])
-#        time.sleep(0.1)
-#    
-#    start_time = time.time()
-#    while time.time() - start_time < 1:
-#        serial.send_command("M", [-5, -5])
-#        time.sleep(0.5)
-#    
-#    start_time = time.time()
-#    while time.time() - start_time < 1:
-#        serial.send_command("M", [5, -5])
-#        time.sleep(0.5)
