@@ -22,23 +22,8 @@ void setup() {
 }
 
 void loop() {
-  if (Serial.available()) {
-    String inputString = Serial.readStringUntil('>');  // Read until '>'
-    
-    if (inputString.startsWith("<")) {  // Ensure message starts with '<'
-      inputString = inputString.substring(1);  // Remove the starting '<'
-      // Serial.println(inputString);
-      if (inputString.startsWith("M")) {
-        inputString = inputString.substring(2);  // Remove the starting 'M'
-        int commaIndex = inputString.indexOf(',');
-        if (commaIndex > 0) {
-          // Parse the RPM values for motor 1 and motor 2
-          int rpm_motor1 = inputString.substring(0, commaIndex).toInt();
-          int rpm_motor2 = inputString.substring(commaIndex + 1).toInt();
-
-          // Convert RPM to PWM using the constant
-          int pwm_motor1 = constrain(abs(rpm_motor1) * rpm_to_pwm_constant, 0, 255);
-          int pwm_motor2 = constrain(abs(rpm_motor2) * rpm_to_pwm_constant, 0, 255);
+          int pwm_motor1 = 1;
+          int pwm_motor2 = 1;
 
           // Set motor 1 direction
           if (rpm_motor1 >= 0) {
@@ -67,7 +52,3 @@ void loop() {
           // Send success message to the ROS node
           // Serial.println("1");
         }
-      }
-    }
-  }
-}
