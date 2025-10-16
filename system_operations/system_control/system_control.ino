@@ -111,14 +111,16 @@ const int DACR2_PIN = 5;
 const int EN_PIN = 32;  // Common for both motors
 #else
 // Left motor
-const int DACL1_PIN = 4;  // A1
-const int DACL2_PIN = 5;  // B1
+const int DACL1_PIN = 7;  // A1
+const int DACL2_PIN = 8;  // B1
 const int EN_PIN1   = 3;  // P1
 
 // Right motor
 const int DACR1_PIN = 7;  // A2
 const int DACR2_PIN = 8;  // B2
 const int EN_PIN2   = 6;  // P2
+
+//3,4,5,6,7,8
 #endif
 
 // Max allowed motor velocity (rpm)
@@ -244,13 +246,13 @@ Motor motor_right(motor_right_dac1, motor_right_dac2, motor_enable, motor_max_ve
 #else
 OutPin motor_left_dac1(DACL1_PIN);
 OutPin motor_left_dac2(DACL2_PIN);
-OutPin motor_right_dac1(DACR1_PIN);
-OutPin motor_right_dac2(DACR2_PIN);
+//OutPin motor_right_dac1(DACR1_PIN);
+//OutPin motor_right_dac2(DACR2_PIN);
 OutPin motor_enable1(EN_PIN1);
-OutPin motor_enable2(EN_PIN2);
+//OutPin motor_enable2(EN_PIN2);
 
 Motor motor_left(motor_left_dac1, motor_left_dac2, motor_enable1, motor_max_vel, false);
-Motor motor_right(motor_right_dac1, motor_right_dac2, motor_enable2, motor_max_vel, true);
+//Motor motor_right(motor_right_dac1, motor_right_dac2, motor_enable2, motor_max_vel, true);
 
 #endif
 #endif
@@ -444,7 +446,7 @@ void loop() {
             motor_right.motor_ctrl(mR_velocity);
             #else
             motor_left.motor_ctrl_nuc(mL_velocity);
-            motor_right.motor_ctrl_nuc(mR_velocity);
+            //motor_right.motor_ctrl_nuc(mR_velocity);
             #endif
           }
           else if(mLR_rotation>0){
@@ -453,7 +455,7 @@ void loop() {
             motor_right.motor_ctrl(mLR_rotation_speed);
             #else
             motor_left.motor_ctrl_nuc(-mLR_rotation_speed);
-            motor_right.motor_ctrl_nuc(mLR_rotation_speed);
+            //motor_right.motor_ctrl_nuc(mLR_rotation_speed);
             #endif
           }
           else if(mLR_rotation<0){
@@ -462,7 +464,7 @@ void loop() {
             motor_right.motor_ctrl(-mLR_rotation_speed);
             #else
             motor_left.motor_ctrl_nuc(mLR_rotation_speed);
-            motor_right.motor_ctrl_nuc(-mLR_rotation_speed);
+            //motor_right.motor_ctrl_nuc(-mLR_rotation_speed);
             #endif
           }
           #if IMU_SENSOR_ENABLED
@@ -483,7 +485,7 @@ void loop() {
         }
         else{
             motor_left.motor_ctrl_nuc(mL_speed);
-            motor_right.motor_ctrl_nuc(mR_speed);
+            //motor_right.motor_ctrl_nuc(mR_speed);
         }
       #endif
     } 

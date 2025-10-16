@@ -237,7 +237,7 @@ public:
     void motor_ctrl_nuc(int signed_speed) {
       dac1.write(1);
       dac2.write(0);
-      enable.write_pwm_raw(1);
+      enable.write_pwm_raw(5);
   }
   
   
