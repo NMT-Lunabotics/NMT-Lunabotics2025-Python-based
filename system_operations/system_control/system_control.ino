@@ -232,8 +232,8 @@ OutPin motor_enable(EN_PIN);
 Motor motor_left(motor_left_dac1, motor_left_dac2, motor_enable, motor_max_vel, false);
 Motor motor_right(motor_right_dac1, motor_right_dac2, motor_enable, motor_max_vel, true);
 #else
-SimpleMotor simpleMotorLeft(3, 4, 9);
-SimpleMotor simpleMotorRight(6, 7, 8);
+SimpleMotor simpleMotorLeft(3, 4, 9, motor_max_vel);
+SimpleMotor simpleMotorRight(6, 7, 8, motor_max_vel);
 #endif
 #endif
 
