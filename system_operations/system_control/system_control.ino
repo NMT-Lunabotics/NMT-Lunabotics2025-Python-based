@@ -434,16 +434,31 @@ void loop() {
           if(mLR_arc_radius!=0){
             float mL_velocity=mLR_rotation_speed*(1-robot_width/mLR_arc_radius);
             float mR_velocity=mLR_rotation_speed*(1+robot_width/mLR_arc_radius);
+            #if MAIN_ROBOT==1
             motor_left.motor_ctrl(mL_velocity);
             motor_right.motor_ctrl(mR_velocity);
+            #else
+            motor_left.motor_ctrl_nuc(mL_velocity);
+            motor_right.motor_ctrl_nuc(mR_velocity);
+            #endif
           }
           else if(mLR_rotation>0){
+            #if MAIN_ROBOT==1
             motor_left.motor_ctrl(-mLR_rotation_speed);
             motor_right.motor_ctrl(mLR_rotation_speed);
+            #else
+            motor_left.motor_ctrl_nuc(-mLR_rotation_speed);
+            motor_right.motor_ctrl_nuc(mLR_rotation_speed);
+            #endif
           }
           else if(mLR_rotation<0){
+            #if MAIN_ROBOT==1
             motor_left.motor_ctrl(mLR_rotation_speed);
             motor_right.motor_ctrl(-mLR_rotation_speed);
+            #else
+            motor_left.motor_ctrl_nuc(mLR_rotation_speed);
+            motor_right.motor_ctrl_nuc(-mLR_rotation_speed);
+            #endif
           }
           #if IMU_SENSOR_ENABLED
           if((mLR_rotation<0&&IMU_yaw<=mLR_rotation)||(mLR_rotation>0&&IMU_yaw>=mLR_rotation)){

@@ -238,6 +238,30 @@ public:
       dac2.write_pwm_raw(0);
     }
 
+    void motor_ctrl_nuc(int signed_speed) {
+      if (signed_speed == 0) {
+          dac1.write(0); // A pin low
+          dac2.write(0); // B pin low
+          enable.write_pwm_raw(0); // PWM 0
+          return;
+      }
+
+      if (reverse) signed_speed = -signed_speed;
+
+      signed_speed = constrain(signed_speed, -motor_max_vel, motor_max_vel);
+      int speed_pwm = map(abs(signed_speed), 0, motor_max_vel, 0, 255);
+
+      if (signed_speed > 0) {
+          dac1.write(1);          // A1 HIGH
+          dac2.write(0);          // B1 LOW
+      } else {
+          dac1.write(0);          // A1 LOW
+          dac2.write(1);          // B1 HIGH
+      }
+
+      enable.write_pwm_raw(speed_pwm); // PWM on P1
+  }
+
 };
 
 ///////// MPU6050 IMU Class /////////
