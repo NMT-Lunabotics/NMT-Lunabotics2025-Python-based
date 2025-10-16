@@ -249,7 +249,6 @@ public:
       if (reverse) signed_speed = -signed_speed;
 
       signed_speed = constrain(signed_speed, -motor_max_vel, motor_max_vel);
-      int speed_pwm = map(abs(signed_speed), 0, motor_max_vel, 0, 255);
 
       if (signed_speed > 0) {
           dac1.write(1);          // A1 HIGH
@@ -259,7 +258,7 @@ public:
           dac2.write(1);          // B1 HIGH
       }
 
-      enable.write_pwm_raw(speed_pwm); // PWM on P1
+      enable.write_pwm_raw(signed_speed); // PWM on P1
   }
 
 };
