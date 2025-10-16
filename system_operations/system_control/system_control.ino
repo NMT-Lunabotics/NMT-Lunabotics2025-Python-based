@@ -113,7 +113,7 @@ const int EN_PIN = 32;  // Common for both motors
 // Left motor
 const int DACL1_PIN = 4;  // A1
 const int DACL2_PIN = 6;  // B1
-const int EN_PIN1   = 5;  // P1
+const int EN_PIN1   = 9;  // P1
 
 // Right motor
 const int DACR1_PIN = 7;  // A2
