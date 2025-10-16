@@ -1,6 +1,8 @@
 #include "helpers.hpp"
+#define MAIN_ROBOT                   0
 
-//--------------- Debug settings ---------------
+//--------------- MAIN ROBOT SETTINGS ---------------
+#if MAIN_ROBOT==0
 
 // List of components flags to enable/disable for testing
 #define ERROR_LEDS_ENABLED           1
@@ -18,6 +20,21 @@
 // Debug mode flags
 #define DEBUG_MODE                   0
 #define SENSOR_OUTPUT                0  // 1: IMU, 2: IBUS, 3: IBUS raw
+
+#else
+//--------------- NUC TEST ROBOT SETTINGS ---------------
+#define ERROR_LEDS_ENABLED           1
+#define MOTORS_ENABLED               1
+#define BUCKET_ACTUATOR_ENABLED      1
+#define ARM_ACTUATORS_ENABLED        1
+#define SERVO_MOTOR_ENABLED          0
+#define IMU_SENSOR_ENABLED           0
+#define IBUS_REVIVER_ENABLED         1
+#define SERIAL_COMM_TIMEOUT_FAULT    0
+#define COMPONENT_TIMEOUT_FAULTS     0
+#define DEBUG_MODE                   0
+#define SENSOR_OUTPUT                0  
+#endif
 
 //--------------- Setup used classes ---------------
 
@@ -178,8 +195,8 @@ bool at_bucket_max = false;
 bool dual_actuator_correct = false;
 int serial_index = 0;
 int expected_length = -1;
-const int SERIAL_BUFFER_SIZE = 128;
-byte serial_buffer[SERIAL_BUFFER_SIZE];
+const int MY_SERIAL_BUFFER_SIZE = 128;
+byte serial_buffer[MY_SERIAL_BUFFER_SIZE];
 
 // Set up PID controllers velocity gain
 float vel_gain = 2.5;
@@ -282,9 +299,9 @@ void loop() {
     mR_speed = constrain(throttle + steering, -30, 30);
     aLR_tgt = -1;
     aB_tgt = -1;
-    aL_speed = joy[2];
+    aL_speed = joy[3];
     aR_speed = aL_speed;
-    aB_speed = joy[3];
+    aB_speed = -joy[2];
   } 
   #endif
   #if SERIAL_COMM_TIMEOUT_FAULT
@@ -782,7 +799,7 @@ void processSerialBuffer() {
     } else {
         if (expected_length == -1) {
             expected_length = b;
-            if (expected_length <= 0 || expected_length > SERIAL_BUFFER_SIZE) {
+            if (expected_length <= 0 || expected_length > MY_SERIAL_BUFFER_SIZE) {
                 receiving_message = false; // invalid length
             }
         } else {
@@ -794,7 +811,7 @@ void processSerialBuffer() {
                     Serial.println("End byte not found");
                 }
                 receiving_message = false;
-            } else if (serial_index >= SERIAL_BUFFER_SIZE) {
+            } else if (serial_index >= MY_SERIAL_BUFFER_SIZE) {
                 // overflow protection
                 receiving_message = false;
             }
