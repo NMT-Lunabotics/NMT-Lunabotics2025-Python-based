@@ -37,6 +37,10 @@ def rotate():
                     rotate=False
         if rotate: serial.send_command("R", [5, -90, 0, True])
 
+def read_log():
+    while True:
+        value = serial.read_serial()
+        if value: print(value) 
 
 # Main loop
 
@@ -52,12 +56,6 @@ def rotate():
 # <command, [rotation_speed, rotation_angle, rotation_radius, reset home position]>
 #-----------------------------------------------------------------
 
-run_test()
-
-#while True:
-    #console_message=network.receive_data()
-    #if console_message: print(f"[message] {console_message}")
-    #serial.send_command("M", [1, 1])
-
-    #value = serial.read_serial()
-    #if value: print(value) 
+#run_test()
+#rotate()
+read_log()
