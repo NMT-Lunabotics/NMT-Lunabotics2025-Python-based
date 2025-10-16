@@ -115,7 +115,7 @@ const int DACL2_PIN = 6;
 const int DACR1_PIN = 7;
 const int DACR2_PIN = 8;
 const int EN_PIN1 = 3;  
-const int EN_PIN2 = 5;  
+const int EN_PIN2 = 6;  
 #endif
 
 // Max allowed motor velocity (rpm)
@@ -477,13 +477,8 @@ void loop() {
           #endif
         }
         else{
-          #if MAIN_ROBOT==1
           motor_left.motor_ctrl(mL_speed);
           motor_right.motor_ctrl(mR_speed);
-          #else
-          motor_left.motor_ctrl_nuc(mL_speed);
-          motor_right.motor_ctrl_nuc(-mR_speed);
-          #endif
         }
       #endif
     } 
