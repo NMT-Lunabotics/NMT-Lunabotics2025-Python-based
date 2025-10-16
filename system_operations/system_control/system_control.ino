@@ -29,7 +29,7 @@
 #define ARM_ACTUATORS_ENABLED        1
 #define SERVO_MOTOR_ENABLED          0
 #define IMU_SENSOR_ENABLED           0
-#define IBUS_REVIVER_ENABLED         1
+#define IBUS_REVIVER_ENABLED         0
 #define SERIAL_COMM_TIMEOUT_FAULT    0
 #define COMPONENT_TIMEOUT_FAULTS     0
 #define DEBUG_MODE                   0
