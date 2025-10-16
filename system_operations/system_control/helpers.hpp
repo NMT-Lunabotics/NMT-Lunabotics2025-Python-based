@@ -239,9 +239,12 @@ class SimpleMotor {
   int pwmPin;
   int dirPin1;
   int dirPin2;
+  int maxSpeed; // e.g., 30 rpm
 
 public:
-  SimpleMotor(int pwm, int dir1, int dir2): pwmPin(pwm), dirPin1(dir1), dirPin2(dir2) {}
+  SimpleMotor(int pwm, int dir1, int dir2, int maxVel)
+    : pwmPin(pwm), dirPin1(dir1), dirPin2(dir2), maxSpeed(maxVel) {}
+
   void begin() {
     pinMode(pwmPin, OUTPUT);
     pinMode(dirPin1, OUTPUT);
@@ -249,18 +252,19 @@ public:
     stop();
   }
 
-  // speed: -255 to 255
+  // speed: -maxSpeed to +maxSpeed
   void setSpeed(int speed) {
-    speed = constrain(speed, -255, 255);
+    // constrain speed to -maxSpeed..+maxSpeed
+    speed = constrain(speed, -maxSpeed, maxSpeed);
 
     if (speed > 0) {
       digitalWrite(dirPin1, HIGH);
       digitalWrite(dirPin2, LOW);
-      analogWrite(pwmPin, speed);
+      analogWrite(pwmPin, map(speed, 0, maxSpeed, 0, 255));
     } else if (speed < 0) {
       digitalWrite(dirPin1, LOW);
       digitalWrite(dirPin2, HIGH);
-      analogWrite(pwmPin, -speed);
+      analogWrite(pwmPin, map(-speed, 0, maxSpeed, 0, 255));
     } else {
       stop();
     }
@@ -272,6 +276,7 @@ public:
     digitalWrite(dirPin2, LOW);
   }
 };
+
 
 
 ///////// MPU6050 IMU Class /////////
