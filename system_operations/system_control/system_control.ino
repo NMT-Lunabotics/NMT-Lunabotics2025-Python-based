@@ -112,10 +112,11 @@ const int EN_PIN = 32;  // Common for both motors
 #else
 const int DACL1_PIN = 4;
 const int DACL2_PIN = 6;
-const int DACR1_PIN = 7;
-const int DACR2_PIN = 8;
-const int EN_PIN1 = 3;  
-const int EN_PIN2 = 5;  
+const int EN_PIN1 = 3; 
+
+const int DACR1_PIN = 5;
+const int DACR2_PIN = 7; 
+const int EN_PIN2 = 8;  
 #endif
 
 // Max allowed motor velocity (rpm)
