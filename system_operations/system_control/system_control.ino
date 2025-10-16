@@ -116,8 +116,8 @@ const int DACL2_PIN = 8;  // B1
 const int EN_PIN1   = 3;  // P1
 
 // Right motor
-const int DACR1_PIN = 7;  // A2
-const int DACR2_PIN = 8;  // B2
+const int DACR1_PIN = 4;  // A2
+const int DACR2_PIN = 5;  // B2
 const int EN_PIN2   = 6;  // P2
 
 //3,4,5,6,7,8
