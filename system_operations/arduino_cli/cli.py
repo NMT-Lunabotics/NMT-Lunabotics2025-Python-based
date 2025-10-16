@@ -36,11 +36,10 @@ class arduinoConsole:
 
     def detect_board(self):
         for port in serial.tools.list_ports.comports():
-            desc = port.description.lower()
-            if "uno r4" in desc or "renesas" in desc:
+            if port.vid == 0x2341 and port.pid == 0x1002:
                 return "arduino:renesas_uno:unor4wifi", port.device
-            elif "uno" in desc or "atmega" in desc:
+            elif port.vid == 0x2341 and port.pid == 0x0043:  # classic UNO
                 return "arduino:avr:uno", port.device
-            elif "mega" in desc:
+            elif port.vid == 0x2341 and port.pid == 0x0010:  # example Mega
                 return "arduino:avr:mega", port.device
         raise RuntimeError("Arduino board not found")
