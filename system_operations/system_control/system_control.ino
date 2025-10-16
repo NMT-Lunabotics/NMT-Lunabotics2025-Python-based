@@ -664,7 +664,8 @@ void stop_all() {
   motor_left.stop();
   #endif
   #if MOTORS_ENABLED
-  motor_right.stop();
+  //motor_right.stop();
+  motor_left.stop();
   #endif
 }
 
