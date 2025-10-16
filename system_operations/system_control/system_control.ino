@@ -111,11 +111,11 @@ const int DACR2_PIN = 5;
 const int EN_PIN = 32;  // Common for both motors
 #else
 const int DACL1_PIN = 4;
-const int DACL2_PIN = 5;
+const int DACL2_PIN = 6;
 const int DACR1_PIN = 7;
 const int DACR2_PIN = 8;
 const int EN_PIN1 = 3;  
-const int EN_PIN2 = 6;  
+const int EN_PIN2 = 5;  
 #endif
 
 // Max allowed motor velocity (rpm)
@@ -245,7 +245,7 @@ OutPin motor_right_dac1(DACR1_PIN);
 OutPin motor_right_dac2(DACR2_PIN);
 OutPin motor_enable1(EN_PIN1);
 OutPin motor_enable2(EN_PIN2);
-Motor motor_left(motor_left_dac1, motor_left_dac2, motor_enable1, motor_max_vel, true);
+Motor motor_left(motor_left_dac1, motor_left_dac2, motor_enable1, motor_max_vel, false);
 Motor motor_right(motor_right_dac1, motor_right_dac2, motor_enable2, motor_max_vel, true);
 #endif
 #endif
@@ -477,8 +477,8 @@ void loop() {
           #endif
         }
         else{
-          motor_left.motor_ctrl(mL_speed);
-          motor_right.motor_ctrl(mR_speed);
+            motor_left.motor_ctrl(mL_speed);
+            motor_right.motor_ctrl(mR_speed);
         }
       #endif
     } 
