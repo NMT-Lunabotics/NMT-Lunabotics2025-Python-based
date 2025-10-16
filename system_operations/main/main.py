@@ -34,31 +34,18 @@ serial = serialCommands()
     #value = serial.read_serial()
     #if value: print(value) 
 
-# Motor speeds
-FORWARD_SPEED = 30    # Adjust to your system max speed
-BACKWARD_SPEED = -30
-SPIN_SPEED = 30       # For spinning, left and right are opposite
-
-# Timing
-STEP_DURATION = 1.0   # seconds
-SEND_INTERVAL = 0.1   # seconds between commands
-
 while True:
     start_time = time.time()
-    
-    # --- Move forward ---
-    while time.time() - start_time < STEP_DURATION:
-        serial.send_command("M", [FORWARD_SPEED, FORWARD_SPEED])
-        time.sleep(SEND_INTERVAL)
+    while time.time() - start_time < 1:
+        serial.send_command("M", [5, 5])
+        time.sleep(0.1)
     
     start_time = time.time()
-    # --- Spin in place (right turn) ---
-    while time.time() - start_time < STEP_DURATION:
-        serial.send_command("M", [SPIN_SPEED, -SPIN_SPEED])
-        time.sleep(SEND_INTERVAL)
+    while time.time() - start_time < 1:
+        serial.send_command("M", [-5, -5])
+        time.sleep(0.5)
     
     start_time = time.time()
-    # --- Move backward ---
-    while time.time() - start_time < STEP_DURATION:
-        serial.send_command("M", [BACKWARD_SPEED, BACKWARD_SPEED])
-        time.sleep(SEND_INTERVAL)
+    while time.time() - start_time < 1:
+        serial.send_command("M", [5, -5])
+        time.sleep(0.5)
