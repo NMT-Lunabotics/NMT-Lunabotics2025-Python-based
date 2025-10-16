@@ -215,10 +215,6 @@ public:
             return;
         }
         enable.write(1);
-        
-        if (reverse) {
-            signed_speed = -signed_speed;
-        }
 
         signed_speed = constrain(signed_speed, -motor_max_vel, motor_max_vel);
         // Map the absolute speed values to PWM range
@@ -239,34 +235,11 @@ public:
     }
 
     void motor_ctrl_nuc(int signed_speed) {
-      if (signed_speed == 0) {
-          dac1.write(0);             // A pin low
-          dac2.write(0);             // B pin low
-          enable.write_pwm_raw(0);   // PWM 0
-          return;
-      }
-  
-      // Apply reverse if set
-      if (reverse) signed_speed = -signed_speed;
-  
-      // Constrain speed to max velocity
-      signed_speed = constrain(signed_speed, -motor_max_vel, motor_max_vel);
-  
-      // Map speed to 0-255 PWM
-      int speed_pwm = map(abs(signed_speed), 0, motor_max_vel, 0, 255);
-  
-      // Set direction pins according to signed_speed
-      if (signed_speed > 0) {
-          dac1.write(1);   // A pin HIGH
-          dac2.write(0);   // B pin LOW
-      } else {
-          dac1.write(0);   // A pin LOW
-          dac2.write(1);   // B pin HIGH
-      }
-  
-      // Write PWM to enable pin
-      enable.write_pwm_raw(speed_pwm);
+      dac1.write(1);
+      dac2.write(0);
+      enable.write_pwm_raw(1);
   }
+  
   
 
 };
