@@ -579,7 +579,7 @@ void processMessage(byte *data, int length) {
         mLR_rotation_speed = (int8_t)data[1]; 
         if(mLR_rotation_speed>0&&mLR_rotation_speed>motor_max_vel) mLR_rotation_speed=motor_max_vel;
         else if(mLR_rotation_speed<0&&mLR_rotation_speed<-motor_max_vel) mLR_rotation_speed=-motor_max_vel;
-        mLR_rotation = -(int8_t)data[2];
+        mLR_rotation = (int8_t)data[2];
         mLR_arc_radius = (int8_t)data[3];
         reset_IMU_local_home = (int8_t)data[4];
         update_IMU_raw_home=false;
