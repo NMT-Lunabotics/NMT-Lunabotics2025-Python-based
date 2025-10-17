@@ -31,7 +31,7 @@
 #define IMU_SENSOR_ENABLED           1
 #define IBUS_REVIVER_ENABLED         0
 #define SERIAL_COMM_TIMEOUT_FAULT    1
-#define COMPONENT_TIMEOUT_FAULTS     1
+#define COMPONENT_TIMEOUT_FAULTS     0
 #define DEBUG_MODE                   0
 #define SENSOR_OUTPUT                0  
 #endif
@@ -467,7 +467,7 @@ void loop() {
               Serial.print("Yaw: ");
               Serial.println(IMU_yaw,6);
             #endif
-              updateIMUData(true);
+            updateIMUData(true);
             sendSerialFeedback('R', nullptr, 0);
           } 
           #endif

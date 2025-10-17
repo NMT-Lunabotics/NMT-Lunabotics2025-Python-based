@@ -16,15 +16,28 @@ def run_test():
         start_time = time.time()
         while time.time() - start_time < 1:
             serial.send_command("M", [5, 5])
-            time.sleep(0.1)
+        time.sleep(0.1)
         start_time = time.time()
         while time.time() - start_time < 1:
             serial.send_command("M", [-5, -5])
-            time.sleep(0.5)
+        time.sleep(0.5)
         start_time = time.time()
         while time.time() - start_time < 1:
             serial.send_command("M", [5, -5])
-            time.sleep(0.5)
+        time.sleep(0.5)
+
+def run():
+    while True:
+        serial.send_command("M", [5, 5])
+        time.sleep(0.01)
+
+def run_and_log():
+    while True:
+        serial.send_command("M", [5, 5])
+        value = serial.read_serial()
+        if value: print(value) 
+        time.sleep(0.01)
+
             
 def rotate():
     rotate=True
@@ -35,7 +48,7 @@ def rotate():
                 if packet["command"] == 'R': 
                     print("Robot rotation compleated")
                     rotate=False
-        if rotate: serial.send_command("R", [5, -90, 0, True])
+        if rotate: serial.send_command("R", [15, -90, 0, True])
 
 def read_log():
     while True:
@@ -56,6 +69,8 @@ def read_log():
 # <command, [rotation_speed, rotation_angle, rotation_radius, reset home position]>
 #-----------------------------------------------------------------
 
+#run()
+#run_and_log()
 #run_test()
-#rotate()
-read_log()
+rotate()
+#read_log()
