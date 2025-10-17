@@ -11,7 +11,7 @@
 #define ARM_ACTUATORS_ENABLED        1
 #define SERVO_MOTOR_ENABLED          0
 #define IMU_SENSOR_ENABLED           0
-#define IBUS_REVIVER_ENABLED         1
+#define IBUS_RECIVER_ENABLED         1
 
 // List of faults to disable
 #define SERIAL_COMM_TIMEOUT_FAULT    1
@@ -29,7 +29,7 @@
 #define ARM_ACTUATORS_ENABLED        0
 #define SERVO_MOTOR_ENABLED          0
 #define IMU_SENSOR_ENABLED           1
-#define IBUS_REVIVER_ENABLED         0
+#define IBUS_RECIVER_ENABLED         0
 #define SERIAL_COMM_TIMEOUT_FAULT    1
 #define COMPONENT_TIMEOUT_FAULTS     0
 #define DEBUG_MODE                   0
@@ -37,11 +37,15 @@
 #endif
 
 //--------------- Setup used classes ---------------
-
 #if IMU_SENSOR_ENABLED
+#if MAIN_ROBOT==1
+#define IMU_MANUAL_SCALER 1
+#else
+#define IMU_MANUAL_SCALER 0.6
+#endif
 MPU6050 IMU; 
 #endif
-#if IBUS_REVIVER_ENABLED
+#if IBUS_RECIVER_ENABLED
 IBusReader ibus(Serial1);
 #endif
 
@@ -264,7 +268,7 @@ void setup() {
     simpleMotorLeft.begin();
     simpleMotorRight.begin();
   #endif
-  #if IBUS_REVIVER_ENABLED
+  #if IBUS_RECIVER_ENABLED
   ibus.begin(115200);
   #endif
   Serial.flush();
@@ -290,7 +294,7 @@ void setup() {
 void loop() {
   current_time = millis();
   processSerialBuffer();
-  #if IBUS_REVIVER_ENABLED
+  #if IBUS_RECIVER_ENABLED
   // Read serial and process messages while being Non-blocking
   if (ibus.update()) {
     int16_t* joy = ibus.getJoystick();
@@ -802,7 +806,7 @@ void updateIMUData(bool useHomeBias){
   // Update and apply any biases and update everything for next cycle
   if(useHomeBias==true) IMU_raw_home_bias=IMU_rate; 
   IMU_rate += (IMU_filter_rate - IMU_offset_bias) * dt; 
-  IMU_yaw = -(((IMU_rate - IMU_raw_home_bias) + IMU_local_home_bias)/IMU_yaw_scale);
+  IMU_yaw = -(((IMU_rate - IMU_raw_home_bias) + IMU_local_home_bias)/IMU_yaw_scale)*IMU_MANUAL_SCALER;
   last_IMU_time = current_time; 
 }
 #endif
