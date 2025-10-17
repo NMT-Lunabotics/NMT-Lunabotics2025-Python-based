@@ -1,5 +1,5 @@
 #include "helpers.hpp"
-#define MAIN_ROBOT                   0
+#define MAIN_ROBOT 1
 
 //--------------- MAIN ROBOT SETTINGS ---------------
 #if MAIN_ROBOT==1
@@ -19,7 +19,7 @@
 
 // Debug mode flags
 #define DEBUG_MODE                   0
-#define SENSOR_OUTPUT                1  // 1: IMU, 2: IBUS, 3: IBUS raw
+#define SENSOR_OUTPUT                0  // 1: IMU, 2: IBUS, 3: IBUS raw
 
 #else
 //--------------- NUC TEST ROBOT SETTINGS ---------------
@@ -316,6 +316,7 @@ void loop() {
     aL_speed = joy[3];
     aR_speed = aL_speed;
     aB_speed = -joy[2];
+    systemFault(false,"","", NONE, NONE, ON);
   } 
   #endif
   #if SERIAL_COMM_TIMEOUT_FAULT

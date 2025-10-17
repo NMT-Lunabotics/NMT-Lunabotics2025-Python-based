@@ -3,13 +3,15 @@ ROOT = Path(__file__).resolve().parent.parent.parent; sys.path.insert(0, str(ROO
 from system_operations.jetson_networking import NetworkingOperations                                        # Import jetson networking package for gui
 from system_operations.arduino_cli import arduinoConsole                                                    # Import arduino cli package for compiling and uploading code to arduino
 from system_operations.arduino_serial_commuication import serialCommands                                    # Import arduino serial package commucation with the arduino
+from system_operations.autonomous import AutonomousRunner                                                   # Import Riley's autos system(converted into package) to run system autos
 
 arduino = arduinoConsole(sketch_path = ROOT/"system_operations"/"system_control"/"system_control.ino")    
-#arduino = arduinoConsole(sketch_path = ROOT/"system_operations"/"nuc_motor"/"nuc_motor.ino") 
 
 network = NetworkingOperations()
 arduino.compile_and_upload()
 serial = serialCommands()
+runner = AutonomousRunner(serial)
+runner.load_sequence("transverse")
 
 def run_test():
     while True:
@@ -37,8 +39,7 @@ def run_and_log():
         value = serial.read_serial()
         if value: print(value) 
         time.sleep(0.01)
-
-            
+        
 def rotate():
     rotate=True
     while True:
@@ -48,7 +49,7 @@ def rotate():
                 if packet["command"] == 'R': 
                     print("Robot rotation compleated")
                     rotate=False
-        if rotate: serial.send_command("R", [15, -90, 0, True])
+        if rotate: serial.send_command("R", [0, 360, 0, True])
 
 def read_log():
     while True:
@@ -69,8 +70,11 @@ def read_log():
 # <command, [rotation_speed, rotation_angle, rotation_radius, reset home position]>
 #-----------------------------------------------------------------
 
+while True:
+    runner.update()
+
 #run()
 #run_and_log()
 #run_test()
-rotate()
+#rotate()
 #read_log()
