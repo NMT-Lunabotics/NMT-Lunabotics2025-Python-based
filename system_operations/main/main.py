@@ -70,8 +70,8 @@ def read_log():
 # <command, [rotation_speed, rotation_angle, rotation_radius, reset home position]>
 #-----------------------------------------------------------------
 
-while True:
-    runner.update()
+#while True:
+#    runner.update()
 
 #run()
 #run_and_log()
