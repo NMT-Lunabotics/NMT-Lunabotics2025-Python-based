@@ -439,7 +439,7 @@ void loop() {
               motor_right.motor_ctrl(mLR_rotation_speed);
             #else
               simpleMotorLeft.setSpeed(mLR_rotation_speed);   
-              simpleMotorRight.setSpeed-(mLR_rotation_speed);
+              simpleMotorRight.setSpeed(-mLR_rotation_speed);
             #endif
           }
           else if(mLR_rotation<0){
