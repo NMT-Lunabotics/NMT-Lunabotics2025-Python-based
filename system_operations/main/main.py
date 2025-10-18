@@ -41,14 +41,14 @@ def run_and_log():
         
 def rotate():
     rotate=True
-    while True:
+    while rotate:
         feedback = serial.read_command_feedback()
         if feedback:
             for packet in feedback:
                 if packet["command"] == 'R': 
                     print("Robot rotation compleated")
                     rotate=False
-        if rotate: serial.send_command("R", [0, 360, 0, True])
+        if rotate: serial.send_command("R", [5, 360, 0, True])
 
 def read_log():
     while True:
