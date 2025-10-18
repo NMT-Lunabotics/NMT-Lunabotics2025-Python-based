@@ -2,6 +2,7 @@ import subprocess
 import time
 import serial
 import serial.tools.list_ports
+import re
 from pathlib import Path
 
 # arduinoConsole class/toolset which makes it easy to compile and upload sketches to your arduino without the regular arduino IDE software.
@@ -47,18 +48,27 @@ class arduinoConsole:
         raise RuntimeError("Arduino board not found")
     
     def switch_to_nuc_architecture(self):
-        """Set nuc robot flag if it is detected that nuc arduino is being used"""
-        main_file = Path(self.sketch_path)
-        if not main_file.exists():
-            raise FileNotFoundError(f"Could not switch architectures, {main_file} not found!")
-        text = main_file.read_text().splitlines()
+        """Automatically set MAIN_ROBOT define to 0 (NUC) or 1 (MAIN) based on board"""
+        ino_file = Path(self.sketch_path)
+
+        if not ino_file.exists() or ino_file.is_dir():
+            raise FileNotFoundError(f"Expected .ino file, got {ino_file}")
+
+        text = ino_file.read_text().splitlines()
         new_lines = []
         changed = False
+
         for line in text:
-            if line.strip().startswith("#define MAIN_ROBOT"):
+            # Match lines like: "#define MAIN_ROBOT 1" with optional spaces/tabs/comments
+            if re.match(r'^\s*#define\s+MAIN_ROBOT\b', line):
+                # Set to NUC architecture
                 new_lines.append("#define MAIN_ROBOT 0")
                 changed = True
             else:
                 new_lines.append(line)
+
         if changed:
-            main_file.write_text("\n".join(new_lines))
+            ino_file.write_text("\n".join(new_lines))
+            print(f"[INFO] Switched architecture to NUC in {ino_file}")
+        else:
+            print(f"[WARN] No MAIN_ROBOT define found in {ino_file}")
