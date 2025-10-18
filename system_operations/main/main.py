@@ -11,7 +11,6 @@ network = NetworkingOperations()
 arduino.compile_and_upload()
 serial = serialCommands()
 runner = AutonomousRunner(serial)
-runner.load_sequence("transverse")
 
 def run_test():
     while True:
@@ -70,8 +69,9 @@ def read_log():
 # <command, [rotation_speed, rotation_angle, rotation_radius, reset home position]>
 #-----------------------------------------------------------------
 
-#while True:
-#    runner.update()
+runner.load_sequence("transverse")
+while True:
+    runner.update()
 
 #run()
 #run_and_log()

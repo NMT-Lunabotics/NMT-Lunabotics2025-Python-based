@@ -10,7 +10,7 @@ To ssh into golith(nuc)
 ssh nuc@192.168.0.139
 123456789
 
-nuc weblogin: 129.138.171.51
+nuc weblogin: 129.138.171.59
 
 
 Ethnet:
@@ -63,3 +63,13 @@ sudo ethtool eno1 | grep "Link detected"
 
 
 http://tplinkwifi.net/
+
+---
+ENABLE AUTO CONNECTOR, run these 3 commands past the contents from the github files, make one of the files executable, and enable the service on reload
+---
+sudo nano /etc/wifi-autoconnect.conf
+sudo nano /usr/local/bin/wifi-autoconnect.sh
+sudo chmod +x /usr/local/bin/wifi-autoconnect.sh
+sudo nano /etc/systemd/system/wifi-autoconnect.service
+sudo systemctl daemon-reload
+sudo systemctl enable --now wifi-autoconnect.service
