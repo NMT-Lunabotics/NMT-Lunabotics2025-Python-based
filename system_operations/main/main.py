@@ -69,12 +69,12 @@ def read_log():
 # <command, [rotation_speed, rotation_angle, rotation_radius, reset home position]>
 #-----------------------------------------------------------------
 
-#runner.load_sequence("transverse")
-#while True:
-#    runner.update()
+runner.load_sequence("showcase")
+while True:
+    runner.update()
 
 #run()
 #run_and_log()
 #run_test()
-rotate()
+#rotate()
 #read_log()

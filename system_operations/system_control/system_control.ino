@@ -127,6 +127,14 @@ int mLR_rotation = 0;
 int mLR_arc_radius = 0;
 float robot_width = 7.276186; //m
 
+#if MAIN_ROBOT==1
+#define mL_speed_scale 1
+#define mR_speed_scale 1
+#else
+#define mL_speed_scale 1
+#define mR_speed_scale 1
+#endif
+
 // TODO implement servo logic
 //  #define SERVO_PIN 22
 
@@ -479,11 +487,11 @@ void loop() {
         }
         else{
           #if MAIN_ROBOT==1
-            motor_left.motor_ctrl(mL_speed);
-            motor_right.motor_ctrl(mR_speed);
+            motor_left.motor_ctrl(mL_speed*mL_speed_scale);
+            motor_right.motor_ctrl(mR_speed*mR_speed_scale);
           #else
-            simpleMotorLeft.setSpeed(mL_speed);   
-            simpleMotorRight.setSpeed(mR_speed);
+            simpleMotorLeft.setSpeed(mL_speed*mL_speed_scale);   
+            simpleMotorRight.setSpeed(mR_speed*mR_speed_scale);
           #endif
         }
       #endif
