@@ -1,8 +1,8 @@
 # executor.py
 import time
-from autonomous_sequences.excavation import get_sequence as get_excavation_sequence
-from autonomous_sequences.dump import get_sequence as get_dump_sequence
-from autonomous_sequences.transverse import get_sequence as get_transverse_sequence
+from .autonomous_sequences.excavation import get_sequence as get_excavation_sequence
+from .autonomous_sequences.dump import get_sequence as get_dump_sequence
+from .autonomous_sequences.transverse import get_sequence as get_transverse_sequence
 
 AUTO_PROGRAMS = {
     "excavation": get_excavation_sequence,
