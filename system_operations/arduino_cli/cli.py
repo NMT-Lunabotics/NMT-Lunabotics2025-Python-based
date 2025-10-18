@@ -48,27 +48,21 @@ class arduinoConsole:
         raise RuntimeError("Arduino board not found")
     
     def switch_to_nuc_architecture(self):
-        """Automatically set MAIN_ROBOT define to 0 (NUC) or 1 (MAIN) based on board"""
+        """Automatically switch to nuc robot settings if nuc robot is detected"""
         ino_file = Path(self.sketch_path)
-
         if not ino_file.exists() or ino_file.is_dir():
             raise FileNotFoundError(f"Expected .ino file, got {ino_file}")
-
         text = ino_file.read_text().splitlines()
         new_lines = []
         changed = False
-
         for line in text:
-            # Match lines like: "#define MAIN_ROBOT 1" with optional spaces/tabs/comments
             if re.match(r'^\s*#define\s+MAIN_ROBOT\b', line):
-                # Set to NUC architecture
                 new_lines.append("#define MAIN_ROBOT 0")
                 changed = True
             else:
                 new_lines.append(line)
-
         if changed:
             ino_file.write_text("\n".join(new_lines))
-            print(f"[INFO] Switched architecture to NUC in {ino_file}")
+            print(f"Switched to nuc robot settings architecture")
         else:
-            print(f"[WARN] No MAIN_ROBOT define found in {ino_file}")
+            print(f"Using main robot settings")
