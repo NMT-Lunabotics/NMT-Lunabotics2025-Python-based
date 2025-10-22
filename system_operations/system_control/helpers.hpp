@@ -215,10 +215,6 @@ public:
             return;
         }
         enable.write(1);
-        
-        if (reverse) {
-            signed_speed = -signed_speed;
-        }
 
         signed_speed = constrain(signed_speed, -motor_max_vel, motor_max_vel);
         // Map the absolute speed values to PWM range
@@ -237,8 +233,51 @@ public:
       dac1.write_pwm_raw(0);
       dac2.write_pwm_raw(0);
     }
-
 };
+
+class SimpleMotor {
+  int pwmPin;
+  int dirPin1;
+  int dirPin2;
+  int maxSpeed; // e.g., 30 rpm
+
+public:
+  SimpleMotor(int pwm, int dir1, int dir2, int maxVel)
+    : pwmPin(pwm), dirPin1(dir1), dirPin2(dir2), maxSpeed(maxVel) {}
+
+  void begin() {
+    pinMode(pwmPin, OUTPUT);
+    pinMode(dirPin1, OUTPUT);
+    pinMode(dirPin2, OUTPUT);
+    stop();
+  }
+
+  // speed: -maxSpeed to +maxSpeed
+  void setSpeed(int speed) {
+    // constrain speed to -maxSpeed..+maxSpeed
+    speed = constrain(speed, -maxSpeed, maxSpeed);
+
+    if (speed > 0) {
+      digitalWrite(dirPin1, HIGH);
+      digitalWrite(dirPin2, LOW);
+      analogWrite(pwmPin, map(speed, 0, maxSpeed, 0, 255));
+    } else if (speed < 0) {
+      digitalWrite(dirPin1, LOW);
+      digitalWrite(dirPin2, HIGH);
+      analogWrite(pwmPin, map(-speed, 0, maxSpeed, 0, 255));
+    } else {
+      stop();
+    }
+  }
+
+  void stop() {
+    analogWrite(pwmPin, 0);
+    digitalWrite(dirPin1, LOW);
+    digitalWrite(dirPin2, LOW);
+  }
+};
+
+
 
 ///////// MPU6050 IMU Class /////////
 class MPU6050 {

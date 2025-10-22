@@ -1,6 +1,8 @@
 #include "helpers.hpp"
+#define MAIN_ROBOT 1
 
-//--------------- Debug settings ---------------
+//--------------- MAIN ROBOT SETTINGS ---------------
+#if MAIN_ROBOT==1
 
 // List of components flags to enable/disable for testing
 #define ERROR_LEDS_ENABLED           1
@@ -9,22 +11,41 @@
 #define ARM_ACTUATORS_ENABLED        1
 #define SERVO_MOTOR_ENABLED          0
 #define IMU_SENSOR_ENABLED           0
-#define IBUS_REVIVER_ENABLED         1
+#define IBUS_RECIVER_ENABLED         1
 
 // List of faults to disable
-#define SERIAL_COMM_TIMEOUT_FAULT    0
-#define COMPONENT_TIMEOUT_FAULTS     0
+#define SERIAL_COMM_TIMEOUT_FAULT    1
+#define COMPONENT_TIMEOUT_FAULTS     1
 
 // Debug mode flags
 #define DEBUG_MODE                   0
 #define SENSOR_OUTPUT                0  // 1: IMU, 2: IBUS, 3: IBUS raw
 
-//--------------- Setup used classes ---------------
+#else
+//--------------- NUC TEST ROBOT SETTINGS ---------------
+#define ERROR_LEDS_ENABLED           0
+#define MOTORS_ENABLED               1
+#define BUCKET_ACTUATOR_ENABLED      0
+#define ARM_ACTUATORS_ENABLED        0
+#define SERVO_MOTOR_ENABLED          0
+#define IMU_SENSOR_ENABLED           1
+#define IBUS_RECIVER_ENABLED         0
+#define SERIAL_COMM_TIMEOUT_FAULT    1
+#define COMPONENT_TIMEOUT_FAULTS     0
+#define DEBUG_MODE                   0
+#define SENSOR_OUTPUT                0  
+#endif
 
+//--------------- Setup used classes ---------------
 #if IMU_SENSOR_ENABLED
+#if MAIN_ROBOT==1
+#define IMU_MANUAL_SCALER 1
+#else
+#define IMU_MANUAL_SCALER 0.6
+#endif
 MPU6050 IMU; 
 #endif
-#if IBUS_REVIVER_ENABLED
+#if IBUS_RECIVER_ENABLED
 IBusReader ibus(Serial1);
 #endif
 
@@ -86,12 +107,13 @@ float aR_pos = 0;
 float aB_pos = 0;
 
 //--------------- MOTORS ---------------
-
+#if MAIN_ROBOT==1
 const int DACL1_PIN = 2;
 const int DACL2_PIN = 3;
 const int DACR1_PIN = 4;
 const int DACR2_PIN = 5;
 const int EN_PIN = 32;  // Common for both motors
+#endif
 
 // Max allowed motor velocity (rpm)
 int motor_max_vel = 30; 
@@ -104,6 +126,14 @@ int mLR_rotation_speed = 0;
 int mLR_rotation = 0;
 int mLR_arc_radius = 0;
 float robot_width = 7.276186; //m
+
+#if MAIN_ROBOT==1
+#define mL_speed_scale 1
+#define mR_speed_scale 1
+#else
+#define mL_speed_scale 1
+#define mR_speed_scale 1
+#endif
 
 // TODO implement servo logic
 //  #define SERVO_PIN 22
@@ -178,8 +208,8 @@ bool at_bucket_max = false;
 bool dual_actuator_correct = false;
 int serial_index = 0;
 int expected_length = -1;
-const int SERIAL_BUFFER_SIZE = 128;
-byte serial_buffer[SERIAL_BUFFER_SIZE];
+const int MY_SERIAL_BUFFER_SIZE = 128;
+byte serial_buffer[MY_SERIAL_BUFFER_SIZE];
 
 // Set up PID controllers velocity gain
 float vel_gain = 2.5;
@@ -205,6 +235,7 @@ Actuator act_bucket(bucket_driver, pidB, POTB_PIN, AB_POT_MIN, AB_POT_MAX, AB_ST
 
 #if MOTORS_ENABLED
 // Set up motors
+#if MAIN_ROBOT==1
 OutPin motor_left_dac1(DACL1_PIN);
 OutPin motor_left_dac2(DACL2_PIN);
 OutPin motor_right_dac1(DACR1_PIN);
@@ -212,6 +243,10 @@ OutPin motor_right_dac2(DACR2_PIN);
 OutPin motor_enable(EN_PIN);
 Motor motor_left(motor_left_dac1, motor_left_dac2, motor_enable, motor_max_vel, false);
 Motor motor_right(motor_right_dac1, motor_right_dac2, motor_enable, motor_max_vel, true);
+#else
+SimpleMotor simpleMotorRight(3, 4, 9, motor_max_vel);
+SimpleMotor simpleMotorLeft(6, 7, 8, motor_max_vel);
+#endif
 #endif
 
 #if ERROR_LEDS_ENABLED
@@ -237,7 +272,11 @@ void sendSerialFeedback(char command, uint8_t* data, size_t dataLen);
 void setup() {
   delay(5);
   Serial.begin(115200);
-  #if IBUS_REVIVER_ENABLED
+  #if MAIN_ROBOT==0
+    simpleMotorLeft.begin();
+    simpleMotorRight.begin();
+  #endif
+  #if IBUS_RECIVER_ENABLED
   ibus.begin(115200);
   #endif
   Serial.flush();
@@ -263,7 +302,7 @@ void setup() {
 void loop() {
   current_time = millis();
   processSerialBuffer();
-  #if IBUS_REVIVER_ENABLED
+  #if IBUS_RECIVER_ENABLED
   // Read serial and process messages while being Non-blocking
   if (ibus.update()) {
     int16_t* joy = ibus.getJoystick();
@@ -282,9 +321,10 @@ void loop() {
     mR_speed = constrain(throttle + steering, -30, 30);
     aLR_tgt = -1;
     aB_tgt = -1;
-    aL_speed = joy[2];
+    aL_speed = joy[3];
     aR_speed = aL_speed;
-    aB_speed = joy[3];
+    aB_speed = -joy[2];
+    systemFault(false,"","", NONE, NONE, ON);
   } 
   #endif
   #if SERIAL_COMM_TIMEOUT_FAULT
@@ -398,21 +438,41 @@ void loop() {
           if(mLR_arc_radius!=0){
             float mL_velocity=mLR_rotation_speed*(1-robot_width/mLR_arc_radius);
             float mR_velocity=mLR_rotation_speed*(1+robot_width/mLR_arc_radius);
+            #if MAIN_ROBOT==1
             motor_left.motor_ctrl(mL_velocity);
             motor_right.motor_ctrl(mR_velocity);
+            #else
+              simpleMotorLeft.setSpeed(mL_velocity);   
+              simpleMotorRight.setSpeed(mR_velocity);
+            #endif
           }
           else if(mLR_rotation>0){
-            motor_left.motor_ctrl(-mLR_rotation_speed);
-            motor_right.motor_ctrl(mLR_rotation_speed);
+            #if MAIN_ROBOT==1
+              motor_left.motor_ctrl(-mLR_rotation_speed);
+              motor_right.motor_ctrl(mLR_rotation_speed);
+            #else
+              simpleMotorLeft.setSpeed(-mLR_rotation_speed);   
+              simpleMotorRight.setSpeed(mLR_rotation_speed);
+            #endif
           }
           else if(mLR_rotation<0){
-            motor_left.motor_ctrl(mLR_rotation_speed);
-            motor_right.motor_ctrl(-mLR_rotation_speed);
+            #if MAIN_ROBOT==1
+              motor_left.motor_ctrl(mLR_rotation_speed);
+              motor_right.motor_ctrl(-mLR_rotation_speed);
+            #else
+              simpleMotorLeft.setSpeed(mLR_rotation_speed);   
+              simpleMotorRight.setSpeed(-mLR_rotation_speed);
+            #endif
           }
           #if IMU_SENSOR_ENABLED
           if((mLR_rotation<0&&IMU_yaw<=mLR_rotation)||(mLR_rotation>0&&IMU_yaw>=mLR_rotation)){
-            motor_left.stop();
-            motor_right.stop();
+            #if MAIN_ROBOT==1
+              motor_left.stop();
+              motor_right.stop();
+            #else
+              simpleMotorLeft.stop();
+              simpleMotorRight.stop();
+            #endif
             mLR_rotation_speed=0;
             if(reset_IMU_local_home==false) IMU_local_home_bias=IMU_yaw;
             update_IMU_raw_home=true;
@@ -420,14 +480,19 @@ void loop() {
               Serial.print("Yaw: ");
               Serial.println(IMU_yaw,6);
             #endif
-              updateIMUData(true);
+            updateIMUData(true);
             sendSerialFeedback('R', nullptr, 0);
           } 
           #endif
         }
         else{
-            motor_left.motor_ctrl(mL_speed);
-            motor_right.motor_ctrl(mR_speed);
+          #if MAIN_ROBOT==1
+            motor_left.motor_ctrl(mL_speed*mL_speed_scale);
+            motor_right.motor_ctrl(mR_speed*mR_speed_scale);
+          #else
+            simpleMotorLeft.setSpeed(mL_speed*mL_speed_scale);   
+            simpleMotorRight.setSpeed(mR_speed*mR_speed_scale);
+          #endif
         }
       #endif
     } 
@@ -606,7 +671,13 @@ void stop_all() {
   motor_left.stop();
   #endif
   #if MOTORS_ENABLED
-  motor_right.stop();
+    #if MAIN_ROBOT==1
+      motor_right.stop();
+      motor_left.stop();
+    #else
+      simpleMotorLeft.stop();
+      simpleMotorRight.stop();
+    #endif
   #endif
 }
 
@@ -744,7 +815,7 @@ void updateIMUData(bool useHomeBias){
   // Update and apply any biases and update everything for next cycle
   if(useHomeBias==true) IMU_raw_home_bias=IMU_rate; 
   IMU_rate += (IMU_filter_rate - IMU_offset_bias) * dt; 
-  IMU_yaw = -(((IMU_rate - IMU_raw_home_bias) + IMU_local_home_bias)/IMU_yaw_scale);
+  IMU_yaw = -(((IMU_rate - IMU_raw_home_bias) + IMU_local_home_bias)/IMU_yaw_scale)*IMU_MANUAL_SCALER;
   last_IMU_time = current_time; 
 }
 #endif
@@ -782,7 +853,7 @@ void processSerialBuffer() {
     } else {
         if (expected_length == -1) {
             expected_length = b;
-            if (expected_length <= 0 || expected_length > SERIAL_BUFFER_SIZE) {
+            if (expected_length <= 0 || expected_length > MY_SERIAL_BUFFER_SIZE) {
                 receiving_message = false; // invalid length
             }
         } else {
@@ -794,7 +865,7 @@ void processSerialBuffer() {
                     Serial.println("End byte not found");
                 }
                 receiving_message = false;
-            } else if (serial_index >= SERIAL_BUFFER_SIZE) {
+            } else if (serial_index >= MY_SERIAL_BUFFER_SIZE) {
                 // overflow protection
                 receiving_message = false;
             }

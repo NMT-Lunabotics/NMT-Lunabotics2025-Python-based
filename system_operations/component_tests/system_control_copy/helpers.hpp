@@ -1,3 +1,4 @@
+#pragma once
 #ifndef HELPERS_H
 #define HELPERS_H
 
@@ -214,10 +215,6 @@ public:
             return;
         }
         enable.write(1);
-        
-        if (reverse) {
-            signed_speed = -signed_speed;
-        }
 
         signed_speed = constrain(signed_speed, -motor_max_vel, motor_max_vel);
         // Map the absolute speed values to PWM range
@@ -236,8 +233,51 @@ public:
       dac1.write_pwm_raw(0);
       dac2.write_pwm_raw(0);
     }
-
 };
+
+class SimpleMotor {
+  int pwmPin;
+  int dirPin1;
+  int dirPin2;
+  int maxSpeed; // e.g., 30 rpm
+
+public:
+  SimpleMotor(int pwm, int dir1, int dir2, int maxVel)
+    : pwmPin(pwm), dirPin1(dir1), dirPin2(dir2), maxSpeed(maxVel) {}
+
+  void begin() {
+    pinMode(pwmPin, OUTPUT);
+    pinMode(dirPin1, OUTPUT);
+    pinMode(dirPin2, OUTPUT);
+    stop();
+  }
+
+  // speed: -maxSpeed to +maxSpeed
+  void setSpeed(int speed) {
+    // constrain speed to -maxSpeed..+maxSpeed
+    speed = constrain(speed, -maxSpeed, maxSpeed);
+
+    if (speed > 0) {
+      digitalWrite(dirPin1, HIGH);
+      digitalWrite(dirPin2, LOW);
+      analogWrite(pwmPin, map(speed, 0, maxSpeed, 0, 255));
+    } else if (speed < 0) {
+      digitalWrite(dirPin1, LOW);
+      digitalWrite(dirPin2, HIGH);
+      analogWrite(pwmPin, map(-speed, 0, maxSpeed, 0, 255));
+    } else {
+      stop();
+    }
+  }
+
+  void stop() {
+    analogWrite(pwmPin, 0);
+    digitalWrite(dirPin1, LOW);
+    digitalWrite(dirPin2, LOW);
+  }
+};
+
+
 
 ///////// MPU6050 IMU Class /////////
 class MPU6050 {
@@ -287,5 +327,191 @@ private:
         int16_t val = (Wire.read() << 8) | Wire.read();
         return val;
     }
+};
+
+///////// FSIA6B IBUS Class /////////
+class IBusReader {
+  public:
+      IBusReader(HardwareSerial &serial) : serial(serial) {}
+      void begin(unsigned long baud = 115200) { 
+        serial.begin(baud); 
+        lastUpdate = millis(); 
+        // This lets the controller do the mapping of it's own ranges, adjust as you move the joystick
+        if (dynamicRanges==true) {
+          maxJoyValues[0] = 1800; maxJoyValues[1] = 1800; maxJoyValues[2] = 1800; maxJoyValues[3] = 1800;
+          minJoyValues[0] = 1200; minJoyValues[1] = 1200; minJoyValues[2] = 1200; minJoyValues[3] = 1200;
+        }
+        for(int i=0;i<4;i++) lastValues[i]=0; // init lastValues
+      }
+      // Call this each loop — non-blocking
+      bool update() {
+        bool changed = false;
+        while (serial.available()) {
+            uint8_t val = serial.read();
+            // Sync header
+            if (idx == 0 && val != 0x20) return false;
+            if (idx == 1 && val != 0x40) { idx = 0; return false; }
+            buffer[idx++] = val;
+            // Process full packet
+            if (idx == 32) {
+                idx = 0;
+                uint16_t chksum = 0xFFFF;
+                for (int i = 0; i < 30; i++) chksum -= buffer[i];
+                uint16_t pktChksum = buffer[30] | (buffer[31] << 8);
+                if (chksum == pktChksum) {
+                    for (int i = 0; i < 4; i++) {
+                        int pos = 2 + (i * 2);
+                        channels[i] = buffer[pos] | (buffer[pos + 1] << 8);
+                        if (dynamicRanges) {
+                            if (channels[i] < minJoyValues[i]) minJoyValues[i] = channels[i];
+                            if (channels[i] > maxJoyValues[i]) maxJoyValues[i] = channels[i];
+                        }
+                    }
+                    bool anyChanged = false;
+                    for (int i = 0; i < 4; i++) {
+                        int16_t val;
+                        switch (i) { case 0: val = channels[3]; break; case 1: val = channels[2]; break;
+                                     case 2: val = channels[0]; break; case 3: val = channels[1]; break; }
+                        int16_t newJoy;
+                        if (val >= centers[i] - softZones[i] && val <= centers[i] + softZones[i]) {
+                            newJoy = 0;
+                        } else if (val < centers[i] - softZones[i]) {
+                            newJoy = map(val, minJoyValues[i], centers[i] - softZones[i], outMin[i], 0);
+                            newJoy = constrain(newJoy, outMin[i], 0);
+                        } else {
+                            newJoy = map(val, centers[i] + softZones[i], maxJoyValues[i], 0, outMax[i]);
+                            newJoy = constrain(newJoy, 0, outMax[i]);
+                        }
+                        if (abs(newJoy - lastValues[i]) >= threshold) anyChanged = true;
+                        joystick[i] = newJoy;
+                    }
+                    if (anyChanged) lastUpdate = millis();
+                    for (int i = 0; i < 4; i++) lastValues[i] = joystick[i];
+                    changed = true;
+                }
+            }
+        }
+        // Always check timeout, even if serial buffer was empty
+        if (millis() - lastUpdate > timeoutMs) {
+            for (int i = 0; i < 4; i++) joystick[i] = 0;
+        }
+        return changed;
+      }    
+      int16_t *getJoystick(float raw_values=false) { 
+        if(raw_values==false) return joystick;
+        else return channels;
+      }
+  private:
+      HardwareSerial &serial;
+      bool dynamicRanges=true;
+      uint8_t buffer[32];
+      int idx = 0;
+      int threshold = 1;
+      int16_t channels[6];
+      int16_t joystick[4];
+      int16_t lastValues[4]; // store last mapped joystick values
+      unsigned long lastUpdate = 0;
+      const unsigned long timeoutMs = 2000; // 0.5s timeout
+      // Joystick settings (leftJoyX, leftJoyY, rightJoyX, rightJoyY) (MotorX, MotorY, actuatorX, actuatorY)
+      int16_t maxJoyValues[4]=    {1979, 1971, 2000, 2000}; // Joystick max values
+      int16_t minJoyValues[4]=    {1045, 1000, 1071, 1060}; // Joystick min values
+      int16_t centers[4] =        {1627, 1614, 1621, 1622}; // Center of each joystick
+      int16_t softZones[4] =      {50, 50, 50, 50};        // Joystick drift ranges
+      int16_t outMin[4] =         {-30, -30, -30, -30};     // Mapped min range
+      int16_t outMax[4] =         {30, 30, 30, 30};         // Mapped max range
+};
+
+///////// LCD INFO SCREEN Class /////////
+class I2CSCREEN {
+private:
+    uint8_t addr;
+    uint8_t cols, rows;
+    uint8_t backlight = 0x08; // Backlight on
+    void expanderWrite(uint8_t data) {
+        Wire.beginTransmission(addr);
+        Wire.write(data | backlight);
+        Wire.endTransmission();
+    }
+    void pulseEnable(uint8_t data) {
+        expanderWrite(data | 0x04); // EN
+        delayMicroseconds(1);
+        expanderWrite(data & ~0x04);
+        delayMicroseconds(50);
+    }
+    void write4bits(uint8_t value) {
+        expanderWrite(value);
+        pulseEnable(value);
+    }
+    void send(uint8_t value, uint8_t mode) {
+        write4bits((value & 0xF0) | mode);
+        write4bits(((value << 4) & 0xF0) | mode);
+    }
+    void command(uint8_t value) { send(value, 0x00); }
+    void writeChar(char c) { send(c, 0x01); } // RS=1
+
+public:
+    LCD2004(uint8_t address = 0x27, uint8_t cols_ = 20, uint8_t rows_ = 4): addr(address), cols(cols_), rows(rows_) {}
+    void begin() {
+        Wire.begin();
+        delay(50);
+        write4bits(0x30); delayMicroseconds(4500);
+        write4bits(0x30); delayMicroseconds(4500);
+        write4bits(0x30); delayMicroseconds(150);
+        write4bits(0x20);
+        command(0x28); // 4-bit, 2-line, 5x8
+        command(0x08); // display off
+        command(0x01); // clear
+        delay(2);
+        command(0x06); // entry mode
+        command(0x0C); // display on, cursor off
+    }
+    void clear() {
+        command(0x01);
+        delay(2);
+    }
+    void setCursor(uint8_t col, uint8_t row) {
+        static const uint8_t rowOffsets[4] = {0x00, 0x40, 0x14, 0x54};
+        command(0x80 | (col + rowOffsets[row]));
+    }
+    void backlightOn(bool on = true) {
+        backlight = on ? 0x08 : 0x00;
+        expanderWrite(0);
+    }
+void screenPrint(const char* text, const char* staticPrefix[] = nullptr, uint16_t pageDelayMs = 3000) {
+    size_t startIndex = 0;
+
+    while (text[startIndex] != '\0') {
+        clear();
+        uint8_t row = 0;
+
+        while (row < rows) {
+            setCursor(0, row);
+
+            // Print static prefix for this row if exists
+            size_t prefixLen = 0;
+            if (staticPrefix && staticPrefix[row]) {
+                prefixLen = strlen(staticPrefix[row]);
+                for (size_t i = 0; i < prefixLen && i < cols; i++)
+                    writeChar(staticPrefix[row][i]);
+            }
+
+            size_t available = (prefixLen < cols) ? (cols - prefixLen) : 0;
+
+            // Print dynamic text until newline or end of row
+            size_t i;
+            for (i = 0; i < available && text[startIndex] != '\0'; i++, startIndex++) {
+                if (text[startIndex] == '\n') {
+                    startIndex++;  // skip newline
+                    break;         // move to next row
+                }
+                writeChar(text[startIndex]);
+            }
+
+            row++;
+        }
+
+        delay(pageDelayMs);
+    }
+}
 };
 #endif

@@ -1,0 +1,13 @@
+[Unit]
+Description=Auto Wi-Fi connect script
+After=network.target NetworkManager.service
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/wifi-autoconnect.sh
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
