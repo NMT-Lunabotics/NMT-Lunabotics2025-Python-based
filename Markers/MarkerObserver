@@ -1,0 +1,175 @@
+import pyrealsense2 as rs
+import numpy as np
+import cv2
+import math
+
+#The size of the tag
+markerLength = 0.269  # in meters
+
+#You can get this using calibration.py, but this is probably good enough
+camMatrix = np.array([[390.70924213, 0., 320.5518661],
+                      [0., 391.15479783, 239.81762185],
+                      [0., 0., 1.]])
+distCoeffs = np.array([[-0.04335213, 0.0489175, 0.00186086, 0.00056816, 0.03206625]])
+
+dictionary = cv2.aruco.getPredefinedDictionary(cv2.aruco.DICT_5X5_100) # <-- Change depending on your tag (If you're using aprilTags or different sizes)
+parameters = cv2.aruco.DetectorParameters()
+detector = cv2.aruco.ArucoDetector(dictionary, parameters)
+
+# -------------------- Initialization ------------------------------
+pipe = rs.pipeline()
+cfg = rs.config()
+cfg.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 30)
+cfg.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 30)
+pipe.start(cfg)
+align = rs.align(rs.stream.color)
+
+# Filtering options
+spatial = rs.spatial_filter()
+temporal = rs.temporal_filter()
+
+# -------------------- Filters ------------------------------
+
+alpha_x = 0.1
+alpha_z = 0.2
+alpha_yaw = 0.4
+
+prev_X, prev_Z = 0.0, 0.0
+prev_yaw = None
+x_history = []
+history_length = 3
+max_pos_jump = 0.15
+pos_history = []
+
+# This prevents weirdness when goes from -180 to 180 degrees
+def unwrap_angle(prev_angle, new_angle):
+    diff = new_angle - prev_angle
+    if diff > math.pi:
+        new_angle -= 2 * math.pi
+    elif diff < -math.pi:
+        new_angle += 2 * math.pi
+    return new_angle
+
+#Disallows single, highly different values (assumed to be outliers)
+def filter_outlier(new_pos):
+    global pos_history
+    pos_history.append(np.array(new_pos))
+    if len(pos_history) > history_length:
+        pos_history.pop(0)
+    median_pos = np.median(pos_history, axis=0)
+    if np.linalg.norm(new_pos - median_pos) > max_pos_jump:
+        return pos_history[-2] if len(pos_history) > 1 else new_pos
+    return new_pos
+
+# -------------------- Cartography ------------------------------
+
+map_size = 750
+scale = 25  # pixels per meter
+tag_pixel = map_size // 2
+
+
+#Draws the grid on the map, each being 1x1 meter
+def draw_grid(img, scale):
+    h, w, _ = img.shape
+    for x in range(0, w, scale):
+        cv2.line(img, (x, 0), (x, h), (220, 220, 220), 1)
+    for y in range(0, h, scale):
+        cv2.line(img, (0, y), (w, y), (220, 220, 220), 1)
+
+def draw_camera(img, cam_x, cam_z, yaw=0, scale=50, size=10):
+    h, w, _ = img.shape
+    ix = int(cam_x * scale + w // 2)
+    iy = int(-cam_z * scale + h // 2)
+    tip_x = int(ix + size * math.sin(-yaw))
+    tip_y = int(iy - size * math.cos(-yaw))
+    cv2.arrowedLine(img, (ix, iy), (tip_x, tip_y), (0, 255, 0), 2, tipLength=0.4)
+    cv2.circle(img, (ix, iy), 3, (0, 0, 255), -1)
+
+base_map = np.ones((map_size, map_size, 3), dtype=np.uint8) * 255
+cv2.circle(base_map, (tag_pixel, tag_pixel), 5, (255, 0, 0), -1)
+
+X, Z, yaw = 0.0, 0.0, 0.0
+try:
+    while True:
+        frames = pipe.wait_for_frames()
+        aligned = align.process(frames)
+        depth_frame = aligned.get_depth_frame()
+        color_frame = aligned.get_color_frame()
+        if not depth_frame or not color_frame:
+            continue
+
+        # Filter depth
+        depth_frame = spatial.process(depth_frame)
+        depth_frame = temporal.process(depth_frame)
+
+        color_image = np.asanyarray(color_frame.get_data())
+        corners, ids, _ = detector.detectMarkers(color_image)
+
+        if ids is not None:
+            cv2.aruco.drawDetectedMarkers(color_image, corners, ids)
+            rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(
+                corners, markerLength, camMatrix, distCoeffs
+            )
+
+            tvec = tvecs[0][0].reshape(3, 1)
+            rvec = rvecs[0][0].reshape(3, 1)
+
+            # Inverts the coordinates so the camera is relative to the marker
+            R_marker, _ = cv2.Rodrigues(rvec)
+            T_marker_to_cam = np.eye(4)
+            T_marker_to_cam[:3, :3] = R_marker
+            T_marker_to_cam[:3, 3] = tvec.flatten()
+            T_cam_to_marker = np.linalg.inv(T_marker_to_cam)
+
+            X_new, Y_new, Z_new = T_cam_to_marker[:3, 3]
+
+            # Calculates the yaw
+            R_cam = T_cam_to_marker[:3, :3]
+            yaw_new = -math.atan2(R_cam[0, 2], R_cam[2, 2])
+
+            if prev_yaw is None:
+                prev_yaw = yaw_new
+            else:
+                yaw_new = unwrap_angle(prev_yaw, yaw_new)
+
+            # Filter out small changes
+            dist_delta = math.hypot(X_new - prev_X, Z_new - prev_Z)
+            yaw_delta = abs(math.degrees(yaw_new - prev_yaw))
+            if dist_delta < 0.02 and yaw_delta < 0.3:
+                # ignored
+                continue
+
+            # Filter outliers
+            X_filtered, Z_filtered = filter_outlier([X_new, Z_new])
+
+            # Smoothening
+            X_smooth = alpha_x * X_filtered + (1 - alpha_x) * prev_X
+            Z_smooth = alpha_z * Z_filtered + (1 - alpha_z) * prev_Z
+
+            x_vec = math.cos(yaw_new)
+            z_vec = math.sin(yaw_new)
+            prev_x = math.cos(prev_yaw)
+            prev_z = math.sin(prev_yaw)
+            x_s = alpha_yaw * x_vec + (1 - alpha_yaw) * prev_x
+            z_s = alpha_yaw * z_vec + (1 - alpha_yaw) * prev_z
+            yaw_smooth = math.atan2(z_s, x_s)
+
+            prev_X, prev_Z, prev_yaw = X_smooth, Z_smooth, yaw_smooth
+            X, Z, yaw = X_smooth, Z_smooth, yaw_smooth
+
+        # Creates visuals
+        map_vis = base_map.copy()
+        draw_grid(map_vis, scale)
+        draw_camera(map_vis, X, Z, yaw=yaw, scale=scale, size=10)
+
+        yd = math.degrees(yaw)
+        cv2.imshow("Camera Vision", color_image)
+        cv2.imshow("Camera Map", map_vis)
+        print(f"Position=({X:.3f}, {Z:.3f}) m | Yaw={yd:.2f}°")
+
+        if cv2.waitKey(1) == 27:  # ESC
+            break
+
+finally:
+    pipe.stop()
+    cv2.destroyAllWindows()
