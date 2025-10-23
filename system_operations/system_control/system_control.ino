@@ -324,6 +324,8 @@ void loop() {
     aL_speed = joy[3];
     aR_speed = aL_speed;
     aB_speed = -joy[2];
+    last_actuator_cmd_time=current_time;
+    last_motor_cmd_time=current_time;
     systemFault(false,"","", NONE, NONE, ON);
   } 
   #endif
