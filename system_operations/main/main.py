@@ -5,7 +5,7 @@ from system_operations.arduino_cli import arduinoConsole                        
 from system_operations.arduino_serial_commuication import serialCommands                                    # Import arduino serial package commucation with the arduino
 from system_operations.autonomous import AutonomousRunner                                                   # Import Riley's autos system(converted into package) to run system autos
 
-arduino = arduinoConsole(sketch_path = ROOT/"system_operations"/"system_control"/"system_control.ino")    
+arduino = arduinoConsole(sketch_path = ROOT/"system_operations"/"system_control"/"system_control.ino", board="arduino:avr:mega")    
 
 network = NetworkingOperations()
 arduino.compile_and_upload()
