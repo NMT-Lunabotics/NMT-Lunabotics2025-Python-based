@@ -7,12 +7,11 @@
 // List of components flags to enable/disable for testing
 #define ERROR_LEDS_ENABLED           1
 #define MOTORS_ENABLED               1
-#define BUCKET_ACTUATOR_ENABLED      1
-#define ARM_ACTUATORS_ENABLED        1
+#define BUCKET_ACTUATOR_ENABLED      0
+#define ARM_ACTUATORS_ENABLED        0
 #define SERVO_MOTOR_ENABLED          0
 #define IMU_SENSOR_ENABLED           0
 #define IBUS_RECIVER_ENABLED         1
-#define INFO_SCREEN_ENABLED          1
 
 // List of faults to disable
 #define SERIAL_COMM_TIMEOUT_FAULT    1
@@ -20,7 +19,7 @@
 
 // Debug mode flags
 #define DEBUG_MODE                   0
-#define SENSOR_OUTPUT                0  // 1: IMU, 2: IBUS, 3: IBUS raw
+#define SENSOR_OUTPUT                3  // 1: IMU, 2: IBUS, 3: IBUS raw
 
 #else
 //--------------- NUC TEST ROBOT SETTINGS ---------------
@@ -35,37 +34,19 @@
 #define COMPONENT_TIMEOUT_FAULTS     0
 #define DEBUG_MODE                   0
 #define SENSOR_OUTPUT                0  
-#define INFO_SCREEN_ENABLED          0
 #endif
 
 //--------------- Setup used classes ---------------
 #if IMU_SENSOR_ENABLED
-  #if MAIN_ROBOT==1
-    #define IMU_MANUAL_SCALER 1
-  #else
-    #define IMU_MANUAL_SCALER 0.6
-  #endif
-  MPU6050 IMU; 
+#if MAIN_ROBOT==1
+#define IMU_MANUAL_SCALER 1
+#else
+#define IMU_MANUAL_SCALER 0.6
 #endif
-
+MPU6050 IMU; 
+#endif
 #if IBUS_RECIVER_ENABLED
-  IBusReader ibus(Serial1);
-#endif
-
-#if INFO_SCREEN_ENABLED
-  LCD2004 lcd(0x27, 20, 4);
-  bool display_on=true;
-  bool locked_error_code=true;
-  bool data_cycle_enabled=true;
-  uint8_t data_cycle=0;
-  struct Message {
-    char id[4];       
-    char text[64];   
-    uint16_t duration;
-    uint8_t priority; 
-  };
-Message registry[50];
-uint8_t registryCount = 0;
+IBusReader ibus(Serial1);
 #endif
 
 //--------------- Actuators ---------------
@@ -343,6 +324,8 @@ void loop() {
     aL_speed = joy[3];
     aR_speed = aL_speed;
     aB_speed = -joy[2];
+    last_actuator_cmd_time=current_time;
+    last_motor_cmd_time=current_time;
     systemFault(false,"","", NONE, NONE, ON);
   } 
   #endif
@@ -539,11 +522,6 @@ void loop() {
   }
     // Run fault function every loop to update leds, and handle critical errors
   systemFault(false, "","", NONE, NONE, NONE);
-  #if INFO_SCREEN_ENABLED
-    if(data_cycle_enabled==true){
-      lcd.screenPrint(longMsg, staticPrefix, 5000);
-    }
-  #endif
   #if IMU_SENSOR_ENABLED
   if(update_IMU_raw_home==true) updateIMUData(true);
   else updateIMUData(false);
