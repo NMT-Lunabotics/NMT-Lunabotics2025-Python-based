@@ -15,11 +15,14 @@ class arduinoConsole:
         self.baudrate = baudrate
         self.ser = None
         self.errors = errors
-        if not board or not port:
-            self.board, self.port = self.detect_board()
+        if board == None:
+            self.board = self.detect_board()
         else:
             self.board = board
+        if port == None:
             self.port = port
+        else: 
+            self.port = self.find_arduino()
 
     def find_arduino(self)->str:
         """Search currently used ports for Arduino"""
