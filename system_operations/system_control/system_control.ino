@@ -276,15 +276,15 @@ void loop() {
       }
       Serial.println("");
     #endif
-    int16_t throttle = joy[0]; 
-    int16_t steering = joy[1];
+    int16_t throttle = joy[1]; 
+    int16_t steering = joy[0];
     mL_speed = constrain(throttle - steering, -30, 30);
     mR_speed = constrain(throttle + steering, -30, 30);
     aLR_tgt = -1;
     aB_tgt = -1;
-    aL_speed = joy[2];
-    aR_speed = -aL_speed;
-    aB_speed = joy[3];
+    aL_speed = joy[3];
+    aR_speed = aL_speed;
+    aB_speed = joy[2];
   } 
   #endif
   #if SERIAL_COMM_TIMEOUT_FAULT
