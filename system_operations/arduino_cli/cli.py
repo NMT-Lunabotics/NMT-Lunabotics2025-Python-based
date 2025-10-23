@@ -9,7 +9,7 @@ from pathlib import Path
 # calling compile_and_upload() will compile and upload the sketch to the connected arduino, using your spcfifced skeach, board, baudrate and port.
 
 class arduinoConsole:
-    def __init__(self, sketch_path: str, board: str="arduino:avr:mega", baudrate: int=115200, port:int=None, errors:bool=False) -> None:
+    def __init__(self, sketch_path: str, board: bool=None, baudrate: int=115200, port:int=None, errors:bool=False) -> None:
         """Default function variables"""
         self.sketch_path = sketch_path
         self.baudrate = baudrate
@@ -20,9 +20,9 @@ class arduinoConsole:
         else:
             self.board = board
         if port == None:
-            self.port = port
-        else: 
             self.port = self.find_arduino()
+        else: 
+            self.port = port
 
     def find_arduino(self)->str:
         """Search currently used ports for Arduino"""
