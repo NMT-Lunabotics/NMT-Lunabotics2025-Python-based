@@ -403,7 +403,7 @@ class IBusReader {
       }
   private:
       HardwareSerial &serial;
-      bool dynamicRanges=true;
+      bool dynamicRanges=false;
       uint8_t buffer[32];
       int idx = 0;
       int threshold = 1;
