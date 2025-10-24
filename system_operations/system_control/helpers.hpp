@@ -359,7 +359,7 @@ class IBusReader {
                 for (int i = 0; i < 30; i++) chksum -= buffer[i];
                 uint16_t pktChksum = buffer[30] | (buffer[31] << 8);
                 if (chksum == pktChksum) {
-                    for (int i = 0; i < 4; i++) {
+                    for (int i = 0; i < 8; i++) {
                         int pos = 2 + (i * 2);
                         channels[i] = buffer[pos] | (buffer[pos + 1] << 8);
                         if (dynamicRanges) {
