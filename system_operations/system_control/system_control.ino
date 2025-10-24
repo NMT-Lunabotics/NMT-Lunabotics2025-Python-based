@@ -202,6 +202,7 @@ int actuator_timeout = 2000;
 
 // Serial and state
 bool serial_connection_established=false;
+bool RC_connection_established=false;
 bool receiving_message = false;
 bool at_bucket_min = false;
 bool at_bucket_max = false;
@@ -340,6 +341,10 @@ void loop() {
       aL_speed = -joy[3];
       aR_speed = aL_speed;
       aB_speed = joy[2];
+      if(RC_connection_established==false){
+        RC_connection_established=true;
+        systemFault(false,"","", NONE, NONE, ON);
+      }
     }
   #endif
   } 
@@ -414,20 +419,22 @@ void loop() {
     if (!emergency_stop) {
       #if COMPONENT_TIMEOUT_FAULTS
       // Timeout motors and actuators if a command isn't recived within the timeout period
-      if(current_time-last_motor_cmd_time>=motor_timeout&&(mR_speed!=0||mL_speed!=0||mLR_rotation_speed!=0||mLR_rotation!=0)){
-        mR_speed=0;
-        mL_speed=0;
-        mLR_rotation_speed=0;
-        mLR_rotation=0;
-        systemFault(false,"","Motors timed out, no motor command received within "+ String(motor_timeout/1000)+"s", NONE, NONE, NONE);
-      }
-       if(current_time-last_actuator_cmd_time>=actuator_timeout && (aL_speed!=0 || aR_speed !=0 || aB_speed!=0 || aLR_tgt != -1 || aB_tgt != -1 )){
-        aLR_tgt = -1;
-        aB_tgt = -1;
-        aL_speed = 0;
-        aR_speed = 0;
-        aB_speed = 0;
-        systemFault(false,"","Actuators timed out, no actuator command received within "+ String(actuator_timeout/1000)+"s", NONE, NONE, NONE);
+      if(serial_connection_established==true){
+        if(current_time-last_motor_cmd_time>=motor_timeout&&(mR_speed!=0||mL_speed!=0||mLR_rotation_speed!=0||mLR_rotation!=0)){
+          mR_speed=0;
+          mL_speed=0;
+          mLR_rotation_speed=0;
+          mLR_rotation=0;
+          systemFault(false,"","Motors timed out, no motor command received within "+ String(motor_timeout/1000)+"s", NONE, NONE, NONE);
+        }
+        if(current_time-last_actuator_cmd_time>=actuator_timeout && (aL_speed!=0 || aR_speed !=0 || aB_speed!=0 || aLR_tgt != -1 || aB_tgt != -1 )){
+          aLR_tgt = -1;
+          aB_tgt = -1;
+          aL_speed = 0;
+          aR_speed = 0;
+          aB_speed = 0;
+          systemFault(false,"","Actuators timed out, no actuator command received within "+ String(actuator_timeout/1000)+"s", NONE, NONE, NONE);
+        }
       }
       #endif
       #if ARM_ACTUATORS_ENABLED
@@ -671,7 +678,7 @@ void processMessage(byte *data, int length) {
       break;
   }
   last_message_time=current_time;
-  if(serial_connection_established==false){
+  if(serial_connection_established==false&&cmd_triggered==true){
   serial_connection_established=true;
   systemFault(false,"","", NONE, NONE, ON);
   }
