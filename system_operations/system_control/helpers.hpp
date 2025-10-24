@@ -385,7 +385,7 @@ class IBusReader {
                         if (abs(newJoy - lastValues[i]) >= threshold) anyChanged = true;
                         joystick[i] = newJoy;
                     }
-                    joystick[4] = constrain(map(raw, 1000, 2000, 0, 1),0,1);
+                    joystick[4] = constrain(map(channels[6], 1000, 2000, 0, 1),0,1);
                     if (anyChanged) lastUpdate = millis();
                     for (int i = 0; i < 4; i++) lastValues[i] = joystick[i];
                     changed = true;
