@@ -172,6 +172,7 @@ int actuator_timeout = 2000;
 
 // Serial and state
 bool serial_connection_established=false;
+bool RC_connection_established=false;
 bool receiving_message = false;
 bool at_bucket_min = false;
 bool at_bucket_max = false;
@@ -265,8 +266,6 @@ void loop() {
   processSerialBuffer();
   #if IBUS_REVIVER_ENABLED
   // Read serial and process messages while being Non-blocking
-  last_actuator_cmd_time=current_time;
-  last_motor_cmd_time=current_time;
   if (ibus.update()) {
     #if SENSOR_OUTPUT == 3
       int16_t* joy = ibus.getJoystick(true);
@@ -303,8 +302,8 @@ void loop() {
         aL_speed = -joy[3];
         aR_speed = aL_speed;
         aB_speed = joy[2];
-        if(serial_connection_established==false){
-          serial_connection_established=true;
+        if(RC_connection_established==false){
+          RC_connection_established=true;
           systemFault(false,"","", NONE, NONE, ON);
         }
       }
