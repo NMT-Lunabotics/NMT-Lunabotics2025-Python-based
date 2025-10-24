@@ -301,6 +301,12 @@ void loop() {
         aL_speed = -joy[3];
         aR_speed = aL_speed;
         aB_speed = joy[2];
+        last_actuator_cmd_time=current_time;
+        last_motor_cmd_time=current_time;
+        if(serial_connection_established==false){
+          serial_connection_established=true;
+          systemFault(false,"","", NONE, NONE, ON);
+        }
       }
     #endif
   } 
@@ -608,8 +614,8 @@ void processMessage(byte *data, int length) {
   }
   last_message_time=current_time;
   if(serial_connection_established==false){
-  serial_connection_established=true;
-  systemFault(false,"","", NONE, NONE, ON);
+    serial_connection_established=true;
+    systemFault(false,"","", NONE, NONE, ON);
   }
 }
 
