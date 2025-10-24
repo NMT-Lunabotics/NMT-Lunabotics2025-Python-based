@@ -614,7 +614,7 @@ void processMessage(byte *data, int length) {
       break;
   }
   last_message_time=current_time;
-  if(serial_connection_established==false){
+  if(serial_connection_established==false && cmd_triggered==true){
     serial_connection_established=true;
     systemFault(false,"","", NONE, NONE, ON);
   }
