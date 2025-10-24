@@ -397,7 +397,7 @@ class IBusReader {
         }
         return changed;
       }    
-      int16_t *getJoystick(float raw_values=false) { 
+      int16_t *getJoystick(bool raw_values=false) { 
         if(raw_values==false) return joystick;
         else return channels;
       }
