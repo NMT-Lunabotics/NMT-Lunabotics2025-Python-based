@@ -4,9 +4,9 @@
 
 // List of components flags to enable/disable for testing
 #define ERROR_LEDS_ENABLED           1
-#define MOTORS_ENABLED               0
-#define BUCKET_ACTUATOR_ENABLED      0
-#define ARM_ACTUATORS_ENABLED        0
+#define MOTORS_ENABLED               1
+#define BUCKET_ACTUATOR_ENABLED      1
+#define ARM_ACTUATORS_ENABLED        1
 #define SERVO_MOTOR_ENABLED          0
 #define IMU_SENSOR_ENABLED           0
 #define IBUS_REVIVER_ENABLED         1
@@ -17,7 +17,7 @@
 
 // Debug mode flags
 #define DEBUG_MODE                   0
-#define SENSOR_OUTPUT                2  // 1: IMU, 2: IBUS, 3: IBUS raw
+#define SENSOR_OUTPUT                0  // 1: IMU, 2: IBUS, 3: IBUS raw
 
 //--------------- Setup used classes ---------------
 
@@ -284,15 +284,24 @@ void loop() {
       Serial.println("");
     #else
       int16_t* joy = ibus.getJoystick();
-      int16_t throttle = joy[0]; 
-      int16_t steering = joy[1];
-      mL_speed = constrain(throttle + steering, -30, 30);
-      mR_speed = constrain(throttle - steering, -30, 30);
-      aLR_tgt = -1;
-      aB_tgt = -1;
-      aL_speed = -joy[3];
-      aR_speed = aL_speed;
-      aB_speed = joy[2];
+      if(joy[4]==0) {
+        mL_speed=0;
+        mR_speed=0;
+        aL_speed=0;
+        aR_speed=0;
+        aB_speed=0;
+      }
+      else{
+        int16_t throttle = joy[0]; 
+        int16_t steering = joy[1];
+        mL_speed = constrain(throttle + steering, -30, 30);
+        mR_speed = constrain(throttle - steering, -30, 30);
+        aLR_tgt = -1;
+        aB_tgt = -1;
+        aL_speed = -joy[3];
+        aR_speed = aL_speed;
+        aB_speed = joy[2];
+      }
     #endif
   } 
   #endif
