@@ -720,7 +720,6 @@ void updateLed(OutPin &led, const LedState &state, int interval=250) {
 }
 #endif
 
-
 /*
 RED: critical system fault(FULL ESTOP)
 
