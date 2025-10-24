@@ -293,7 +293,7 @@ void loop() {
       }
       else{
         int16_t throttle = joy[0]; 
-        int16_t steering = joy[1];
+        int16_t steering = -joy[1];
         mL_speed = constrain(throttle - steering, -30, 30);
         mR_speed = constrain(throttle + steering, -30, 30);
         aLR_tgt = -1;
