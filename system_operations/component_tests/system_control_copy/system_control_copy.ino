@@ -317,13 +317,13 @@ void loop() {
     #endif
     int16_t throttle = joy[1]; 
     int16_t steering = joy[0];
-    mL_speed = constrain(throttle - steering, -30, 30);
-    mR_speed = constrain(throttle + steering, -30, 30);
+    mL_speed = constrain(throttle + steering, -30, 30);
+    mR_speed = constrain(throttle - steering, -30, 30);
     aLR_tgt = -1;
     aB_tgt = -1;
-    aL_speed = joy[3];
+    aL_speed = -joy[3];
     aR_speed = aL_speed;
-    aB_speed = -joy[2];
+    aB_speed = joy[2];
     last_actuator_cmd_time=current_time;
     last_motor_cmd_time=current_time;
     systemFault(false,"","", NONE, NONE, ON);

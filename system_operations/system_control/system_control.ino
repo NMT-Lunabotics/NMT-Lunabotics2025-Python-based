@@ -17,7 +17,7 @@
 
 // Debug mode flags
 #define DEBUG_MODE                   0
-#define SENSOR_OUTPUT                0  // 1: IMU, 2: IBUS, 3: IBUS raw
+#define SENSOR_OUTPUT                3  // 1: IMU, 2: IBUS, 3: IBUS raw
 
 //--------------- Setup used classes ---------------
 
@@ -270,7 +270,7 @@ void loop() {
     #if SENSOR_OUTPUT == 2 || SENSOR_OUTPUT == 3
     if(SENSOR_OUTPUT==3) joy = ibus.getJoystick(true);
       Serial.print("RC controller inputs: ");
-      for (int i = 0; i < 4; i++) {  
+      for (int i = 0; i < 7; i++) {  
         Serial.print(joy[i]);
         Serial.print(" ");
       }
@@ -278,8 +278,8 @@ void loop() {
     #endif
     int16_t throttle = joy[0]; 
     int16_t steering = joy[1];
-    mL_speed = constrain(throttle + steering, -30, 30);
-    mR_speed = constrain(throttle - steering, -30, 30);
+    mL_speed = constrain(throttle - steering, -30, 30);
+    mR_speed = constrain(throttle + steering, -30, 30);
     aLR_tgt = -1;
     aB_tgt = -1;
     aL_speed = -joy[3];
