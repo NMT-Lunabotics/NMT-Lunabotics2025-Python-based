@@ -267,7 +267,7 @@ void loop() {
   // Read serial and process messages while being Non-blocking
   if (ibus.update()) {
     #if SENSOR_OUTPUT == 2 || SENSOR_OUTPUT == 3
-    if(SENSOR_OUTPUT==3) joy = ibus.getJoystick(true);
+    if(SENSOR_OUTPUT==3) int16_t* joy = ibus.getJoystick(true);
       Serial.print("RC controller inputs: ");
       for (int i = 0; i < 12; i++) {  
         Serial.print(joy[i]);
