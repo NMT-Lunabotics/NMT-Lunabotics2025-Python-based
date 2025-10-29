@@ -27,10 +27,10 @@ runner = AutonomousRunner(serial)
 #            serial.send_command("M", [5, -5])
 #        time.sleep(0.5)
 
-#def run():
-#    while True:
-#        serial.send_command("M", [5, 5])
-#        time.sleep(0.01)
+def run():
+    while True:
+        serial.send_command("M", [5, 5])
+        time.sleep(0.01)
 
 #def run_and_log():
 #    while True:
@@ -70,11 +70,11 @@ def read_log():
 #-----------------------------------------------------------------
 
 #runner.load_sequence("transverse")
-while True:
-    read_log()
+#while True:
+#    read_log()
     #runner.update()
 
-#run()
+run()
 #run_and_log()
 #run_test()
 #rotate()
