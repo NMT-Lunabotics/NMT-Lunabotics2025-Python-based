@@ -35,7 +35,8 @@ RUN apt-get update && apt-get upgrade -y \
 # Python Packages to install
 RUN pip install --no-cache-dir \
     #Essiental packages .ie fundelmental compatition package that are required to run the robot
-    pyserial 
+    pyserial\
+    pygame 
 
 # Install used github distros(cli libray)
 RUN curl -fsSL https://raw.githubusercontent.com/arduino/arduino-cli/master/install.sh | sh
