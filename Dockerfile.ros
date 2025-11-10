@@ -38,23 +38,23 @@ RUN apt-get update && apt-get upgrade -y \
     ros-humble-pcl-ros \
     ros-humble-cv-bridge \
     ros-humble-image-transport \
+    ros-humble-nav2-bringup \
+    ros-humble-rviz2 \
     && rm -rf /var/lib/apt/lists/*
 
-RUN rosdep init || true
-RUN rosdep update
+#RUN rosdep init || true
+#RUN rosdep update
 
 # Install ROS packages to install
 USER $USER
 
-RUN mkdir -p $HOME_DIR/ros_ws/src && cd $HOME_DIR/ros_ws/src \
-    && git clone https://github.com/hku-mars/FAST-LIVO2.git \
-    && cd $HOME_DIR/ros_ws \
-    && source /opt/ros/humble/setup.bash \
-    && rosdep update \
-    && rosdep install --from-paths src --ignore-src -r -y \
-    && colcon build
+#RUN mkdir -p $HOME_DIR/ros_ws/src && cd $HOME_DIR/ros_ws/src \
+#    && cd $HOME_DIR/ros_ws \
+    #&& source /opt/ros/humble/setup.bash \
+#    && rosdep update \
+#    && colcon build
 
-# Copy start_docker.sh into docker and make executable for accessing the container
+# Copy start_docker.sh into docker and make executable for accessing the container     && rosdep install --from-paths src --ignore-src -r -y \     #&& git clone https://github.com/hku-mars/FAST-LIVO2.git \
 USER root
 COPY start_docker.sh /usr/local/bin/start_docker
 RUN chmod +x /usr/local/bin/start_docker \
