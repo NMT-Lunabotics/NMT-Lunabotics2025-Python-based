@@ -1,0 +1,49 @@
+[0.000000] (-) TimerEvent: {}
+[0.001180] (usb_camera) JobQueued: {'identifier': 'usb_camera', 'dependencies': OrderedDict()}
+[0.001420] (usb_camera) JobStarted: {'identifier': 'usb_camera'}
+[0.099105] (-) TimerEvent: {}
+[0.199589] (-) TimerEvent: {}
+[0.300185] (-) TimerEvent: {}
+[0.400883] (-) TimerEvent: {}
+[0.501448] (-) TimerEvent: {}
+[0.601966] (-) TimerEvent: {}
+[0.702556] (-) TimerEvent: {}
+[0.803108] (-) TimerEvent: {}
+[0.903767] (-) TimerEvent: {}
+[0.932432] (usb_camera) Command: {'cmd': ['/usr/bin/python3', '-W', 'ignore:setup.py install is deprecated', '-W', 'ignore:easy_install command is deprecated', 'setup.py', 'egg_info', '--egg-base', '../../build/usb_camera', 'build', '--build-base', '/home/luna/ros2_ws/build/usb_camera/build', 'install', '--record', '/home/luna/ros2_ws/build/usb_camera/install.log', '--single-version-externally-managed'], 'cwd': '/home/luna/ros2_ws/src/usb_camera', 'env': {'HOSTNAME': 'Laptop', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib', 'HOME': '/home/luna', 'OLDPWD': '/home/luna/ros2_ws', 'ROS_PYTHON_VERSION': '3', 'HOME_DIR': '/home/luna', 'GIT_REPO': 'git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git', 'ROS_DISTRO': 'humble', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'GIT_BRANCH': 'benjaminstestbranch', 'TERM': 'xterm', 'ROS_LOCALHOST_ONLY': '0', 'ROS_USER': 'luna', 'PATH': '/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'GIT_USER': 'benjamin-p15', 'LANG': 'C.UTF-8', 'GIT_EMAIL': 'benjamin.peterson@student.nmt.edu', 'AMENT_PREFIX_PATH': '/opt/ros/humble', 'WORKING_DIR': '/home/luna/ros2_ws', 'PWD': '/home/luna/ros2_ws/build/usb_camera', 'LC_ALL': 'C.UTF-8', 'PYTHONPATH': '/home/luna/ros2_ws/build/usb_camera/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/luna/ros2_ws/install/usb_camera/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages', 'COLCON': '1'}, 'shell': False}
+[1.003970] (-) TimerEvent: {}
+[1.104425] (-) TimerEvent: {}
+[1.204941] (-) TimerEvent: {}
+[1.266562] (usb_camera) StdoutLine: {'line': b'running egg_info\n'}
+[1.267787] (usb_camera) StdoutLine: {'line': b'creating ../../build/usb_camera/usb_camera.egg-info\n'}
+[1.268211] (usb_camera) StdoutLine: {'line': b'writing ../../build/usb_camera/usb_camera.egg-info/PKG-INFO\n'}
+[1.268541] (usb_camera) StdoutLine: {'line': b'writing dependency_links to ../../build/usb_camera/usb_camera.egg-info/dependency_links.txt\n'}
+[1.268790] (usb_camera) StdoutLine: {'line': b'writing entry points to ../../build/usb_camera/usb_camera.egg-info/entry_points.txt\n'}
+[1.268924] (usb_camera) StdoutLine: {'line': b'writing requirements to ../../build/usb_camera/usb_camera.egg-info/requires.txt\n'}
+[1.269226] (usb_camera) StdoutLine: {'line': b'writing top-level names to ../../build/usb_camera/usb_camera.egg-info/top_level.txt\n'}
+[1.269543] (usb_camera) StdoutLine: {'line': b"writing manifest file '../../build/usb_camera/usb_camera.egg-info/SOURCES.txt'\n"}
+[1.272076] (usb_camera) StdoutLine: {'line': b"reading manifest file '../../build/usb_camera/usb_camera.egg-info/SOURCES.txt'\n"}
+[1.273319] (usb_camera) StdoutLine: {'line': b"writing manifest file '../../build/usb_camera/usb_camera.egg-info/SOURCES.txt'\n"}
+[1.273577] (usb_camera) StdoutLine: {'line': b'running build\n'}
+[1.273685] (usb_camera) StdoutLine: {'line': b'running build_py\n'}
+[1.273975] (usb_camera) StdoutLine: {'line': b'creating /home/luna/ros2_ws/build/usb_camera/build\n'}
+[1.274188] (usb_camera) StdoutLine: {'line': b'creating /home/luna/ros2_ws/build/usb_camera/build/lib\n'}
+[1.274294] (usb_camera) StdoutLine: {'line': b'creating /home/luna/ros2_ws/build/usb_camera/build/lib/usb_camera\n'}
+[1.274436] (usb_camera) StdoutLine: {'line': b'copying usb_camera/usb_camera_node.py -> /home/luna/ros2_ws/build/usb_camera/build/lib/usb_camera\n'}
+[1.274518] (usb_camera) StdoutLine: {'line': b'copying usb_camera/__init__.py -> /home/luna/ros2_ws/build/usb_camera/build/lib/usb_camera\n'}
+[1.274613] (usb_camera) StdoutLine: {'line': b'running install\n'}
+[1.274756] (usb_camera) StdoutLine: {'line': b'running install_lib\n'}
+[1.275989] (usb_camera) StdoutLine: {'line': b'creating /home/luna/ros2_ws/install/usb_camera/lib/python3.10/site-packages/usb_camera\n'}
+[1.276204] (usb_camera) StdoutLine: {'line': b'copying /home/luna/ros2_ws/build/usb_camera/build/lib/usb_camera/usb_camera_node.py -> /home/luna/ros2_ws/install/usb_camera/lib/python3.10/site-packages/usb_camera\n'}
+[1.276304] (usb_camera) StdoutLine: {'line': b'copying /home/luna/ros2_ws/build/usb_camera/build/lib/usb_camera/__init__.py -> /home/luna/ros2_ws/install/usb_camera/lib/python3.10/site-packages/usb_camera\n'}
+[1.277011] (usb_camera) StdoutLine: {'line': b'byte-compiling /home/luna/ros2_ws/install/usb_camera/lib/python3.10/site-packages/usb_camera/usb_camera_node.py to usb_camera_node.cpython-310.pyc\n'}
+[1.277892] (usb_camera) StdoutLine: {'line': b'byte-compiling /home/luna/ros2_ws/install/usb_camera/lib/python3.10/site-packages/usb_camera/__init__.py to __init__.cpython-310.pyc\n'}
+[1.278090] (usb_camera) StdoutLine: {'line': b'running install_egg_info\n'}
+[1.280824] (usb_camera) StdoutLine: {'line': b'Copying ../../build/usb_camera/usb_camera.egg-info to /home/luna/ros2_ws/install/usb_camera/lib/python3.10/site-packages/usb_camera-0.0.1-py3.10.egg-info\n'}
+[1.281701] (usb_camera) StdoutLine: {'line': b'running install_scripts\n'}
+[1.305198] (-) TimerEvent: {}
+[1.329697] (usb_camera) StdoutLine: {'line': b'Installing usb_camera_node script to /home/luna/ros2_ws/install/usb_camera/bin\n'}
+[1.330267] (usb_camera) StdoutLine: {'line': b"writing list of installed files to '/home/luna/ros2_ws/build/usb_camera/install.log'\n"}
+[1.374677] (usb_camera) CommandEnded: {'returncode': 0}
+[1.399901] (usb_camera) JobEnded: {'identifier': 'usb_camera', 'rc': 0}
+[1.401152] (-) EventReactorShutdown: {}

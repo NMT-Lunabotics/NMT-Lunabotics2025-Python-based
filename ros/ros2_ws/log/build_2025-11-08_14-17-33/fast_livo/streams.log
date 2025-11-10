@@ -1,0 +1,48 @@
+[0.021s] Invoking command in '/home/luna/ros2_ws/build/fast_livo': /usr/bin/cmake /home/luna/ros2_ws/FAST-LIVO2 -DCMAKE_BUILD_TYPE=Release -DCATKIN_INSTALL_INTO_PREFIX_ROOT=0 -DCATKIN_SYMLINK_INSTALL=ON -DCMAKE_INSTALL_PREFIX=/home/luna/ros2_ws/install/fast_livo
+[0.047s] [0mCMake Deprecation Warning at CMakeLists.txt:1 (cmake_minimum_required):
+[0.048s]   Compatibility with CMake < 2.8.12 will be removed from a future version of
+[0.048s]   CMake.
+[0.048s] 
+[0.048s]   Update the VERSION argument <min> value or use a ...<max> suffix to tell
+[0.048s]   CMake that the project does not need compatibility with older versions.
+[0.048s] 
+[0.048s] [0m
+[0.147s] -- The C compiler identification is GNU 11.4.0
+[0.246s] -- The CXX compiler identification is GNU 11.4.0
+[0.265s] -- Detecting C compiler ABI info
+[0.385s] -- Detecting C compiler ABI info - done
+[0.400s] -- Check for working C compiler: /usr/bin/cc - skipped
+[0.401s] -- Detecting C compile features
+[0.402s] -- Detecting C compile features - done
+[0.410s] -- Detecting CXX compiler ABI info
+[0.538s] -- Detecting CXX compiler ABI info - done
+[0.552s] -- Check for working CXX compiler: /usr/bin/c++ - skipped
+[0.553s] -- Detecting CXX compile features
+[0.554s] -- Detecting CXX compile features - done
+[0.555s] -- Build Type: Release
+[0.555s] -- Current CPU architecture: x86_64
+[0.555s] -- Using general x86 optimizations: -O3 -march=native -mtune=native -funroll-loops
+[0.563s] -- Processor count: 16
+[0.564s] -- Multithreading enabled. Cores: 4
+[1.116s] -- OpenMP found
+[1.138s] -- mimalloc not found, proceeding without it
+[1.158s] [31mCMake Error at CMakeLists.txt:79 (find_package):
+[1.158s]   By not providing "Findcatkin.cmake" in CMAKE_MODULE_PATH this project has
+[1.159s]   asked CMake to find a package configuration file provided by "catkin", but
+[1.159s]   CMake did not find one.
+[1.159s] 
+[1.159s]   Could not find a package configuration file provided by "catkin" with any
+[1.159s]   of the following names:
+[1.159s] 
+[1.159s]     catkinConfig.cmake
+[1.159s]     catkin-config.cmake
+[1.159s] 
+[1.159s]   Add the installation prefix of "catkin" to CMAKE_PREFIX_PATH or set
+[1.159s]   "catkin_DIR" to a directory containing one of the above files.  If "catkin"
+[1.159s]   provides a separate development package or SDK, be sure it has been
+[1.159s]   installed.
+[1.159s] 
+[1.159s] [0m
+[1.160s] -- Configuring incomplete, errors occurred!
+[1.160s] See also "/home/luna/ros2_ws/build/fast_livo/CMakeFiles/CMakeOutput.log".
+[1.164s] Invoked command in '/home/luna/ros2_ws/build/fast_livo' returned '1': /usr/bin/cmake /home/luna/ros2_ws/FAST-LIVO2 -DCMAKE_BUILD_TYPE=Release -DCATKIN_INSTALL_INTO_PREFIX_ROOT=0 -DCATKIN_SYMLINK_INSTALL=ON -DCMAKE_INSTALL_PREFIX=/home/luna/ros2_ws/install/fast_livo

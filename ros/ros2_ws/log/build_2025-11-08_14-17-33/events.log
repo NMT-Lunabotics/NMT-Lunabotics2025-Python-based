@@ -1,0 +1,84 @@
+[0.000000] (-) TimerEvent: {}
+[0.000960] (fast_livo) JobQueued: {'identifier': 'fast_livo', 'dependencies': OrderedDict()}
+[0.001115] (usb_camera) JobQueued: {'identifier': 'usb_camera', 'dependencies': OrderedDict()}
+[0.001149] (fast_livo) JobStarted: {'identifier': 'fast_livo'}
+[0.007977] (usb_camera) JobStarted: {'identifier': 'usb_camera'}
+[0.015452] (fast_livo) JobProgress: {'identifier': 'fast_livo', 'progress': 'cmake'}
+[0.016461] (fast_livo) Command: {'cmd': ['/usr/bin/cmake', '/home/luna/ros2_ws/FAST-LIVO2', '-DCMAKE_BUILD_TYPE=Release', '-DCATKIN_INSTALL_INTO_PREFIX_ROOT=0', '-DCATKIN_SYMLINK_INSTALL=ON', '-DCMAKE_INSTALL_PREFIX=/home/luna/ros2_ws/install/fast_livo'], 'cwd': '/home/luna/ros2_ws/build/fast_livo', 'env': OrderedDict([('HOSTNAME', 'Laptop'), ('SHLVL', '1'), ('LD_LIBRARY_PATH', '/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib'), ('HOME', '/home/luna'), ('ROS_PYTHON_VERSION', '3'), ('HOME_DIR', '/home/luna'), ('GIT_REPO', 'git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git'), ('ROS_DISTRO', 'humble'), ('_', '/usr/bin/colcon'), ('ROS_VERSION', '2'), ('GIT_BRANCH', 'benjaminstestbranch'), ('TERM', 'xterm'), ('ROS_LOCALHOST_ONLY', '0'), ('ROS_USER', 'luna'), ('PATH', '/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin'), ('GIT_USER', 'benjamin-p15'), ('LANG', 'C.UTF-8'), ('LS_COLORS', 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:'), ('GIT_EMAIL', 'benjamin.peterson@student.nmt.edu'), ('AMENT_PREFIX_PATH', '/opt/ros/humble'), ('WORKING_DIR', '/home/luna/ros2_ws'), ('PWD', '/home/luna/ros2_ws/build/fast_livo'), ('LC_ALL', 'C.UTF-8'), ('PYTHONPATH', '/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages'), ('COLCON', '1')]), 'shell': False}
+[0.048419] (fast_livo) StderrLine: {'line': b'\x1b[0mCMake Deprecation Warning at CMakeLists.txt:1 (cmake_minimum_required):\n'}
+[0.048738] (fast_livo) StderrLine: {'line': b'  Compatibility with CMake < 2.8.12 will be removed from a future version of\n'}
+[0.048847] (fast_livo) StderrLine: {'line': b'  CMake.\n'}
+[0.048932] (fast_livo) StderrLine: {'line': b'\n'}
+[0.049009] (fast_livo) StderrLine: {'line': b'  Update the VERSION argument <min> value or use a ...<max> suffix to tell\n'}
+[0.049090] (fast_livo) StderrLine: {'line': b'  CMake that the project does not need compatibility with older versions.\n'}
+[0.049172] (fast_livo) StderrLine: {'line': b'\n'}
+[0.049268] (fast_livo) StderrLine: {'line': b'\x1b[0m\n'}
+[0.099838] (-) TimerEvent: {}
+[0.148100] (fast_livo) StdoutLine: {'line': b'-- The C compiler identification is GNU 11.4.0\n'}
+[0.200047] (-) TimerEvent: {}
+[0.247374] (fast_livo) StdoutLine: {'line': b'-- The CXX compiler identification is GNU 11.4.0\n'}
+[0.266141] (fast_livo) StdoutLine: {'line': b'-- Detecting C compiler ABI info\n'}
+[0.300285] (-) TimerEvent: {}
+[0.386223] (fast_livo) StdoutLine: {'line': b'-- Detecting C compiler ABI info - done\n'}
+[0.400491] (-) TimerEvent: {}
+[0.401293] (fast_livo) StdoutLine: {'line': b'-- Check for working C compiler: /usr/bin/cc - skipped\n'}
+[0.402083] (fast_livo) StdoutLine: {'line': b'-- Detecting C compile features\n'}
+[0.403269] (fast_livo) StdoutLine: {'line': b'-- Detecting C compile features - done\n'}
+[0.410555] (fast_livo) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info\n'}
+[0.500710] (-) TimerEvent: {}
+[0.538690] (fast_livo) StdoutLine: {'line': b'-- Detecting CXX compiler ABI info - done\n'}
+[0.553437] (fast_livo) StdoutLine: {'line': b'-- Check for working CXX compiler: /usr/bin/c++ - skipped\n'}
+[0.553932] (fast_livo) StdoutLine: {'line': b'-- Detecting CXX compile features\n'}
+[0.554867] (fast_livo) StdoutLine: {'line': b'-- Detecting CXX compile features - done\n'}
+[0.555977] (fast_livo) StdoutLine: {'line': b'-- Build Type: Release\n'}
+[0.556170] (fast_livo) StdoutLine: {'line': b'-- Current CPU architecture: x86_64\n'}
+[0.556276] (fast_livo) StdoutLine: {'line': b'-- Using general x86 optimizations: -O3 -march=native -mtune=native -funroll-loops\n'}
+[0.564418] (fast_livo) StdoutLine: {'line': b'-- Processor count: 16\n'}
+[0.564614] (fast_livo) StdoutLine: {'line': b'-- Multithreading enabled. Cores: 4\n'}
+[0.600909] (-) TimerEvent: {}
+[0.701378] (-) TimerEvent: {}
+[0.730124] (usb_camera) Command: {'cmd': ['/usr/bin/python3', '-W', 'ignore:setup.py install is deprecated', '-W', 'ignore:easy_install command is deprecated', 'setup.py', 'develop', '--editable', '--build-directory', '/home/luna/ros2_ws/build/usb_camera/build', '--no-deps'], 'cwd': '/home/luna/ros2_ws/build/usb_camera', 'env': {'HOSTNAME': 'Laptop', 'SHLVL': '1', 'LD_LIBRARY_PATH': '/opt/ros/humble/opt/rviz_ogre_vendor/lib:/opt/ros/humble/lib/x86_64-linux-gnu:/opt/ros/humble/lib', 'HOME': '/home/luna', 'ROS_PYTHON_VERSION': '3', 'HOME_DIR': '/home/luna', 'GIT_REPO': 'git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git', 'ROS_DISTRO': 'humble', '_': '/usr/bin/colcon', 'ROS_VERSION': '2', 'GIT_BRANCH': 'benjaminstestbranch', 'TERM': 'xterm', 'ROS_LOCALHOST_ONLY': '0', 'ROS_USER': 'luna', 'PATH': '/opt/ros/humble/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin', 'GIT_USER': 'benjamin-p15', 'LANG': 'C.UTF-8', 'LS_COLORS': 'rs=0:di=01;34:ln=01;36:mh=00:pi=40;33:so=01;35:do=01;35:bd=40;33;01:cd=40;33;01:or=40;31;01:mi=00:su=37;41:sg=30;43:ca=30;41:tw=30;42:ow=34;42:st=37;44:ex=01;32:*.tar=01;31:*.tgz=01;31:*.arc=01;31:*.arj=01;31:*.taz=01;31:*.lha=01;31:*.lz4=01;31:*.lzh=01;31:*.lzma=01;31:*.tlz=01;31:*.txz=01;31:*.tzo=01;31:*.t7z=01;31:*.zip=01;31:*.z=01;31:*.dz=01;31:*.gz=01;31:*.lrz=01;31:*.lz=01;31:*.lzo=01;31:*.xz=01;31:*.zst=01;31:*.tzst=01;31:*.bz2=01;31:*.bz=01;31:*.tbz=01;31:*.tbz2=01;31:*.tz=01;31:*.deb=01;31:*.rpm=01;31:*.jar=01;31:*.war=01;31:*.ear=01;31:*.sar=01;31:*.rar=01;31:*.alz=01;31:*.ace=01;31:*.zoo=01;31:*.cpio=01;31:*.7z=01;31:*.rz=01;31:*.cab=01;31:*.wim=01;31:*.swm=01;31:*.dwm=01;31:*.esd=01;31:*.jpg=01;35:*.jpeg=01;35:*.mjpg=01;35:*.mjpeg=01;35:*.gif=01;35:*.bmp=01;35:*.pbm=01;35:*.pgm=01;35:*.ppm=01;35:*.tga=01;35:*.xbm=01;35:*.xpm=01;35:*.tif=01;35:*.tiff=01;35:*.png=01;35:*.svg=01;35:*.svgz=01;35:*.mng=01;35:*.pcx=01;35:*.mov=01;35:*.mpg=01;35:*.mpeg=01;35:*.m2v=01;35:*.mkv=01;35:*.webm=01;35:*.webp=01;35:*.ogm=01;35:*.mp4=01;35:*.m4v=01;35:*.mp4v=01;35:*.vob=01;35:*.qt=01;35:*.nuv=01;35:*.wmv=01;35:*.asf=01;35:*.rm=01;35:*.rmvb=01;35:*.flc=01;35:*.avi=01;35:*.fli=01;35:*.flv=01;35:*.gl=01;35:*.dl=01;35:*.xcf=01;35:*.xwd=01;35:*.yuv=01;35:*.cgm=01;35:*.emf=01;35:*.ogv=01;35:*.ogx=01;35:*.aac=00;36:*.au=00;36:*.flac=00;36:*.m4a=00;36:*.mid=00;36:*.midi=00;36:*.mka=00;36:*.mp3=00;36:*.mpc=00;36:*.ogg=00;36:*.ra=00;36:*.wav=00;36:*.oga=00;36:*.opus=00;36:*.spx=00;36:*.xspf=00;36:', 'GIT_EMAIL': 'benjamin.peterson@student.nmt.edu', 'AMENT_PREFIX_PATH': '/opt/ros/humble', 'WORKING_DIR': '/home/luna/ros2_ws', 'PWD': '/home/luna/ros2_ws/build/usb_camera', 'LC_ALL': 'C.UTF-8', 'PYTHONPATH': '/home/luna/ros2_ws/build/usb_camera/prefix_override:/usr/lib/python3/dist-packages/colcon_core/task/python/colcon_distutils_commands:/home/luna/ros2_ws/install/usb_camera/lib/python3.10/site-packages:/opt/ros/humble/lib/python3.10/site-packages:/opt/ros/humble/local/lib/python3.10/dist-packages', 'COLCON': '1'}, 'shell': False}
+[0.801590] (-) TimerEvent: {}
+[0.902041] (-) TimerEvent: {}
+[1.002552] (-) TimerEvent: {}
+[1.043560] (usb_camera) StdoutLine: {'line': b'running develop\n'}
+[1.102755] (-) TimerEvent: {}
+[1.116909] (fast_livo) StdoutLine: {'line': b'-- OpenMP found\n'}
+[1.139328] (fast_livo) StdoutLine: {'line': b'-- mimalloc not found, proceeding without it\n'}
+[1.156452] (usb_camera) StdoutLine: {'line': b'running egg_info\n'}
+[1.156636] (usb_camera) StdoutLine: {'line': b'writing usb_camera.egg-info/PKG-INFO\n'}
+[1.156778] (usb_camera) StdoutLine: {'line': b'writing dependency_links to usb_camera.egg-info/dependency_links.txt\n'}
+[1.156947] (usb_camera) StdoutLine: {'line': b'writing entry points to usb_camera.egg-info/entry_points.txt\n'}
+[1.157049] (usb_camera) StdoutLine: {'line': b'writing requirements to usb_camera.egg-info/requires.txt\n'}
+[1.157159] (usb_camera) StdoutLine: {'line': b'writing top-level names to usb_camera.egg-info/top_level.txt\n'}
+[1.159129] (fast_livo) StderrLine: {'line': b'\x1b[31mCMake Error at CMakeLists.txt:79 (find_package):\n'}
+[1.159535] (fast_livo) StderrLine: {'line': b'  By not providing "Findcatkin.cmake" in CMAKE_MODULE_PATH this project has\n'}
+[1.159644] (fast_livo) StderrLine: {'line': b'  asked CMake to find a package configuration file provided by "catkin", but\n'}
+[1.159718] (fast_livo) StderrLine: {'line': b'  CMake did not find one.\n'}
+[1.159783] (fast_livo) StderrLine: {'line': b'\n'}
+[1.159848] (fast_livo) StderrLine: {'line': b'  Could not find a package configuration file provided by "catkin" with any\n'}
+[1.159914] (fast_livo) StderrLine: {'line': b'  of the following names:\n'}
+[1.159977] (fast_livo) StderrLine: {'line': b'\n'}
+[1.160038] (fast_livo) StderrLine: {'line': b'    catkinConfig.cmake\n'}
+[1.160101] (fast_livo) StderrLine: {'line': b'    catkin-config.cmake\n'}
+[1.160162] (fast_livo) StderrLine: {'line': b'\n'}
+[1.160223] (fast_livo) StderrLine: {'line': b'  Add the installation prefix of "catkin" to CMAKE_PREFIX_PATH or set\n'}
+[1.160308] (fast_livo) StderrLine: {'line': b'  "catkin_DIR" to a directory containing one of the above files.  If "catkin"\n'}
+[1.160377] (fast_livo) StderrLine: {'line': b'  provides a separate development package or SDK, be sure it has been\n'}
+[1.160444] (fast_livo) StderrLine: {'line': b'  installed.\n'}
+[1.160509] (fast_livo) StderrLine: {'line': b'\n'}
+[1.160574] (fast_livo) StderrLine: {'line': b'\x1b[0m\n'}
+[1.160641] (usb_camera) StdoutLine: {'line': b"reading manifest file 'usb_camera.egg-info/SOURCES.txt'\n"}
+[1.160722] (fast_livo) StdoutLine: {'line': b'-- Configuring incomplete, errors occurred!\n'}
+[1.160794] (fast_livo) StdoutLine: {'line': b'See also "/home/luna/ros2_ws/build/fast_livo/CMakeFiles/CMakeOutput.log".\n'}
+[1.160920] (usb_camera) StdoutLine: {'line': b"writing manifest file 'usb_camera.egg-info/SOURCES.txt'\n"}
+[1.162199] (usb_camera) StdoutLine: {'line': b'running build_ext\n'}
+[1.162470] (usb_camera) StdoutLine: {'line': b'Creating /home/luna/ros2_ws/install/usb_camera/lib/python3.10/site-packages/usb-camera.egg-link (link to .)\n'}
+[1.163882] (usb_camera) StdoutLine: {'line': b'Installing usb_camera_node script to /home/luna/ros2_ws/install/usb_camera/bin\n'}
+[1.164977] (usb_camera) StdoutLine: {'line': b'\n'}
+[1.165307] (usb_camera) StdoutLine: {'line': b'Installed /home/luna/ros2_ws/build/usb_camera\n'}
+[1.165411] (fast_livo) CommandEnded: {'returncode': 1}
+[1.196463] (fast_livo) JobEnded: {'identifier': 'fast_livo', 'rc': 1}
+[1.199633] (usb_camera) JobEnded: {'identifier': 'usb_camera', 'rc': 'SIGINT'}
+[1.202850] (-) TimerEvent: {}
+[1.210907] (-) EventReactorShutdown: {}

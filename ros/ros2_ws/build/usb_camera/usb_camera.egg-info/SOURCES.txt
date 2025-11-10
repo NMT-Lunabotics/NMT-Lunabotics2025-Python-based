@@ -1,0 +1,17 @@
+setup.py
+../../build/usb_camera/usb_camera.egg-info/PKG-INFO
+../../build/usb_camera/usb_camera.egg-info/SOURCES.txt
+../../build/usb_camera/usb_camera.egg-info/dependency_links.txt
+../../build/usb_camera/usb_camera.egg-info/entry_points.txt
+../../build/usb_camera/usb_camera.egg-info/requires.txt
+../../build/usb_camera/usb_camera.egg-info/top_level.txt
+../../build/usb_camera/usb_camera.egg-info/zip-safe
+usb_camera/__init__.py
+usb_camera/usb_camera_node.py
+usb_camera.egg-info/PKG-INFO
+usb_camera.egg-info/SOURCES.txt
+usb_camera.egg-info/dependency_links.txt
+usb_camera.egg-info/entry_points.txt
+usb_camera.egg-info/requires.txt
+usb_camera.egg-info/top_level.txt
+usb_camera.egg-info/zip-safe

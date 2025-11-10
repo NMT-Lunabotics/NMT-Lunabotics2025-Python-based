@@ -2,12 +2,22 @@
 set -e
 
 # Set default flags/settings of container
-IMAGE_NAME="luna/python-robot:latest"
+PYTHON_IMAGE_NAME="luna/python-robot:latest"
+PYTHON_DOCKERFILE="Dockerfile.python"
+
+ROS_IMAGE_NAME="luna/ros2-humble:latest"
+ROS_DOCKERFILE="Dockerfile.ros"
+
 DISPLAY_ENABLED=false
 BUILD_IMAGE=false
 RESTART_CONTAINER=false
 START_SYSTEM_CONTROL=false
 GITHUB_PULL=false
+
+RUN_PYTHON_IMAGE=true
+RUN_ROS_IMAGE=true
+CONTAINER_MODE=1
+
 
 # Container working directory and mount
 MOUNT_USERNAME=false
@@ -23,15 +33,17 @@ WORKING_DIR_HOST="$(pwd)"
 # Parse input flags
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
-        -d|--display) DISPLAY_ENABLED=true; shift ;;    # Enable GUI forwarding
-        -b|--build) BUILD_IMAGE=true; shift ;;          # Force image rebuild
-        -r|--restart) RESTART_CONTAINER=true; shift ;;  # Remove old containers first
-        -s|--start) START_SYSTEM_CONTROL=true; shift ;; # Start system control script
-        -p|--pull) GITHUB_PULL=true; shift ;;           # Pull github changes before building
+        -d|--display) DISPLAY_ENABLED=true; shift ;;          # Enable GUI forwarding
+        -b|--build) BUILD_IMAGE=true; shift ;;                # Force image rebuild
+        -r|--restart) RESTART_CONTAINER=true; shift ;;        # Remove old containers first
+        -s|--start) START_SYSTEM_CONTROL=true; shift ;;       # Start system control script
+        -p|--pull) GITHUB_PULL=true; shift ;;                 # Pull github changes before building
         -mm|--mount) [[ "$#" -lt 3 ]] && { echo "Error: --mount <username> <host_path>"; exit 1; }; MOUNT_USERNAME="$2"; MOUNT_HOST_PATH="$3"; shift 3 ;; # Custom mount point
+        -c|--container) [[ -n "$2" && ! "$2" =~ ^- ]] && case "$2" in ros) CONTAINER_MODE=2 ;; python) CONTAINER_MODE=1 ;; *) CONTAINER_MODE=0 ;; esac && shift 2 || { CONTAINER_MODE=0; shift; } ;; # Container mount mode
         *) echo "Unknown parameter: $1"; exit 1 ;;
     esac
 done
+
 
 # Mount to host repository --mount flag is used
 if [ -n "$MOUNT_USERNAME" ] && [ -n "$MOUNT_HOST_PATH" ] && [ "$MOUNT_USERNAME" != "false" ] && [ "$MOUNT_HOST_PATH" != "false" ]; then
@@ -54,48 +66,65 @@ if [ "$GITHUB_PULL" = true ]; then
     BUILD_IMAGE=true
 fi
 
-
+# If --restart flag is used, restart all containors
+if [ "$RESTART_CONTAINER" = true ] || [ "$BUILD_IMAGE" = true ]; then
+    docker stop $(docker ps -q) && docker rm $(docker ps -aq)
+fi
 
 # Build image if needed or if --build flag is used
-if [ "$BUILD_IMAGE" = true ] || ! docker image inspect $IMAGE_NAME >/dev/null 2>&1; then
-    echo "Building Docker image: $IMAGE_NAME"
-    docker build -t $IMAGE_NAME .
-fi
-
-# If --restart flag is used, restart all containors
-if [ "$RESTART_CONTAINER" = true ]; then
-    OLD_CONTAINERS=$(docker ps -aq)  
-    if [ -n "$OLD_CONTAINERS" ]; then
-        docker rm -f $OLD_CONTAINERS
+if [ "$BUILD_IMAGE" = true ] || ! docker image inspect $PYTHON_IMAGE_NAME >/dev/null 2>&1; then
+    if [ "$RUN_PYTHON_IMAGE" = true ]; then
+        echo "Building Docker image: $PYTHON_IMAGE_NAME"
+        docker build -t $PYTHON_IMAGE_NAME -f $PYTHON_DOCKERFILE .
     fi
+    if [ "$RUN_ROS_IMAGE" = true ]; then
+        echo "Building Docker image: $ROS_IMAGE_NAME"
+        docker build -t $ROS_IMAGE_NAME -f $ROS_DOCKERFILE .
+    fi
+    docker image prune -f
 fi
 
-# Check if container already exists
-CONTAINER_ID=$(docker ps -q -f ancestor=$IMAGE_NAME | head -n1)
-if [ -z "$CONTAINER_ID" ]; then
-    echo "Starting Docker container..."
+start_container() {
+    local IMAGE_NAME=$1
+    local CONTAINER_ID
+    # Check if container already exists
+    CONTAINER_ID=$(docker ps -q -f ancestor="$IMAGE_NAME" | head -n1)
+    if [ -z "$CONTAINER_ID" ]; then
+        #echo "Starting container from image $IMAGE_NAME..."
 
-    # Base Docker flags for privileged access, devices, working directory
-    DOCKER_FLAGS=(
-        --network=host                                   # Use host networking
-        --privileged                                     # Give container privileged access
-        --group-add video                                # Give video group access
-        --device /dev:/dev                               # Map devices  
-        -v $WORKING_DIR_HOST:$WORKING_DIR_CONTAINER      # Mount host folder
-        -w $WORKING_DIR_CONTAINER                        # Set working directory                 
-    )
-
-    # Enable display if requested and $DISPLAY is set
-    if [ "$DISPLAY_ENABLED" = true ] && [ -n "$DISPLAY" ]; then
-        DOCKER_FLAGS+=(
-            -e DISPLAY=$DISPLAY                          # Forward display
-            -v $XAUTHORITY:$XAUTHORITY:ro                # Forward Xauthority
-            -e XAUTHORITY=$XAUTHORITY
+        # Base Docker flags for privileged access, devices, working directory
+        DOCKER_FLAGS=(
+            --network=host                                   # Use host networking
+            --privileged                                     # Give container privileged access
+            --group-add video                                # Give video group access
+            --device /dev:/dev                               # Map devices  
+            -v $WORKING_DIR_HOST:$WORKING_DIR_CONTAINER      # Mount host folder
+            -w $WORKING_DIR_CONTAINER                        # Set working directory                 
         )
-    fi
 
-    # Start container detached
-    CONTAINER_ID=$(docker run -dit "${DOCKER_FLAGS[@]}" $IMAGE_NAME bash)
+        # Enable display if requested and $DISPLAY is set
+        if [ "$DISPLAY_ENABLED" = true ] && [ -n "$DISPLAY" ]; then
+            DOCKER_FLAGS+=(
+                -e DISPLAY=$DISPLAY
+                -v $XAUTHORITY:$XAUTHORITY:ro
+                -e XAUTHORITY=$XAUTHORITY
+            )
+        fi
+
+        # Start container detached
+        CONTAINER_ID=$(docker run -dit "${DOCKER_FLAGS[@]}" $IMAGE_NAME bash)
+    fi
+    echo "$CONTAINER_ID"
+}
+
+# Start Python and ROS containers if requested
+if [ "$RUN_PYTHON_IMAGE" = true ]; then
+    PY_CONTAINER_ID=$(start_container $PYTHON_IMAGE_NAME)
+fi
+
+if [ "$RUN_ROS_IMAGE" = true ]; then
+    ROS_CONTAINER_ID=$(start_container $ROS_IMAGE_NAME)
+    docker exec -it $ROS_CONTAINER_ID bash -c "source /opt/ros/humble/setup.bash"
 fi
 
 # Start main system control python script if --start flag is used 
@@ -106,4 +135,9 @@ if [ "$START_SYSTEM_CONTROL" = true ]; then
 fi
 
 # Attach to container shell
-docker exec -it $CONTAINER_ID bash
+if [ "$CONTAINER_MODE" = 1 ]; then
+    docker exec -it $PY_CONTAINER_ID bash
+fi
+if [ "$CONTAINER_MODE" = 2 ]; then
+    docker exec -it $ROS_CONTAINER_ID bash -c "source /opt/ros/humble/setup.bash && exec bash"
+fi

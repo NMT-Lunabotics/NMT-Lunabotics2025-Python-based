@@ -1,0 +1,2 @@
+Invoking command in '/home/luna/ros2_ws/build/fast_livo': /usr/bin/cmake /home/luna/ros2_ws/FAST-LIVO2 -DCMAKE_BUILD_TYPE=Release -DCATKIN_INSTALL_INTO_PREFIX_ROOT=0 -DCATKIN_SYMLINK_INSTALL=ON -DCMAKE_INSTALL_PREFIX=/home/luna/ros2_ws/install/fast_livo
+Invoked command in '/home/luna/ros2_ws/build/fast_livo' returned '1': /usr/bin/cmake /home/luna/ros2_ws/FAST-LIVO2 -DCMAKE_BUILD_TYPE=Release -DCATKIN_INSTALL_INTO_PREFIX_ROOT=0 -DCATKIN_SYMLINK_INSTALL=ON -DCMAKE_INSTALL_PREFIX=/home/luna/ros2_ws/install/fast_livo

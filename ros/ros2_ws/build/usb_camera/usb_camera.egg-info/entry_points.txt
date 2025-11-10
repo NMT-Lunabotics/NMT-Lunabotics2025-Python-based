@@ -1,0 +1,3 @@
+[console_scripts]
+usb_camera_node = usb_camera.usb_camera_node:main
+
