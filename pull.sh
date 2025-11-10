@@ -2,7 +2,6 @@
 set -e
 
 EXCLUDE_FROM_PULL=(
-    "ros/" 
     "DriverStation/"
     "README.md" 
     "LiDAR_Project/"  
