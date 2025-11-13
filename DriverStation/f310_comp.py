@@ -24,7 +24,7 @@ from DriverStation.autonomous.dump import get_sequence as get_dump_sequence
 from DriverStation.autonomous.transverse import get_sequence as get_transverse_sequence
 
 SYNC = 0xA6
-LISTEN_ADDR: Tuple[str, int] = ("192.168.0.207", 11000)
+LISTEN_ADDR: Tuple[str, int] = ("0.0.0.0", 11000)
 SEND_RATE_HZ = 50.0
 
 AUTO_PROGRAMS = {
