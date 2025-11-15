@@ -8,23 +8,27 @@ PYTHON_DOCKERFILE="Dockerfile.python"
 ROS_IMAGE_NAME="luna/ros2-humble:latest"
 ROS_DOCKERFILE="Dockerfile.ros"
 
+# Containor settings
 DISPLAY_ENABLED=false
 BUILD_IMAGE=false
 RESTART_CONTAINER=false
 START_SYSTEM_CONTROL=false
 GITHUB_PULL=false
 
+# Determin what containors to run
 RUN_PYTHON_IMAGE=true
 RUN_ROS_IMAGE=true
+ARDUINO_UPDATER_IMAGE=true
 CONTAINER_MODE=1
 
 
-# Container working directory and mount
+# Container directorys and mount point
 MOUNT_USERNAME=false
 MOUNT_HOST_PATH=false
 REPOSITORY_NAME="NMT-Lunabotics2025-Python-based"
 WORKING_DIR_CONTAINER="/home/luna/$REPOSITORY_NAME"
-WORKING_DIR_HOST="$(pwd)" 
+WORKING_DIR_HOST="$(pwd)"
+ROS_DIR="ros2_ws"
 
 # Use current environment variables if available, fallback to defaults
 : "${DISPLAY:=$DISPLAY}"
@@ -68,7 +72,7 @@ fi
 
 # If --restart flag is used, restart all containors
 if [ "$RESTART_CONTAINER" = true ] || [ "$BUILD_IMAGE" = true ]; then
-    docker stop $(docker ps -q) && docker rm $(docker ps -aq)
+    docker rm -f $(docker ps -aq)
 fi
 
 # Build image if needed or if --build flag is used
@@ -97,6 +101,7 @@ start_container() {
             --network=host                                   # Use host networking
             --privileged                                     # Give container privileged access
             --group-add video                                # Give video group access
+            --group-add dialout                              # Ensure USB serial access
             --device /dev:/dev                               # Map devices  
             -v $WORKING_DIR_HOST:$WORKING_DIR_CONTAINER      # Mount host folder
             -w $WORKING_DIR_CONTAINER                        # Set working directory                 
@@ -134,10 +139,34 @@ if [ "$START_SYSTEM_CONTROL" = true ]; then
     exit 0
 fi
 
+# Attempt arduino update cycle
+if [ "$ARDUINO_UPDATER_IMAGE" = true ] || [ "$BUILD_IMAGE" = true ]; then
+    ./system_operations/system_control/arduino_updater.sh
+fi
+
 # Attach to container shell
 if [ "$CONTAINER_MODE" = 1 ]; then
     docker exec -it $PY_CONTAINER_ID bash
 fi
 if [ "$CONTAINER_MODE" = 2 ]; then
-    docker exec -it $ROS_CONTAINER_ID bash -c "source /opt/ros/humble/setup.bash && exec bash"
+    # Create a bashrc file for auto source in ros
+    docker exec -it $ROS_CONTAINER_ID bash -c "\
+    echo 'source /opt/ros/humble/setup.bash' >> ~/.bashrc && \
+    echo 'source $WORKING_DIR_CONTAINER/$ROS_DIR/install/setup.bash' >> ~/.bashrc"
+
+    # If containor is being build rebuild all packages at same time
+    if [ "$BUILD_IMAGE" = true ]; then
+        docker exec -it $ROS_CONTAINER_ID bash -c \
+        "cd $ROS_DIR && \
+        rm -rf build/ install/ log/ && \
+        source /opt/ros/humble/setup.bash && \
+        colcon build --symlink-install --continue-on-error"
+    fi
+    
+    # Open interactive shell terminal
+    docker exec -it $ROS_CONTAINER_ID bash -c \
+    "cd $ROS_DIR && \
+    source /opt/ros/humble/setup.bash && \
+    source install/setup.bash && \
+    bash"
 fi

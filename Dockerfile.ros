@@ -37,13 +37,17 @@ RUN apt-get update && apt-get upgrade -y \
     python3-rosdep \
     ros-humble-pcl-ros \
     ros-humble-cv-bridge \
+    ros-humble-rtabmap-ros \
     ros-humble-image-transport \
     ros-humble-nav2-bringup \
     ros-humble-rviz2 \
+    ros-humble-tf2-tools \
     && rm -rf /var/lib/apt/lists/*
 
-#RUN rosdep init || true
-#RUN rosdep update
+# Python Packages to install
+RUN pip install --no-cache-dir \
+    #Essiental packages .ie fundelmental compatition package that are required to run the robot
+    pyserial
 
 # Install ROS packages to install
 USER $USER

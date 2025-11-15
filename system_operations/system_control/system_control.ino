@@ -274,8 +274,10 @@ void setup() {
   delay(5);
   Serial.begin(115200);
   #if MAIN_ROBOT==0
-    simpleMotorLeft.begin();
-    simpleMotorRight.begin();
+    #if MOTORS_ENABLED
+      simpleMotorLeft.begin();
+      simpleMotorRight.begin();
+    #endif
   #endif
   #if IBUS_RECIVER_ENABLED
   ibus.begin(115200);
