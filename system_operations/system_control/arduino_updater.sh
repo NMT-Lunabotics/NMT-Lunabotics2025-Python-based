@@ -67,18 +67,30 @@ if [[ "$(docker images -q $IMAGE_NAME 2> /dev/null)" == "" ]]; then
     docker build -t $IMAGE_NAME -f "$SCRIPT_DIR/$DOCKERFILE_NAME" "$SCRIPT_DIR"
 fi
 
-# Create temp docker containor and uploude sketch
-timeout 30s docker run --rm \
+# Upload sketch with timeout
+set +e
+CONTAINER_ID=$(docker run -d \
   --name "$CONTAINER_NAME" \
   --device="$PORT:$PORT" \
   -v "$TEMP_DIR":/workspace \
   -w /workspace/$SKETCH_NAME \
   "$IMAGE_NAME" \
-  bash -c "
-    set -e
-    arduino-cli compile --fqbn $BOARD_FQBN $ORIGINAL_SKETCH
-    arduino-cli upload -p $PORT --fqbn $BOARD_FQBN $ORIGINAL_SKETCH
-  "
-# Print completed success message and update current hash file
-echo "Arduino upload complete."
+  bash -c "set -e; arduino-cli compile --fqbn $BOARD_FQBN $ORIGINAL_SKETCH; arduino-cli upload -p $PORT --fqbn $BOARD_FQBN $ORIGINAL_SKETCH")
+
+# Wait up to 10s, kill if still running
+for i in {1..10}; do
+    sleep 1
+    if ! docker ps -q --no-trunc | grep -q "$CONTAINER_ID"; then break; fi
+done
+docker kill "$CONTAINER_ID" >/dev/null 2>&1
+
+UPLOAD_EXIT=$(docker inspect "$CONTAINER_ID" --format='{{.State.ExitCode}}' 2>/dev/null || echo 1)
+set -e
+
+# Print result and update hash
+if [ $UPLOAD_EXIT -eq 0 ]; then
+    echo "Arduino upload complete."
+else
+    echo "Arduino upload failed (connection to board cannot be established), uploude skipped, hash updated..."
+fi
 echo "$CURRENT_HASH" > "$HASH_FILE"

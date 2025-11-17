@@ -30,6 +30,10 @@ install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}/
 )
 
+install(DIRECTORY urdf
+  DESTINATION share/${PROJECT_NAME}/
+)
+
 install(PROGRAMS
   src/laser_scan_node.py
   src/fake_odom.py

@@ -41,6 +41,7 @@ RUN apt-get update && apt-get upgrade -y \
     ros-humble-image-transport \
     ros-humble-nav2-bringup \
     ros-humble-rviz2 \
+    ros-humble-robot-state-publisher \
     ros-humble-tf2-tools \
     && rm -rf /var/lib/apt/lists/*
 
