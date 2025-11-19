@@ -31,6 +31,39 @@ history_length = 10 #for smoothing, how many past positions are used
 max_pos_jump = 0.15 #max jump in a single frame
 
 
+#code that the arudino must have
+"""
+#include <Servo.h>
+
+Servo myservo;
+
+void setup() {
+  Serial.begin(9600);
+  myservo.attach(9);       // Connect servo signal to pin 9
+  myservo.write(0);        // Start at 0°
+  Serial.println("Servo ready (0-270° input)");
+}
+
+void loop() {
+  if (Serial.available() > 0) {
+    int logicalAngle = Serial.parseInt();          // Read input from Python
+    logicalAngle = constrain(logicalAngle, 0, 270); // Ensure 0-270 range
+
+    // Map 0-270 input to 0-180 for Servo.write
+    int servoAngle = map(logicalAngle, 0, 270, 0, 180);
+    myservo.write(servoAngle);
+
+    Serial.print("Input: ");
+    Serial.print(logicalAngle);
+    Serial.print(" -> Servo angle: ");
+    Serial.println(servoAngle);
+
+    // Clear any leftover bytes
+    while (Serial.available() > 0) Serial.read();
+  }
+}
+"""    
+
 # -------------------- Please don't Change Variables --------------------
 sweep_direction = 1
 last_sweep_time = 0
