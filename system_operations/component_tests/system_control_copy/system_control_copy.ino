@@ -12,7 +12,6 @@
 #define SERVO_MOTOR_ENABLED          0
 #define IMU_SENSOR_ENABLED           0
 #define IBUS_RECIVER_ENABLED         1
-#define INFO_SCREEN_ENABLED          1
 
 // List of faults to disable
 #define SERIAL_COMM_TIMEOUT_FAULT    1
@@ -21,51 +20,33 @@
 // Debug mode flags
 #define DEBUG_MODE                   0
 #define SENSOR_OUTPUT                0  // 1: IMU, 2: IBUS, 3: IBUS raw
-
+ 
 #else
 //--------------- NUC TEST ROBOT SETTINGS ---------------
 #define ERROR_LEDS_ENABLED           0
-#define MOTORS_ENABLED               1
+#define MOTORS_ENABLED               0
 #define BUCKET_ACTUATOR_ENABLED      0
 #define ARM_ACTUATORS_ENABLED        0
 #define SERVO_MOTOR_ENABLED          0
-#define IMU_SENSOR_ENABLED           1
+#define IMU_SENSOR_ENABLED           0
 #define IBUS_RECIVER_ENABLED         0
-#define SERIAL_COMM_TIMEOUT_FAULT    1
+#define SERIAL_COMM_TIMEOUT_FAULT    0
 #define COMPONENT_TIMEOUT_FAULTS     0
 #define DEBUG_MODE                   0
 #define SENSOR_OUTPUT                0  
-#define INFO_SCREEN_ENABLED          0
 #endif
 
 //--------------- Setup used classes ---------------
 #if IMU_SENSOR_ENABLED
-  #if MAIN_ROBOT==1
-    #define IMU_MANUAL_SCALER 1
-  #else
-    #define IMU_MANUAL_SCALER 0.6
-  #endif
-  MPU6050 IMU; 
+#if MAIN_ROBOT==1
+#define IMU_MANUAL_SCALER 1
+#else
+#define IMU_MANUAL_SCALER 0.6
 #endif
-
+MPU6050 IMU; 
+#endif
 #if IBUS_RECIVER_ENABLED
-  IBusReader ibus(Serial1);
-#endif
-
-#if INFO_SCREEN_ENABLED
-  LCD2004 lcd(0x27, 20, 4);
-  bool display_on=true;
-  bool locked_error_code=true;
-  bool data_cycle_enabled=true;
-  uint8_t data_cycle=0;
-  struct Message {
-    char id[4];       
-    char text[64];   
-    uint16_t duration;
-    uint8_t priority; 
-  };
-Message registry[50];
-uint8_t registryCount = 0;
+IBusReader ibus(Serial1);
 #endif
 
 //--------------- Actuators ---------------
@@ -221,6 +202,7 @@ int actuator_timeout = 2000;
 
 // Serial and state
 bool serial_connection_established=false;
+bool RC_connection_established=false;
 bool receiving_message = false;
 bool at_bucket_min = false;
 bool at_bucket_max = false;
@@ -288,12 +270,22 @@ void updateIMUData(bool useHomeBias=false);
 #endif
 void sendSerialFeedback(char command, uint8_t* data, size_t dataLen);
 
+const int ledPinOne = 3;
+const int ledPinTwo = 5;
+const int ledPinThree = 6;
+
+int ledPinOneStore = 128;
+int ledPinTwoStore = 128;
+int ledPinThreeStore = 128;
+
 void setup() {
   delay(5);
   Serial.begin(115200);
   #if MAIN_ROBOT==0
-    simpleMotorLeft.begin();
-    simpleMotorRight.begin();
+    #if MOTORS_ENABLED
+      simpleMotorLeft.begin();
+      simpleMotorRight.begin();
+    #endif
   #endif
   #if IBUS_RECIVER_ENABLED
   ibus.begin(115200);
@@ -316,34 +308,62 @@ void setup() {
     #endif
   }
   Serial.println("Arduino system_control.ino started.");
+
+  pinMode(ledPinOne, OUTPUT);
+  pinMode(ledPinTwo, OUTPUT);
+  pinMode(ledPinThree, OUTPUT);
 }
 
 void loop() {
+  analogWrite(ledPinOne, ledPinOneStore);
+  analogWrite(ledPinTwo, ledPinTwoStore);
+  analogWrite(ledPinThree, ledPinThreeStore);
   current_time = millis();
   processSerialBuffer();
   #if IBUS_RECIVER_ENABLED
   // Read serial and process messages while being Non-blocking
   if (ibus.update()) {
+    #if SENSOR_OUTPUT == 3
+    int16_t* joy = ibus.getJoystick(true);
+    Serial.print("Raw RC controller inputs: ");
+    for (int i = 0; i < 12; i++) {  
+      Serial.print(joy[i]);
+      Serial.print(" ");
+    }
+    Serial.println("");
+  #elif SENSOR_OUTPUT == 2
     int16_t* joy = ibus.getJoystick();
-    #if SENSOR_OUTPUT == 2 || SENSOR_OUTPUT == 3
-    if(SENSOR_OUTPUT==3) joy = ibus.getJoystick(true);
-      Serial.print("RC controller inputs: ");
-      for (int i = 0; i < 4; i++) {  
-        Serial.print(joy[i]);
-        Serial.print(" ");
+    Serial.print("RC controller inputs: ");
+    for (int i = 0; i < 5; i++) {  
+      Serial.print(joy[i]);
+      Serial.print(" ");
+    }
+    Serial.println("");
+  #else
+    int16_t* joy = ibus.getJoystick();
+    if(joy[4]==0) {
+      mL_speed=0;
+      mR_speed=0;
+      aL_speed=0;
+      aR_speed=0;
+      aB_speed=0;
+    }
+    else{
+      int16_t throttle = -joy[0]; 
+      int16_t steering = joy[1];
+      mR_speed = constrain(throttle - steering, -30, 30);
+      mL_speed = constrain(throttle + steering, -30, 30);
+      aLR_tgt = -1;
+      aB_tgt = -1;
+      aL_speed = -joy[3];
+      aR_speed = aL_speed;
+      aB_speed = joy[2];
+      if(RC_connection_established==false){
+        RC_connection_established=true;
+        systemFault(false,"","", NONE, NONE, ON);
       }
-      Serial.println("");
-    #endif
-    int16_t throttle = joy[1]; 
-    int16_t steering = joy[0];
-    mL_speed = constrain(throttle - steering, -30, 30);
-    mR_speed = constrain(throttle + steering, -30, 30);
-    aLR_tgt = -1;
-    aB_tgt = -1;
-    aL_speed = joy[3];
-    aR_speed = aL_speed;
-    aB_speed = -joy[2];
-    systemFault(false,"","", NONE, NONE, ON);
+    }
+  #endif
   } 
   #endif
   #if SERIAL_COMM_TIMEOUT_FAULT
@@ -416,20 +436,22 @@ void loop() {
     if (!emergency_stop) {
       #if COMPONENT_TIMEOUT_FAULTS
       // Timeout motors and actuators if a command isn't recived within the timeout period
-      if(current_time-last_motor_cmd_time>=motor_timeout&&(mR_speed!=0||mL_speed!=0||mLR_rotation_speed!=0||mLR_rotation!=0)){
-        mR_speed=0;
-        mL_speed=0;
-        mLR_rotation_speed=0;
-        mLR_rotation=0;
-        systemFault(false,"","Motors timed out, no motor command received within "+ String(motor_timeout/1000)+"s", NONE, NONE, NONE);
-      }
-       if(current_time-last_actuator_cmd_time>=actuator_timeout && (aL_speed!=0 || aR_speed !=0 || aB_speed!=0 || aLR_tgt != -1 || aB_tgt != -1 )){
-        aLR_tgt = -1;
-        aB_tgt = -1;
-        aL_speed = 0;
-        aR_speed = 0;
-        aB_speed = 0;
-        systemFault(false,"","Actuators timed out, no actuator command received within "+ String(actuator_timeout/1000)+"s", NONE, NONE, NONE);
+      if(serial_connection_established==true){
+        if(current_time-last_motor_cmd_time>=motor_timeout&&(mR_speed!=0||mL_speed!=0||mLR_rotation_speed!=0||mLR_rotation!=0)){
+          mR_speed=0;
+          mL_speed=0;
+          mLR_rotation_speed=0;
+          mLR_rotation=0;
+          systemFault(false,"","Motors timed out, no motor command received within "+ String(motor_timeout/1000)+"s", NONE, NONE, NONE);
+        }
+        if(current_time-last_actuator_cmd_time>=actuator_timeout && (aL_speed!=0 || aR_speed !=0 || aB_speed!=0 || aLR_tgt != -1 || aB_tgt != -1 )){
+          aLR_tgt = -1;
+          aB_tgt = -1;
+          aL_speed = 0;
+          aR_speed = 0;
+          aB_speed = 0;
+          systemFault(false,"","Actuators timed out, no actuator command received within "+ String(actuator_timeout/1000)+"s", NONE, NONE, NONE);
+        }
       }
       #endif
       #if ARM_ACTUATORS_ENABLED
@@ -539,11 +561,6 @@ void loop() {
   }
     // Run fault function every loop to update leds, and handle critical errors
   systemFault(false, "","", NONE, NONE, NONE);
-  #if INFO_SCREEN_ENABLED
-    if(data_cycle_enabled==true){
-      lcd.screenPrint(longMsg, staticPrefix, 5000);
-    }
-  #endif
   #if IMU_SENSOR_ENABLED
   if(update_IMU_raw_home==true) updateIMUData(true);
   else updateIMUData(false);
@@ -606,6 +623,16 @@ void processMessage(byte *data, int length) {
         #endif
         last_motor_cmd_time=current_time;
         #endif
+        break;
+      }
+    case 'D':
+      {    
+        ledPinOneStore=(int8_t)data[1]; 
+        ledPinTwoStore=(int8_t)data[2];  
+        ledPinThreeStore=(int8_t)data[3]; 
+        const char* str = "RGB colors set...";
+        sendSerialFeedback('F', (uint8_t*)str, strlen(str));
+        sendSerialFeedback('F', (uint8_t*){127}, 1);
         break;
       }
     // Rotate robot
@@ -678,7 +705,7 @@ void processMessage(byte *data, int length) {
       break;
   }
   last_message_time=current_time;
-  if(serial_connection_established==false){
+  if(serial_connection_established==false&&cmd_triggered==true){
   serial_connection_established=true;
   systemFault(false,"","", NONE, NONE, ON);
   }
@@ -719,7 +746,6 @@ void updateLed(OutPin &led, const LedState &state, int interval=250) {
     }
 }
 #endif
-
 
 /*
 RED: critical system fault(FULL ESTOP)

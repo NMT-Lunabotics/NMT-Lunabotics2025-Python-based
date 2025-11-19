@@ -1,2 +1,10 @@
 myenv/
 core
+ros/ros2_ws/build/
+ros/ros2_ws/install/
+ros/ros2_ws/log/
+build/
+log/
+install/
+system_operations/system_control/arduino.sketch_hash
+.vscode/settings.json

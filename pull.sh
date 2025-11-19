@@ -2,12 +2,16 @@
 set -e
 
 EXCLUDE_FROM_PULL=(
-    "ros/" 
+    "DriverStation/"
     "README.md" 
-    "LiDAR_Project/" 
-    "SLAM/" 
+    "LiDAR_Project/"  
+    "Markers/"
     "system_operations/component_tests/" 
     "system_operations/documents/" 
+    ".gitgnore"
+    "Map.png"
+    "ros/guides-documents/"
+    "ros/ros1_ws"
     )
 
 git config --global user.email "benjamin.peterson@student.nmt.edu"

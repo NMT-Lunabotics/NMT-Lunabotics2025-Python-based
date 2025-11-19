@@ -12,43 +12,43 @@ arduino.compile_and_upload()
 serial = serialCommands()
 runner = AutonomousRunner(serial)
 
-def run_test():
-    while True:
-        start_time = time.time()
-        while time.time() - start_time < 1:
-            serial.send_command("M", [5, 5])
-        time.sleep(0.1)
-        start_time = time.time()
-        while time.time() - start_time < 1:
-            serial.send_command("M", [-5, -5])
-        time.sleep(0.5)
-        start_time = time.time()
-        while time.time() - start_time < 1:
-            serial.send_command("M", [5, -5])
-        time.sleep(0.5)
+#def run_test():
+#    while True:
+#        start_time = time.time()
+#        while time.time() - start_time < 1:
+#            serial.send_command("M", [5, 5])
+#        time.sleep(0.1)
+#        start_time = time.time()
+#        while time.time() - start_time < 1:
+#            serial.send_command("M", [-5, -5])
+#        time.sleep(0.5)
+#        start_time = time.time()
+#        while time.time() - start_time < 1:
+#            serial.send_command("M", [5, -5])
+#        time.sleep(0.5)
 
 def run():
     while True:
         serial.send_command("M", [5, 5])
         time.sleep(0.01)
 
-def run_and_log():
-    while True:
-        serial.send_command("M", [5, 5])
-        value = serial.read_serial()
-        if value: print(value) 
-        time.sleep(0.01)
+#def run_and_log():
+#    while True:
+#        serial.send_command("M", [5, 5])
+#        value = serial.read_serial()
+#        if value: print(value) 
+#        time.sleep(0.01)
         
-def rotate():
-    rotate=True
-    while rotate:
-        feedback = serial.read_command_feedback()
-        if feedback:
-            for packet in feedback:
-                if packet["command"] == 'R': 
-                    print("Robot rotation compleated")
-                    rotate=False
-        if rotate: serial.send_command("R", [5, 360, 0, True])
+#def rotate():
+#    rotate=True
+#    while rotate:
+#        feedback = serial.read_command_feedback()
+#        if feedback:
+#            for packet in feedback:
+#                if packet["command"] == 'R': 
+#                    print("Robot rotation compleated")
+#                    rotate=False
+#        if rotate: serial.send_command("R", [5, 360, 0, True])
 
 def read_log():
     while True:
@@ -69,11 +69,12 @@ def read_log():
 # <command, [rotation_speed, rotation_angle, rotation_radius, reset home position]>
 #-----------------------------------------------------------------
 
-runner.load_sequence("transverse")
-while True:
-    runner.update()
+#runner.load_sequence("transverse")
+#while True:
+#    read_log()
+    #runner.update()
 
-#run()
+run()
 #run_and_log()
 #run_test()
 #rotate()

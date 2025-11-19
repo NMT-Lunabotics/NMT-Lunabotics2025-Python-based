@@ -359,7 +359,7 @@ class IBusReader {
                 for (int i = 0; i < 30; i++) chksum -= buffer[i];
                 uint16_t pktChksum = buffer[30] | (buffer[31] << 8);
                 if (chksum == pktChksum) {
-                    for (int i = 0; i < 4; i++) {
+                    for (int i = 0; i < 8; i++) {
                         int pos = 2 + (i * 2);
                         channels[i] = buffer[pos] | (buffer[pos + 1] << 8);
                         if (dynamicRanges) {
@@ -385,6 +385,7 @@ class IBusReader {
                         if (abs(newJoy - lastValues[i]) >= threshold) anyChanged = true;
                         joystick[i] = newJoy;
                     }
+                    joystick[4] = constrain(map(channels[6], 1000, 2000, 0, 1),0,1);
                     if (anyChanged) lastUpdate = millis();
                     for (int i = 0; i < 4; i++) lastValues[i] = joystick[i];
                     changed = true;
@@ -397,25 +398,25 @@ class IBusReader {
         }
         return changed;
       }    
-      int16_t *getJoystick(float raw_values=false) { 
+      int16_t *getJoystick(bool raw_values=false) { 
         if(raw_values==false) return joystick;
         else return channels;
       }
   private:
       HardwareSerial &serial;
-      bool dynamicRanges=true;
+      bool dynamicRanges=false;
       uint8_t buffer[32];
       int idx = 0;
       int threshold = 1;
-      int16_t channels[6];
-      int16_t joystick[4];
+      int16_t channels[8];
+      int16_t joystick[5];
       int16_t lastValues[4]; // store last mapped joystick values
       unsigned long lastUpdate = 0;
       const unsigned long timeoutMs = 2000; // 0.5s timeout
       // Joystick settings (leftJoyX, leftJoyY, rightJoyX, rightJoyY) (MotorX, MotorY, actuatorX, actuatorY)
       int16_t maxJoyValues[4]=    {1979, 1971, 2000, 2000}; // Joystick max values
       int16_t minJoyValues[4]=    {1045, 1000, 1071, 1060}; // Joystick min values
-      int16_t centers[4] =        {1627, 1614, 1621, 1622}; // Center of each joystick
+      int16_t centers[4] =        {1621, 1623, 1620, 1616}; // Center of each joystick
       int16_t softZones[4] =      {50, 50, 50, 50};        // Joystick drift ranges
       int16_t outMin[4] =         {-30, -30, -30, -30};     // Mapped min range
       int16_t outMax[4] =         {30, 30, 30, 30};         // Mapped max range
