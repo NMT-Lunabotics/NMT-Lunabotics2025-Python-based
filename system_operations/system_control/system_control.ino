@@ -1,5 +1,4 @@
 #include "helpers.hpp"
-#include <Servo.h>
 #define MAIN_ROBOT 1
 
 //--------------- MAIN ROBOT SETTINGS ---------------
