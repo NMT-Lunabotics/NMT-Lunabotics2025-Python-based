@@ -77,7 +77,7 @@ def read_log():
 #    read_log()
     #runner.update()
 
-run()
+#run()
 #run_and_log()
 #run_test()
 #rotate()
