@@ -5,7 +5,6 @@ EXCLUDE_FROM_PULL=(
     "DriverStation/"
     "README.md" 
     "LiDAR_Project/"  
-    "Markers/"
     "system_operations/component_tests/" 
     "system_operations/documents/" 
     ".gitgnore"
