@@ -1,5 +1,6 @@
 import sys, time; from pathlib import Path
-ROOT = Path(__file__).resolve().parent.parent.parent; sys.path.insert(0, str(ROOT))
+ROOT = Path(__file__).resolve().parent.parent.parent; 
+sys.path.insert(0, str(ROOT))
 from system_operations.jetson_networking import NetworkingOperations                                        # Import jetson networking package for gui
 from system_operations.arduino_cli import arduinoConsole                                                    # Import arduino cli package for compiling and uploading code to arduino
 from system_operations.arduino_serial_commuication import serialCommands                                    # Import arduino serial package commucation with the arduino
@@ -11,6 +12,8 @@ network = NetworkingOperations()
 arduino.compile_and_upload()
 serial = serialCommands()
 runner = AutonomousRunner(serial)
+
+
 
 #def run_test():
 #    while True:
