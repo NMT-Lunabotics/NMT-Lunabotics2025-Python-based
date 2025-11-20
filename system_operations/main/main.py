@@ -79,3 +79,5 @@ run()
 #run_test()
 #rotate()
 #read_log()
+
+serial.send_command("S", [10])

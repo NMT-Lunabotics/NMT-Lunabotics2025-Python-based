@@ -1,4 +1,5 @@
 #include "helpers.hpp"
+#include <Servo.h>
 #define MAIN_ROBOT 1
 
 //--------------- MAIN ROBOT SETTINGS ---------------
@@ -27,8 +28,8 @@
 #define MOTORS_ENABLED               1
 #define BUCKET_ACTUATOR_ENABLED      0
 #define ARM_ACTUATORS_ENABLED        0
-#define SERVO_MOTOR_ENABLED          0
-#define IMU_SENSOR_ENABLED           1
+#define SERVO_MOTOR_ENABLED          1
+#define IMU_SENSOR_ENABLED           0
 #define IBUS_RECIVER_ENABLED         0
 #define SERIAL_COMM_TIMEOUT_FAULT    1
 #define COMPONENT_TIMEOUT_FAULTS     0
@@ -47,6 +48,10 @@ MPU6050 IMU;
 #endif
 #if IBUS_RECIVER_ENABLED
 IBusReader ibus(Serial1);
+#endif
+#if SERVO_MOTOR_ENABLED
+  #define SERVO_PIN 12
+  Servo servo;
 #endif
 
 //--------------- Actuators ---------------
@@ -299,6 +304,9 @@ void setup() {
     aB_pos = act_bucket.update_pos();
     #endif
   }
+  #if SERVO_MOTOR_ENABLED
+    servo.attach(SERVO_PIN);
+  #endif
   Serial.println("Arduino system_control.ino started.");
 }
 
@@ -640,7 +648,8 @@ void processMessage(byte *data, int length) {
       { 
         #if SERVO_MOTOR_ENABLED
         // (S, servo motor) Recvived servo latch state
-        servo_state = data[1];  
+        //servo_state = data[1];  
+        servo.write(data[1]);
         #if DEBUG_MODE
           Serial.print("Servo State: ");
           Serial.println(servo_state);

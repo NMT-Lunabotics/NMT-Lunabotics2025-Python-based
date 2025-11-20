@@ -2,8 +2,8 @@
 set -e
 
 # config
-SKETCH_PATH="$HOME/NMT-Lunabotics2025-Python-based/system_operations/system_control/system_control.ino"
-#SKETCH_PATH="$HOME/NMT-Lunabotics2025-Python-based/system_operations/component_tests/system_control_copy/system_control_copy.ino"
+#SKETCH_PATH="$HOME/NMT-Lunabotics2025-Python-based/system_operations/system_control/system_control.ino"
+SKETCH_PATH="$HOME/NMT-Lunabotics2025-Python-based/system_operations/component_tests/system_control_copy/system_control_copy.ino"
 IMAGE_NAME="luna/python-arduino-upload:latest"
 CONTAINER_NAME="temp_arduino_containor"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
@@ -34,8 +34,8 @@ fi
 # Automaticlly detect arduino port
 PORT=$(ls /dev/ttyACM* /dev/ttyUSB* 2>/dev/null | head -n1)
 if [ -z "$PORT" ]; then
-    echo "No Arduino detected on port: $port!"
-    exit 1
+    echo "No Arduino detected on port: $PORT!"
+    exit 0
 fi
 
 # Automaticlly detect arduino board

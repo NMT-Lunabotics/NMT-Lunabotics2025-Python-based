@@ -12,6 +12,7 @@
 #define SERVO_MOTOR_ENABLED          0
 #define IMU_SENSOR_ENABLED           0
 #define IBUS_RECIVER_ENABLED         1
+#define LCD_SCREEN_ENABLED           1
 
 // List of faults to disable
 #define SERIAL_COMM_TIMEOUT_FAULT    1
@@ -24,13 +25,14 @@
 #else
 //--------------- NUC TEST ROBOT SETTINGS ---------------
 #define ERROR_LEDS_ENABLED           0
-#define MOTORS_ENABLED               0
+#define MOTORS_ENABLED               1
 #define BUCKET_ACTUATOR_ENABLED      0
 #define ARM_ACTUATORS_ENABLED        0
 #define SERVO_MOTOR_ENABLED          0
-#define IMU_SENSOR_ENABLED           0
+#define IMU_SENSOR_ENABLED           1
 #define IBUS_RECIVER_ENABLED         0
-#define SERIAL_COMM_TIMEOUT_FAULT    0
+#define LCD_SCREEN_ENABLED           0
+#define SERIAL_COMM_TIMEOUT_FAULT    1
 #define COMPONENT_TIMEOUT_FAULTS     0
 #define DEBUG_MODE                   0
 #define SENSOR_OUTPUT                0  
@@ -47,6 +49,10 @@ MPU6050 IMU;
 #endif
 #if IBUS_RECIVER_ENABLED
 IBusReader ibus(Serial1);
+#endif
+
+#if LCD_SCREEN_ENABLED
+LCD2004 lcd(0x27, 20, 4);
 #endif
 
 //--------------- Actuators ---------------
@@ -270,14 +276,6 @@ void updateIMUData(bool useHomeBias=false);
 #endif
 void sendSerialFeedback(char command, uint8_t* data, size_t dataLen);
 
-const int ledPinOne = 3;
-const int ledPinTwo = 5;
-const int ledPinThree = 6;
-
-int ledPinOneStore = 128;
-int ledPinTwoStore = 128;
-int ledPinThreeStore = 128;
-
 void setup() {
   delay(5);
   Serial.begin(115200);
@@ -293,6 +291,9 @@ void setup() {
   Serial.flush();
   // Set default led status
   systemFault(false,"","", NONE, BLINK, BLINK);
+  #if LCD_SCREEN_ENABLED
+    lcd.begin();
+  #endif
   #if IMU_SENSOR_ENABLED
   // Calibrate the IMU sensors drift factor
   calibrateIMU();
@@ -308,16 +309,10 @@ void setup() {
     #endif
   }
   Serial.println("Arduino system_control.ino started.");
-
-  pinMode(ledPinOne, OUTPUT);
-  pinMode(ledPinTwo, OUTPUT);
-  pinMode(ledPinThree, OUTPUT);
+  lcd.setMessageLog('F', 4, 0, "Fault test 4 this is a very long message this should now span over twop or three pages for testing", 25);
 }
 
 void loop() {
-  analogWrite(ledPinOne, ledPinOneStore);
-  analogWrite(ledPinTwo, ledPinTwoStore);
-  analogWrite(ledPinThree, ledPinThreeStore);
   current_time = millis();
   processSerialBuffer();
   #if IBUS_RECIVER_ENABLED
@@ -569,6 +564,9 @@ void loop() {
     Serial.print("Yaw: ");
     Serial.println(IMU_yaw,6);
   #endif
+  #if LCD_SCREEN_ENABLED
+    lcd.displayLogs(2000);
+  #endif
 }
 }
 
@@ -623,16 +621,6 @@ void processMessage(byte *data, int length) {
         #endif
         last_motor_cmd_time=current_time;
         #endif
-        break;
-      }
-    case 'D':
-      {    
-        ledPinOneStore=(int8_t)data[1]; 
-        ledPinTwoStore=(int8_t)data[2];  
-        ledPinThreeStore=(int8_t)data[3]; 
-        const char* str = "RGB colors set...";
-        sendSerialFeedback('F', (uint8_t*)str, strlen(str));
-        sendSerialFeedback('F', (uint8_t*){127}, 1);
         break;
       }
     // Rotate robot
