@@ -50,8 +50,7 @@ MPU6050 IMU;
 IBusReader ibus(Serial1);
 #endif
 #if SERVO_MOTOR_ENABLED
-  #define SERVO_PIN 12
-  Servo servo;
+  SimpleServo servo(12);
 #endif
 
 //--------------- Actuators ---------------
@@ -305,7 +304,7 @@ void setup() {
     #endif
   }
   #if SERVO_MOTOR_ENABLED
-    servo.attach(SERVO_PIN);
+    servo.attach();
   #endif
   Serial.println("Arduino system_control.ino started.");
 }

@@ -277,7 +277,51 @@ public:
   }
 };
 
-
+class SimpleServo {
+  private:
+      uint8_t pin;
+      int minPulse;   // microseconds for 0 degrees
+      int maxPulse;   // microseconds for 180 degrees
+      int currentAngle;
+  
+  public:
+      SimpleServo(uint8_t pin, int minPulse = 1000, int maxPulse = 2000)
+          : pin(pin), minPulse(minPulse), maxPulse(maxPulse), currentAngle(90) {}
+  
+      void attach() {
+          pinMode(pin, OUTPUT);
+          write(90);  // center on attach
+      }
+  
+      void write(int angle) {
+          angle = constrain(angle, 0, 180);
+          currentAngle = angle;
+  
+          // map angle to pulse width
+          int pulseWidth = map(angle, 0, 180, minPulse, maxPulse);
+  
+          // generate one PWM frame
+          digitalWrite(pin, HIGH);
+          delayMicroseconds(pulseWidth);
+          digitalWrite(pin, LOW);
+  
+          // rest of 20ms frame
+          delayMicroseconds(20000 - pulseWidth);
+      }
+  
+      void writeContinuous(int angle) {
+          // continuous mode: run PWM forever
+          int pulseWidth = map(angle, 0, 180, minPulse, maxPulse);
+  
+          digitalWrite(pin, HIGH);
+          delayMicroseconds(pulseWidth);
+          digitalWrite(pin, LOW);
+      }
+  
+      int read() const {
+          return currentAngle;
+      }
+  };
 
 ///////// MPU6050 IMU Class /////////
 class MPU6050 {
