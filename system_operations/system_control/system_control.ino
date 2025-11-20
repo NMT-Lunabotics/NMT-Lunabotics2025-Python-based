@@ -647,7 +647,7 @@ void processMessage(byte *data, int length) {
         #if SERVO_MOTOR_ENABLED
         // (S, servo motor) Recvived servo latch state
         //servo_state = data[1];  
-        servo.write(data[1]);
+        servo.write((int8_t)data[1]);
         #if DEBUG_MODE
           Serial.print("Servo State: ");
           Serial.println(servo_state);
