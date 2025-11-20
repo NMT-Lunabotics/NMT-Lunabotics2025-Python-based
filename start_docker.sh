@@ -17,7 +17,7 @@ GITHUB_PULL=false
 
 # Determin what containors to run
 RUN_PYTHON_IMAGE=true
-RUN_ROS_IMAGE=true
+RUN_ROS_IMAGE=false
 ARDUINO_UPDATER_IMAGE=true
 CONTAINER_MODE=1
 
