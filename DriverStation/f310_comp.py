@@ -26,15 +26,15 @@ from DriverStation.autonomous.transverse import get_sequence as get_transverse_s
 
 SYNC = 0xA6
 LISTEN_ADDR: Tuple[str, int] = ("0.0.0.0", 11000)
-SEND_RATE_HZ = 50.0
+SEND_RATE_HZ = 40.0
 DISCOVERY_PORT = 11010
 DISCOVERY_MAGIC = b"F310_DISCOVERY_V1"
 MAX_DRIVE_OUTPUT = 127         #127 is max speed for motor controller do not change
-ACCEL_LIMIT_PER_SEC = 20.0
+ACCEL_LIMIT_PER_SEC = 50.0
 DECEL_LIMIT_PER_SEC = 60.0
 DECEL_NEAR_ZERO_THRESHOLD = 5.0
 DECEL_NEAR_ZERO_PER_SEC = 90.0
-ARM_MISS_TOLERANCE = 2
+ARM_MISS_TOLERANCE = 3
 
 AUTO_PROGRAMS = {
     "excavation": get_excavation_sequence,
