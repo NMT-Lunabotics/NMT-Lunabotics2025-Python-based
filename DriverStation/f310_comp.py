@@ -29,6 +29,9 @@ LISTEN_ADDR: Tuple[str, int] = ("0.0.0.0", 11000)
 SEND_RATE_HZ = 50.0
 DISCOVERY_PORT = 11010
 DISCOVERY_MAGIC = b"F310_DISCOVERY_V1"
+PID_KP = 0.4
+PID_KI = 0.05
+ACCEL_RATE_MAX = 80.0  # max change in command units per second
 
 AUTO_PROGRAMS = {
     "excavation": get_excavation_sequence,
@@ -46,6 +49,59 @@ AUTO_BUTTONS = {
 def clamp_i8(value: int) -> int:
     return max(-127, min(127, value))
 
+
+class DriveController:
+    """Simple PI controller with acceleration limiting for smoother starts."""
+
+    def __init__(self, kp: float, ki: float, accel_limit: float) -> None:
+        self.kp = kp
+        self.ki = ki
+        self.accel_limit = max(1.0, accel_limit)
+        self.left = 0.0
+        self.right = 0.0
+        self.left_i = 0.0
+        self.right_i = 0.0
+
+    def reset(self, left: float = 0.0, right: float = 0.0) -> None:
+        self.left = float(left)
+        self.right = float(right)
+        self.left_i = 0.0
+        self.right_i = 0.0
+
+    def update(self, set_left: float, set_right: float, dt: float) -> Tuple[float, float]:
+        max_delta = self.accel_limit * max(0.001, dt)
+        left = self._update_axis(set_left, self.left, dt, max_delta, "left")
+        right = self._update_axis(set_right, self.right, dt, max_delta, "right")
+        self.left = left
+        self.right = right
+        return left, right
+
+    def _update_axis(
+        self,
+        setpoint: float,
+        current: float,
+        dt: float,
+        max_delta: float,
+        axis: str,
+    ) -> float:
+        # Allow instant deceleration by snapping to lower setpoints.
+        if setpoint < current:
+            if axis == "left":
+                self.left_i = 0.0
+            else:
+                self.right_i = 0.0
+            return float(setpoint)
+
+        error = setpoint - current
+        if axis == "left":
+            self.left_i += error * dt
+            integral = self.left_i
+        else:
+            self.right_i += error * dt
+            integral = self.right_i
+        delta = self.kp * error + self.ki * integral
+        delta = max(-max_delta, min(max_delta, delta))
+        return current + delta
 
 def decode_packet(packet: bytes) -> Optional[Tuple[Tuple[int, ...], Tuple[int, ...], bool]]:
     if len(packet) < 12 or packet[0] != SYNC:
@@ -302,6 +358,7 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
                     armed = shared["armed"]
                     last_udp = shared["last_udp"]
                     shared["control_mode"] = "manual"
+                    controller: Optional[DriveController] = shared.get("drive_controller")  # type: ignore[assignment]
 
                 throttle = clamp_i8(int(axes[3] / 4))
                 steer = clamp_i8(int(axes[4] / 4))
@@ -315,6 +372,11 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
                 outputs_enabled = (not stale) and armed
                 if not outputs_enabled:
                     left = right = arm = bucket = 0
+
+                if controller:
+                    left_f, right_f = controller.update(left, right, period)
+                    left = clamp_i8(int(round(left_f)))
+                    right = clamp_i8(int(round(right_f)))
 
                 send_m = [right, -left]
                 send_a = [-1, -1, -1, -1, arm, -bucket]
@@ -339,6 +401,10 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
                     send_m = (send_m + [0, 0])[:2]
                 if len(send_a) < 6:
                     send_a = (send_a + [-1, -1, -1, -1, 0, 0])[:6]
+
+                controller = shared.get("drive_controller")
+                if controller:
+                    controller.reset(send_m[1], send_m[0])
 
                 with shared["lock"]:
                     shared["stale"] = False
@@ -491,6 +557,7 @@ def main() -> None:
         "auto_a_values": [0, 0, 0, 0, 0, 0],
         "auto_program": "",
         "lock": threading.Lock(),
+        "drive_controller": DriveController(PID_KP, PID_KI, ACCEL_RATE_MAX),
     }
     stop_event = threading.Event()
     discovery_thread = threading.Thread(

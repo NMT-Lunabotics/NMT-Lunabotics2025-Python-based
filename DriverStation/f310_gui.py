@@ -46,6 +46,17 @@ try:
 except ImportError as exc:  # pragma: no cover - tkinter unavailable on some envs
     raise SystemExit(f"tkinter is required for this GUI: {exc}")
 
+if os.name == "nt":
+    try:
+        from inputs import UnpluggedError as InputsUnpluggedError  # type: ignore
+        from inputs import get_gamepad as inputs_get_gamepad  # type: ignore
+    except Exception:  # pragma: no cover - optional dependency
+        InputsUnpluggedError = None  # type: ignore[assignment]
+        inputs_get_gamepad = None  # type: ignore[assignment]
+else:  # pragma: no cover - non-Windows platforms never import inputs
+    InputsUnpluggedError = None  # type: ignore[assignment]
+    inputs_get_gamepad = None  # type: ignore[assignment]
+
 # --- Controller/UDP configuration test---192.168.0.207----------------------------------------------
 
 TARGET_CONTROLLER_NAME = "Logitech Gamepad F310"
@@ -97,6 +108,29 @@ JSIOCGBUTTONS = _IOC(_IOC_READ, "j", 0x12, 1)
 
 def JSIOCGNAME(length: int) -> int:
     return _IOC(_IOC_READ, "j", 0x13, length)
+
+WINDOWS_AXIS_MAP = {
+    "ABS_X": 0,
+    "ABS_Y": 1,
+    "ABS_Z": 2,
+    "ABS_RX": 3,
+    "ABS_RY": 4,
+    "ABS_RZ": 5,
+}
+
+WINDOWS_BUTTON_MAP = {
+    "BTN_SOUTH": 0,
+    "BTN_EAST": 1,
+    "BTN_NORTH": 2,
+    "BTN_WEST": 3,
+    "BTN_TL": 4,
+    "BTN_TR": 5,
+    "BTN_SELECT": 6,
+    "BTN_START": 7,
+    "BTN_MODE": 8,
+    "BTN_THUMBL": 9,
+    "BTN_THUMBR": 10,
+}
 
 
 # --- Helper utilities -------------------------------------------------------------
@@ -155,6 +189,20 @@ def quantize_axis(value: float, deadzone: float) -> int:
         return 0
     value = max(-1.0, min(1.0, value))
     return int(round(value * 127.0))
+
+
+def _normalize_windows_axis(_code: str, value: int) -> float:
+    if value is None:
+        return 0.0
+    if -32768 <= value <= 32767:
+        return max(-1.0, min(1.0, value / 32767.0))
+    if 0 <= value <= 65535:
+        scaled = (value / 32767.5) - 1.0
+        return max(-1.0, min(1.0, scaled))
+    if 0 <= value <= 255:
+        scaled = (value / 127.5) - 1.0
+        return max(-1.0, min(1.0, scaled))
+    return 0.0
 
 
 def build_full_packet(seq: int, armed: bool, axes_i8: List[int], buttons_mask16: int) -> bytes:
@@ -235,6 +283,7 @@ class JoystickWorker:
         self._name = ""
         self._stop_event = threading.Event()
         self._thread = threading.Thread(target=self._run, name="JoystickWorker", daemon=True)
+        self._backend = self._select_backend()
 
     def start(self) -> None:
         self._thread.start()
@@ -257,6 +306,17 @@ class JoystickWorker:
     # Internal ------------------------------------------------------------------
 
     def _run(self) -> None:
+        if self._backend == "windows":
+            self._run_windows()
+            return
+        if self._backend == "linux":
+            self._run_linux()
+            return
+        self._mark_disconnected()
+        while not self._stop_event.wait(1.0):
+            pass
+
+    def _run_linux(self) -> None:
         fd: Optional[int] = None
         while not self._stop_event.is_set():
             if fd is None:
@@ -320,6 +380,52 @@ class JoystickWorker:
                 os.close(fd)
             except OSError:
                 pass
+
+    def _run_windows(self) -> None:
+        if inputs_get_gamepad is None or InputsUnpluggedError is None:
+            print("Windows controller support requires the 'inputs' package (pip install inputs).")
+            self._mark_disconnected()
+            while not self._stop_event.wait(1.0):
+                pass
+            return
+
+        axes = [0.0] * MAX_DISPLAY_AXES
+        buttons = [0] * MAX_DISPLAY_BUTTONS
+        while not self._stop_event.is_set():
+            try:
+                events = inputs_get_gamepad()
+            except InputsUnpluggedError:
+                self._mark_disconnected()
+                self._stop_event.wait(0.5)
+                continue
+            except Exception:
+                self._mark_disconnected()
+                self._stop_event.wait(0.5)
+                continue
+            updated = False
+            for event in events:
+                code = event.code
+                value = event.state
+                if code in WINDOWS_AXIS_MAP:
+                    idx = WINDOWS_AXIS_MAP[code]
+                    axes[idx] = _normalize_windows_axis(code, value)
+                    updated = True
+                elif code in WINDOWS_BUTTON_MAP:
+                    idx = WINDOWS_BUTTON_MAP[code]
+                    if 0 <= idx < MAX_DISPLAY_BUTTONS:
+                        buttons[idx] = 1 if value else 0
+                        updated = True
+            if updated:
+                with self._lock:
+                    self._axes = list(axes)
+                    self._buttons = list(buttons)
+                    self._connected = True
+                    self._name = "Windows Gamepad"
+
+    def _select_backend(self) -> str:
+        if os.name == "nt":
+            return "windows" if inputs_get_gamepad is not None else "unsupported"
+        return "linux"
 
     def _mark_disconnected(self) -> None:
         with self._lock:
