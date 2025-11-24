@@ -2,7 +2,7 @@
 set -e
 
 EXCLUDE_FROM_PULL=(
-    "DriverStation/"
+    #"DriverStation/"
     "README.md" 
     "LiDAR_Project/"  
     "system_operations/component_tests/" 
