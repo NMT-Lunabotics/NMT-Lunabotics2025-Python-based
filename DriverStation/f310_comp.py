@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import json
 import socket
 import struct
 import sys
@@ -26,6 +27,8 @@ from DriverStation.autonomous.transverse import get_sequence as get_transverse_s
 SYNC = 0xA6
 LISTEN_ADDR: Tuple[str, int] = ("0.0.0.0", 11000)
 SEND_RATE_HZ = 50.0
+DISCOVERY_PORT = 11010
+DISCOVERY_MAGIC = b"F310_DISCOVERY_V1"
 
 AUTO_PROGRAMS = {
     "excavation": get_excavation_sequence,
@@ -115,6 +118,40 @@ def _receiver(sock: socket.socket, shared: dict, stop_event: threading.Event) ->
         if cancel_auto:
             _stop_auto(shared, "autonomous cancelled (armed)")
 
+def _discovery_responder(stop_event: threading.Event) -> None:
+    """Respond to UDP broadcast discovery packets so the GUI can learn our IP."""
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        sock.bind(("0.0.0.0", DISCOVERY_PORT))
+        sock.settimeout(0.5)
+    except OSError as exc:
+        print(f"[discovery] disabled: {exc}")
+        return
+
+    reply = json.dumps(
+        {
+            "role": "f310_comp",
+            "udp_port": LISTEN_ADDR[1],
+            "command_port": 10001,
+            "telemetry_port": 10000,
+        }
+    ).encode("utf-8")
+
+    with sock:
+        while not stop_event.is_set():
+            try:
+                data, addr = sock.recvfrom(128)
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+            if data.strip() != DISCOVERY_MAGIC:
+                continue
+            try:
+                sock.sendto(reply, addr)
+            except OSError:
+                continue
 
 def _maybe_start_auto(shared: dict, now: float) -> None:
     with shared["lock"]:
@@ -456,6 +493,9 @@ def main() -> None:
         "lock": threading.Lock(),
     }
     stop_event = threading.Event()
+    discovery_thread = threading.Thread(
+        target=_discovery_responder, args=(stop_event,), daemon=True
+    )
 
     rx_thread = threading.Thread(
         target=_receiver, args=(sock, shared, stop_event), daemon=True
@@ -463,6 +503,7 @@ def main() -> None:
     tx_thread = threading.Thread(
         target=_sender, args=(shared, stop_event), daemon=True
     )
+    discovery_thread.start()
     rx_thread.start()
     tx_thread.start()
 
@@ -484,6 +525,7 @@ def main() -> None:
         stop_event.set()
         rx_thread.join(timeout=1.0)
         tx_thread.join(timeout=1.0)
+        discovery_thread.join(timeout=1.0)
         sock.close()
         display = _render_display(shared)
         sys.stdout.write("\033[H" + display + "\n\033[0J\n")
