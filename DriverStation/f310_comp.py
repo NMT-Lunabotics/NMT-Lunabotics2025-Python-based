@@ -29,7 +29,11 @@ LISTEN_ADDR: Tuple[str, int] = ("0.0.0.0", 11000)
 SEND_RATE_HZ = 50.0
 DISCOVERY_PORT = 11010
 DISCOVERY_MAGIC = b"F310_DISCOVERY_V1"
-ACCEL_LIMIT_PER_SEC = 160.0  # Max increase in command units per second
+MAX_DRIVE_OUTPUT = 30
+ACCEL_LIMIT_PER_SEC = 20.0
+DECEL_LIMIT_PER_SEC = 60.0
+DECEL_NEAR_ZERO_THRESHOLD = 5.0
+DECEL_NEAR_ZERO_PER_SEC = 90.0
 
 AUTO_PROGRAMS = {
     "excavation": get_excavation_sequence,
@@ -48,11 +52,31 @@ def clamp_i8(value: int) -> int:
     return max(-127, min(127, value))
 
 
-class AccelLimiter:
-    """Limits acceleration while allowing instant deceleration."""
+def clamp_drive(value: int) -> int:
+    return max(-MAX_DRIVE_OUTPUT, min(MAX_DRIVE_OUTPUT, value))
 
-    def __init__(self, max_rate: float) -> None:
-        self.max_rate = max(1.0, float(max_rate))
+
+def _scale_to_drive(value: int) -> int:
+    if value == 0:
+        return 0
+    scaled = int(round(value / 127.0 * MAX_DRIVE_OUTPUT))
+    return clamp_drive(scaled)
+
+
+class AccelLimiter:
+    """Acceleration curve with independent accel/decel behavior."""
+
+    def __init__(
+        self,
+        accel_rate: float,
+        decel_rate: float,
+        decel_near_zero: float,
+        near_zero_threshold: float,
+    ) -> None:
+        self.accel_rate = max(1.0, float(accel_rate))
+        self.decel_rate = max(1.0, float(decel_rate))
+        self.decel_near_zero = max(1.0, float(decel_near_zero))
+        self.near_zero_threshold = max(0.0, float(near_zero_threshold))
         self.left = 0.0
         self.right = 0.0
 
@@ -61,17 +85,22 @@ class AccelLimiter:
         self.right = float(right)
 
     def update(self, target_left: float, target_right: float, dt: float) -> Tuple[float, float]:
-        max_delta = self.max_rate * max(dt, 0.0)
-        self.left = self._apply(self.left, target_left, max_delta)
-        self.right = self._apply(self.right, target_right, max_delta)
+        self.left = self._apply(self.left, target_left, dt)
+        self.right = self._apply(self.right, target_right, dt)
         return self.left, self.right
 
-    @staticmethod
-    def _apply(current: float, target: float, max_delta: float) -> float:
-        if target <= current:
-            return float(target)
-        delta = min(max_delta, target - current)
-        return current + delta
+    def _apply(self, current: float, target: float, dt: float) -> float:
+        if target == current:
+            return target
+        increasing = abs(target) > abs(current)
+        if increasing:
+            rate = self.accel_rate
+        else:
+            rate = self.decel_near_zero if abs(target) <= self.near_zero_threshold else self.decel_rate
+        max_delta = rate * max(dt, 0.0)
+        if target > current:
+            return min(current + max_delta, target)
+        return max(current - max_delta, target)
 
 
 def decode_packet(packet: bytes) -> Optional[Tuple[Tuple[int, ...], Tuple[int, ...], bool]]:
@@ -335,6 +364,8 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
                 steer = clamp_i8(int(axes[4] / 4))
                 left = clamp_i8(throttle + steer)
                 right = clamp_i8(throttle - steer)
+                left = _scale_to_drive(left)
+                right = _scale_to_drive(right)
                 arm = clamp_i8(int(axes[0] / 4))
                 bucket = clamp_i8(int(axes[1] / 4))
 
@@ -347,8 +378,8 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
                         limiter.reset(0.0, 0.0)
                 elif limiter:
                     left_f, right_f = limiter.update(float(left), float(right), period)
-                    left = clamp_i8(int(round(left_f)))
-                    right = clamp_i8(int(round(right_f)))
+                    left = clamp_drive(int(round(left_f)))
+                    right = clamp_drive(int(round(right_f)))
 
                 send_m = [right, -left]
                 send_a = [-1, -1, -1, -1, arm, -bucket]
@@ -373,6 +404,8 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
                     send_m = (send_m + [0, 0])[:2]
                 if len(send_a) < 6:
                     send_a = (send_a + [-1, -1, -1, -1, 0, 0])[:6]
+
+                send_m = [clamp_drive(int(v)) for v in send_m]
 
                 with shared["lock"]:
                     shared["stale"] = False
@@ -528,7 +561,12 @@ def main() -> None:
         "auto_a_values": [0, 0, 0, 0, 0, 0],
         "auto_program": "",
         "lock": threading.Lock(),
-        "drive_limiter": AccelLimiter(ACCEL_LIMIT_PER_SEC),
+        "drive_limiter": AccelLimiter(
+            ACCEL_LIMIT_PER_SEC,
+            DECEL_LIMIT_PER_SEC,
+            DECEL_NEAR_ZERO_PER_SEC,
+            DECEL_NEAR_ZERO_THRESHOLD,
+        ),
     }
     stop_event = threading.Event()
     discovery_thread = threading.Thread(
