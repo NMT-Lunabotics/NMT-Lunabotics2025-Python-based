@@ -30,7 +30,7 @@
 #define SERVO_MOTOR_ENABLED          1
 #define IMU_SENSOR_ENABLED           0
 #define IBUS_RECIVER_ENABLED         0
-#define SERIAL_COMM_TIMEOUT_FAULT    1
+#define SERIAL_COMM_TIMEOUT_FAULT    0
 #define COMPONENT_TIMEOUT_FAULTS     0
 #define DEBUG_MODE                   0
 #define SENSOR_OUTPUT                0  
