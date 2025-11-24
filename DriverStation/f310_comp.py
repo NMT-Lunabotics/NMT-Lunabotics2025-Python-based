@@ -1,6 +1,6 @@
 #!/usr/bin/env python3 
 
-"""Forward F310 GUI  UDP packets to the Arduino with minimal processing."""
+"""Forward F310 GUI UDP packets to the Arduino with minimal processing."""
 
 from __future__ import annotations
 
@@ -29,7 +29,6 @@ LISTEN_ADDR: Tuple[str, int] = ("0.0.0.0", 11000)
 SEND_RATE_HZ = 50.0
 DISCOVERY_PORT = 11010
 DISCOVERY_MAGIC = b"F310_DISCOVERY_V1"
-ACCEL_RATE_MAX = 200.0  # max change per second when increasing output
 
 AUTO_PROGRAMS = {
     "excavation": get_excavation_sequence,
@@ -47,31 +46,6 @@ AUTO_BUTTONS = {
 def clamp_i8(value: int) -> int:
     return max(-127, min(127, value))
 
-
-class DriveRateLimiter:
-    """Limits how quickly drive commands can increase (instant decel allowed)."""
-
-    def __init__(self, accel_limit: float) -> None:
-        self.accel_limit = max(1.0, accel_limit)
-        self.left = 0.0
-        self.right = 0.0
-
-    def reset(self, left: float = 0.0, right: float = 0.0) -> None:
-        self.left = float(left)
-        self.right = float(right)
-
-    def update(self, set_left: float, set_right: float, dt: float) -> Tuple[float, float]:
-        max_delta = self.accel_limit * max(0.001, dt)
-        self.left = self._apply(self.left, set_left, max_delta)
-        self.right = self._apply(self.right, set_right, max_delta)
-        return self.left, self.right
-
-    @staticmethod
-    def _apply(current: float, target: float, max_delta: float) -> float:
-        if target <= current:
-            return float(target)
-        delta = min(max_delta, target - current)
-        return current + delta
 
 def decode_packet(packet: bytes) -> Optional[Tuple[Tuple[int, ...], Tuple[int, ...], bool]]:
     if len(packet) < 12 or packet[0] != SYNC:
@@ -328,7 +302,6 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
                     armed = shared["armed"]
                     last_udp = shared["last_udp"]
                     shared["control_mode"] = "manual"
-                    controller: Optional[DriveRateLimiter] = shared.get("drive_controller")  # type: ignore[assignment]
 
                 throttle = clamp_i8(int(axes[3] / 4))
                 steer = clamp_i8(int(axes[4] / 4))
@@ -342,14 +315,6 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
                 outputs_enabled = (not stale) and armed
                 if not outputs_enabled:
                     left = right = arm = bucket = 0
-
-                if controller:
-                    if outputs_enabled:
-                        left_f, right_f = controller.update(left, right, period)
-                        left = clamp_i8(int(round(left_f)))
-                        right = clamp_i8(int(round(right_f)))
-                    else:
-                        controller.reset(0.0, 0.0)
 
                 send_m = [right, -left]
                 send_a = [-1, -1, -1, -1, arm, -bucket]
@@ -374,10 +339,6 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
                     send_m = (send_m + [0, 0])[:2]
                 if len(send_a) < 6:
                     send_a = (send_a + [-1, -1, -1, -1, 0, 0])[:6]
-
-                controller = shared.get("drive_controller")
-                if controller:
-                    controller.reset(0.0, 0.0)
 
                 with shared["lock"]:
                     shared["stale"] = False
@@ -530,7 +491,6 @@ def main() -> None:
         "auto_a_values": [0, 0, 0, 0, 0, 0],
         "auto_program": "",
         "lock": threading.Lock(),
-        "drive_controller": DriveRateLimiter(ACCEL_RATE_MAX),
     }
     stop_event = threading.Event()
     discovery_thread = threading.Thread(
