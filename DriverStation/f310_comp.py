@@ -29,11 +29,12 @@ LISTEN_ADDR: Tuple[str, int] = ("0.0.0.0", 11000)
 SEND_RATE_HZ = 50.0
 DISCOVERY_PORT = 11010
 DISCOVERY_MAGIC = b"F310_DISCOVERY_V1"
-MAX_DRIVE_OUTPUT = 30
+MAX_DRIVE_OUTPUT = 127         #127 is max speed for motor controller do not change
 ACCEL_LIMIT_PER_SEC = 20.0
 DECEL_LIMIT_PER_SEC = 60.0
 DECEL_NEAR_ZERO_THRESHOLD = 5.0
 DECEL_NEAR_ZERO_PER_SEC = 90.0
+ARM_MISS_TOLERANCE = 2
 
 AUTO_PROGRAMS = {
     "excavation": get_excavation_sequence,
@@ -155,6 +156,14 @@ def _receiver(sock: socket.socket, shared: dict, stop_event: threading.Event) ->
             shared["axes"] = axes
             shared["buttons"] = buttons
             shared["armed"] = armed
+            if armed:
+                shared["armed_miss_count"] = 0
+                shared["armed_effective"] = True
+            else:
+                miss = int(shared.get("armed_miss_count", 0)) + 1
+                shared["armed_miss_count"] = miss
+                if miss > ARM_MISS_TOLERANCE:
+                    shared["armed_effective"] = False
             shared["last_udp"] = now
             shared["net_dt"] = 0.0 if prev == 0.0 else now - prev
             if buttons:
@@ -355,7 +364,7 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
             if auto_outputs is None:
                 with shared["lock"]:
                     axes = shared["axes"]
-                    armed = shared["armed"]
+                    armed_effective = shared.get("armed_effective", False)
                     last_udp = shared["last_udp"]
                     shared["control_mode"] = "manual"
                     limiter: Optional[AccelLimiter] = shared.get("drive_limiter")  # type: ignore[assignment]
@@ -371,7 +380,7 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
 
                 send_dt = now - last_udp
                 stale = send_dt > 0.1
-                outputs_enabled = (not stale) and armed
+                outputs_enabled = (not stale) and armed_effective
                 if not outputs_enabled:
                     left = right = arm = bucket = 0
                     if limiter:
@@ -456,7 +465,7 @@ def _render_display(shared: dict) -> str:
     with shared["lock"]:
         axes = shared.get("axes", (0, 0, 0, 0, 0, 0))
         buttons = shared.get("buttons", tuple())
-        armed = bool(shared.get("armed", False))
+        armed = bool(shared.get("armed_effective", shared.get("armed", False)))
         net_dt = float(shared.get("net_dt", 0.0))
         last_send_dt = float(shared.get("last_send_dt", 0.0))
         stale = bool(shared.get("stale", True))
@@ -534,6 +543,8 @@ def main() -> None:
         "axes": (0, 0, 0, 0, 0, 0),
         "buttons": tuple(0 for _ in range(12)),
         "armed": False,
+        "armed_effective": False,
+        "armed_miss_count": 0,
         "last_udp": 0.0,
         "net_dt": 0.0,
         "last_send_dt": 0.0,
