@@ -29,6 +29,7 @@ LISTEN_ADDR: Tuple[str, int] = ("0.0.0.0", 11000)
 SEND_RATE_HZ = 50.0
 DISCOVERY_PORT = 11010
 DISCOVERY_MAGIC = b"F310_DISCOVERY_V1"
+ACCEL_LIMIT_PER_SEC = 160.0  # Max increase in command units per second
 
 AUTO_PROGRAMS = {
     "excavation": get_excavation_sequence,
@@ -45,6 +46,32 @@ AUTO_BUTTONS = {
 
 def clamp_i8(value: int) -> int:
     return max(-127, min(127, value))
+
+
+class AccelLimiter:
+    """Limits acceleration while allowing instant deceleration."""
+
+    def __init__(self, max_rate: float) -> None:
+        self.max_rate = max(1.0, float(max_rate))
+        self.left = 0.0
+        self.right = 0.0
+
+    def reset(self, left: float = 0.0, right: float = 0.0) -> None:
+        self.left = float(left)
+        self.right = float(right)
+
+    def update(self, target_left: float, target_right: float, dt: float) -> Tuple[float, float]:
+        max_delta = self.max_rate * max(dt, 0.0)
+        self.left = self._apply(self.left, target_left, max_delta)
+        self.right = self._apply(self.right, target_right, max_delta)
+        return self.left, self.right
+
+    @staticmethod
+    def _apply(current: float, target: float, max_delta: float) -> float:
+        if target <= current:
+            return float(target)
+        delta = min(max_delta, target - current)
+        return current + delta
 
 
 def decode_packet(packet: bytes) -> Optional[Tuple[Tuple[int, ...], Tuple[int, ...], bool]]:
@@ -302,6 +329,7 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
                     armed = shared["armed"]
                     last_udp = shared["last_udp"]
                     shared["control_mode"] = "manual"
+                    limiter: Optional[AccelLimiter] = shared.get("drive_limiter")  # type: ignore[assignment]
 
                 throttle = clamp_i8(int(axes[3] / 4))
                 steer = clamp_i8(int(axes[4] / 4))
@@ -315,6 +343,12 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
                 outputs_enabled = (not stale) and armed
                 if not outputs_enabled:
                     left = right = arm = bucket = 0
+                    if limiter:
+                        limiter.reset(0.0, 0.0)
+                elif limiter:
+                    left_f, right_f = limiter.update(float(left), float(right), period)
+                    left = clamp_i8(int(round(left_f)))
+                    right = clamp_i8(int(round(right_f)))
 
                 send_m = [right, -left]
                 send_a = [-1, -1, -1, -1, arm, -bucket]
@@ -349,6 +383,9 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
                     shared["arm_cmd"] = send_a[4]
                     shared["bucket_cmd"] = send_a[5]
                     shared["control_mode"] = "auto"
+                    limiter = shared.get("drive_limiter")
+                    if limiter:
+                        limiter.reset(0.0, 0.0)
 
             try: 
                 link.send_command("M", send_m)
@@ -491,6 +528,7 @@ def main() -> None:
         "auto_a_values": [0, 0, 0, 0, 0, 0],
         "auto_program": "",
         "lock": threading.Lock(),
+        "drive_limiter": AccelLimiter(ACCEL_LIMIT_PER_SEC),
     }
     stop_event = threading.Event()
     discovery_thread = threading.Thread(
