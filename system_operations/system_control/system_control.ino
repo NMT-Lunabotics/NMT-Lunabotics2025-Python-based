@@ -295,11 +295,11 @@ void setup() {
   #endif
   for (int i = 0; i < 10; i++) {
     #if ARM_ACTUATORS_ENABLED
-    aL_pos = act_left.update_pos();
-    aR_pos = act_right.update_pos();
+      aL_pos = act_left.update_pos();
+      aR_pos = act_right.update_pos();
     #endif
     #if BUCKET_ACTUATOR_ENABLED
-    aB_pos = act_bucket.update_pos();
+      aB_pos = act_bucket.update_pos();
     #endif
   }
   #if SERVO_MOTOR_ENABLED
@@ -364,11 +364,11 @@ void loop() {
   if (current_time - last_update_actuator_time >= 1000 / update_actuator_feedback) {
     last_update_actuator_time = current_time;
     #if ARM_ACTUATORS_ENABLED
-    aL_pos = act_left.update_pos();
-    aR_pos = act_right.update_pos();
+      aL_pos = act_left.update_pos();
+      aR_pos = act_right.update_pos();
     #endif
     #if BUCKET_ACTUATOR_ENABLED
-    aB_pos = act_bucket.update_pos();
+      aB_pos = act_bucket.update_pos();
     #endif
   }
 
