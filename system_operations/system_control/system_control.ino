@@ -405,10 +405,9 @@ void loop() {
       Serial.println("");
     #endif
     float lr_err = abs(aL_pos - aR_pos);
+    #if ACTUATOR_SAFETY
     if (lr_err >= act_fix_err && lr_err < act_max_err) {
-      #if ACTUATOR_SAFETY
         stop_all();
-      #endif
       float prev_err = lr_err;
       while (lr_err >= 0.5 * act_fix_err) {
         #if BUCKET_ACTUATOR_ENABLED
@@ -428,12 +427,11 @@ void loop() {
         if (lr_err > prev_err) systemFault(true,"Actuator diverging fix failed.","", NONE, NONE, NONE);
         else systemFault(false,"","Actuator arms diverging, Fixing actuators...", BLINK, NONE, NONE);
       }
-      #if ACTUATOR_SAFETY
         act_left.stop();
         act_right.stop();
-      #endif
       ledy_pin.write(0);
     } //else if (lr_err >= act_max_err) systemFault(true,"Actuator relative error too large: " + String(aL_pos) + " " + String(aR_pos),"", NONE, NONE, NONE);
+    #endif
   #endif
     // Run motors and actuators
     if (!emergency_stop) {
