@@ -397,6 +397,12 @@ void loop() {
     #endif
     // Correct dual actuator misalignment
     #if ARM_ACTUATORS_ENABLED
+    #if SENSOR_OUTPUT == 4
+      Serial.print(aL_pos);
+      Serial.print(" ");
+      Serial.print(aR_pos);
+      Serial.println("");
+    #endif
     float lr_err = abs(aL_pos - aR_pos);
     if (lr_err >= act_fix_err && lr_err < act_max_err) {
       stop_all();
@@ -415,13 +421,6 @@ void loop() {
 
         prev_err = lr_err;
         lr_err = abs(aL_pos - aR_pos);
-        
-        #if SENSOR_OUTPUT == 4
-          Serial.print(aL_pos);
-          Serial.print(" ");
-          Serial.print(aR_pos);
-          Serial.println("");
-        #endif
 
         if (lr_err > prev_err) systemFault(true,"Actuator diverging fix failed.","", NONE, NONE, NONE);
         else systemFault(false,"","Actuator arms diverging, Fixing actuators...", BLINK, NONE, NONE);
