@@ -708,7 +708,6 @@ void stop_all() {
   #endif
   #if BUCKET_ACTUATOR_ENABLED
   act_bucket.stop();
-  motor_left.stop();
   #endif
   #if MOTORS_ENABLED
     #if MAIN_ROBOT==1
