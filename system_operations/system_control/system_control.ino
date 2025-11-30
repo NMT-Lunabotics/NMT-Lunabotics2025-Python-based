@@ -7,8 +7,8 @@
 // List of components flags to enable/disable for testing
 #define ERROR_LEDS_ENABLED           1
 #define MOTORS_ENABLED               0
-#define BUCKET_ACTUATOR_ENABLED      1
-#define ARM_ACTUATORS_ENABLED        0
+#define BUCKET_ACTUATOR_ENABLED      0
+#define ARM_ACTUATORS_ENABLED        1
 #define SERVO_MOTOR_ENABLED          0
 #define IMU_SENSOR_ENABLED           0
 #define IBUS_RECIVER_ENABLED         1
@@ -16,6 +16,7 @@
 // List of faults to disable
 #define SERIAL_COMM_TIMEOUT_FAULT    0
 #define COMPONENT_TIMEOUT_FAULTS     0
+#define ACTUATOR_SAFETY              0 //DO NOT TOUCH  
 
 // Debug mode flags
 #define DEBUG_MODE                   0
@@ -404,6 +405,7 @@ void loop() {
       Serial.println("");
     #endif
     float lr_err = abs(aL_pos - aR_pos);
+    #if CTUATOR_SAFETY
     if (lr_err >= act_fix_err && lr_err < act_max_err) {
       stop_all();
       float prev_err = lr_err;
@@ -429,6 +431,7 @@ void loop() {
       act_right.stop();
       ledy_pin.write(0);
     } //else if (lr_err >= act_max_err) systemFault(true,"Actuator relative error too large: " + String(aL_pos) + " " + String(aR_pos),"", NONE, NONE, NONE);
+    #endif
   #endif
     // Run motors and actuators
     if (!emergency_stop) {
