@@ -6,20 +6,20 @@
 
 // List of components flags to enable/disable for testing
 #define ERROR_LEDS_ENABLED           1
-#define MOTORS_ENABLED               1
-#define BUCKET_ACTUATOR_ENABLED      1
+#define MOTORS_ENABLED               0
+#define BUCKET_ACTUATOR_ENABLED      0
 #define ARM_ACTUATORS_ENABLED        1
 #define SERVO_MOTOR_ENABLED          0
 #define IMU_SENSOR_ENABLED           0
 #define IBUS_RECIVER_ENABLED         1
 
 // List of faults to disable
-#define SERIAL_COMM_TIMEOUT_FAULT    1
-#define COMPONENT_TIMEOUT_FAULTS     1
+#define SERIAL_COMM_TIMEOUT_FAULT    0
+#define COMPONENT_TIMEOUT_FAULTS     0
 
 // Debug mode flags
 #define DEBUG_MODE                   0
-#define SENSOR_OUTPUT                0  // 1: IMU, 2: IBUS, 3: IBUS raw
+#define SENSOR_OUTPUT                4  // 1: IMU, 2: IBUS, 3: IBUS raw, 4: pots
 
 #else
 //--------------- NUC TEST ROBOT SETTINGS ---------------
@@ -415,6 +415,14 @@ void loop() {
 
         prev_err = lr_err;
         lr_err = abs(aL_pos - aR_pos);
+        
+        #if SENSOR_OUTPUT == 4
+          Serial.print(aL_pos);
+          Serial.print(" ");
+          Serial.print(aR_pos);
+          Serial.println("");
+        #endif
+
         if (lr_err > prev_err) systemFault(true,"Actuator diverging fix failed.","", NONE, NONE, NONE);
         else systemFault(false,"","Actuator arms diverging, Fixing actuators...", BLINK, NONE, NONE);
       }
