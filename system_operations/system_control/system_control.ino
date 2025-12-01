@@ -17,6 +17,7 @@
 #define SERIAL_COMM_TIMEOUT_FAULT    0
 #define COMPONENT_TIMEOUT_FAULTS     0
 #define ACTUATOR_SAFETY              1 //DO NOT TOUCH  
+#define ACTUATOR_FAILURE             0 //DO NOT TOUCH 
 
 // Debug mode flags
 #define DEBUG_MODE                   0
@@ -410,7 +411,7 @@ void loop() {
       Serial.println("");
     #endif
     float lr_err = abs(aL_pos - aR_pos);
-    #if ACTUATOR_SAFETY
+    #if ACTUATOR_FAILURE
     if (lr_err >= act_fix_err && lr_err < act_max_err) {
         stop_all();
       float prev_err = lr_err;
