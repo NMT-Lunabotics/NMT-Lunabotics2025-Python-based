@@ -82,10 +82,10 @@ IBusReader ibus(Serial1);
 #define AB_STROKE 140
 
 // Actuator potentiometer min and max values
-#define AL_POT_MIN 0//47
-#define AL_POT_MAX 840//893
-#define AR_POT_MIN 47//0
-#define AR_POT_MAX 893//840
+#define AL_POT_MIN 30
+#define AL_POT_MAX 893
+#define AR_POT_MIN 0
+#define AR_POT_MAX 840
 #define AB_POT_MIN 30
 #define AB_POT_MAX 782
 
