@@ -85,7 +85,7 @@ IBusReader ibus(Serial1);
 #define AL_POT_MIN 30
 #define AL_POT_MAX 893
 #define AR_POT_MIN 0
-#define AR_POT_MAX 840
+#define AR_POT_MAX 850
 #define AB_POT_MIN 30
 #define AB_POT_MAX 782
 
