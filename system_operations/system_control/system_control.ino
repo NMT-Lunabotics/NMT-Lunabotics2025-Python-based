@@ -16,7 +16,7 @@
 // List of faults to disable
 #define SERIAL_COMM_TIMEOUT_FAULT    0
 #define COMPONENT_TIMEOUT_FAULTS     0
-#define ACTUATOR_SAFETY              0 //DO NOT TOUCH  
+#define ACTUATOR_SAFETY              1 //DO NOT TOUCH  
 
 // Debug mode flags
 #define DEBUG_MODE                   0
@@ -347,8 +347,8 @@ void loop() {
       mL_speed = constrain(throttle + steering, -30, 30);
       aLR_tgt = -1;
       aB_tgt = -1;
-      aL_speed = -joy[3];
-      aR_speed = -aL_speed;
+      aL_speed = joy[3];
+      aR_speed = aL_speed;
       aB_speed = joy[2];
       if(RC_connection_established==false){
         RC_connection_established=true;
