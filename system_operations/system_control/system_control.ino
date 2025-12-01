@@ -82,10 +82,10 @@ IBusReader ibus(Serial1);
 #define AB_STROKE 140
 
 // Actuator potentiometer min and max values
-#define AL_POT_MIN 47
-#define AL_POT_MAX 893
-#define AR_POT_MIN 0
-#define AR_POT_MAX 840
+#define AL_POT_MIN 0//47
+#define AL_POT_MAX 840//893
+#define AR_POT_MIN 47//0
+#define AR_POT_MAX 893//840
 #define AB_POT_MIN 30
 #define AB_POT_MAX 782
 
@@ -226,9 +226,9 @@ PID pidL(2.2, 0.0022, 0.34, 2.0);
 PID pidR(1.85, 0.0018, 0.31, 1.7);
 
 PWM_Driver left_driver(DRV12_PWM_PIN, DRV12_DIR1_PIN, DRV12_DIR2_PIN, false);
-Actuator act_left(left_driver, pidL, POTL_PIN, AL_POT_MIN, AL_POT_MAX, ALR_STROKE, act_max_vel);
+Actuator act_left(left_driver, pidL, POTL_PIN, AR_POT_MIN, AR_POT_MAX, ALR_STROKE, act_max_vel);
 PWM_Driver right_driver(DRV11_PWM_PIN, DRV11_DIR1_PIN, DRV11_DIR2_PIN, false);
-Actuator act_right(right_driver, pidR, POTR_PIN, AR_POT_MAX, AR_POT_MIN, ALR_STROKE, act_max_vel);
+Actuator act_right(right_driver, pidR, POTR_PIN, AL_POT_MIN, AL_POT_MAX, ALR_STROKE, act_max_vel);
 
 //Actuator act_left(left_driver, pidL, POTL_PIN, AL_POT_MIN, AL_POT_MAX, ALR_STROKE, act_max_vel);
 //Actuator act_right(right_driver, pidR, POTR_PIN, AR_POT_MIN, AR_POT_MAX, ALR_STROKE, act_max_vel);
