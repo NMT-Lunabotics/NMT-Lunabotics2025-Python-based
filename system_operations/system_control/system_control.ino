@@ -19,7 +19,7 @@
 
 // Debug mode flags
 #define DEBUG_MODE                   0
-#define SENSOR_OUTPUT                2  // 1: IMU, 2: IBUS, 3: IBUS raw
+#define SENSOR_OUTPUT                0  // 1: IMU, 2: IBUS, 3: IBUS raw
 
 #else
 //--------------- NUC TEST ROBOT SETTINGS ---------------
