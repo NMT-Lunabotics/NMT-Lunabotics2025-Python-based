@@ -466,7 +466,7 @@ void loop() {
         if (aR_speed < 0 && aR_pos >= 150) aR_speed = 0;
         if (aR_speed > 0 && aR_pos <= 30)  aR_speed = 0;
     
-        act_left.curved_vel_ctrl(aL_speed, factor);
+        act_left.curved_vel_ctrl(aL_speed, -factor);
         act_right.curved_vel_ctrl(aR_speed, factor);
     }
     

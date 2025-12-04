@@ -189,46 +189,20 @@ public:
   }
 
   void curved_vel_ctrl(int speed, float factor) {
-    unsigned long now = millis();
-    float dt = (now - last_vel_time) / 1000.0;
-    last_vel_time = now;
-
-    float target_speed = speed;
-
-    // Ramp delta
-    float delta = target_speed - curved_speed;
-    if(curved_speed * target_speed >= 0) {
-        float max_delta = abs(target_speed) / ramp_speed_time * dt;
+    float dt = (millis() - last_vel_time) / 1000.0;
+    last_vel_time = millis();
+    float delta = speed - curved_speed;
+    float max_delta = abs(speed)/ramp_speed_time*dt;
+    if(curved_speed*speed >= 0){
         if(delta > max_delta) delta = max_delta;
         if(delta < -max_delta) delta = -max_delta;
     }
     curved_speed += delta;
-
-    // Deadband: stop motor if target speed is zero
-    if(target_speed == 0.0) {
-        curved_speed = 0.0;
-    }
-
-    int out_speed = 0;
-
-    if(!MD04_drivers){
-        // Convert curved_speed to PWM
-        out_speed = constrain(curved_speed, -act_max_vel, act_max_vel);
-        out_speed = out_speed / act_max_vel * 255;
-    } else {
-        out_speed = curved_speed;
-    }
-
-    // Apply factor only if the motor is actually moving
-    if(curved_speed != 0.0) {
-        out_speed += factor;
-    }
-
-    pwm_driver.set_speed(out_speed);
-}
-
-
-
+    if(speed == 0) curved_speed = 0;
+    int out = MD04_drivers ? curved_speed : constrain(curved_speed,-act_max_vel,act_max_vel)/act_max_vel*255;
+    if(curved_speed != 0) out += factor;
+    pwm_driver.set_speed(out);
+  }
 
   void stop() {
     pwm_driver.stop();
