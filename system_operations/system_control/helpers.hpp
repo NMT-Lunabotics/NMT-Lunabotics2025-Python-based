@@ -209,7 +209,8 @@ public:
         out_speed = constrain(out_speed, -act_max_vel, act_max_vel);
         out_speed = out_speed / act_max_vel * 255;
     }
-    pwm_driver.set_speed(out_speed+factor);
+    if (out_speed != 0 || abs(factor) > 0.01) out_speed += factor;
+    pwm_driver.set_speed(out_speed);
 }
 
 
