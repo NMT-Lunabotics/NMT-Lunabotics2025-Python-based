@@ -157,7 +157,7 @@ public:
   float update_pos() {
     float analog_raw = pot.read_analog_raw();
     // Serial.println(analog_raw);
-    pos_mm = f_map(analog_raw, pot_min, pot_max, 0, stroke) + offset;
+    pos_mm = f_map(analog_raw, pot_min, pot_max, 0, stroke);
     return pos_mm;
   }
 
@@ -179,9 +179,12 @@ public:
   }
 
   void vel_ctrl(int speed) {
+    if ((speed > 0 && pos_mm >= max_pos) || (speed < 0 && pos_mm <= min_pos)) speed = 0;
+
+
     if(MD04_drivers==false){
-    speed = constrain(speed, -act_max_vel, act_max_vel);
-    speed = speed / act_max_vel * 255;
+      speed = constrain(speed, -act_max_vel, act_max_vel);
+      speed = speed / act_max_vel * 255;
     }
     pwm_driver.set_speed(speed);
   }
