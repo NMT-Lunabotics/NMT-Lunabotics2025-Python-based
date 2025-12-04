@@ -247,7 +247,7 @@ public:
 
           if (abs(curved_speed) < 1) {
               curved_speed = 0;
-              direction_change_block_until = now + 250; 
+              direction_change_block_until = now + 200; 
           }
       } else {
           if (now < direction_change_block_until) {
