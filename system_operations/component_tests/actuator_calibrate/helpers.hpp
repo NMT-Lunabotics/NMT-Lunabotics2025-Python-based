@@ -177,7 +177,8 @@ public:
   void vel_ctrl(int speed) {
     float pos = update_pos();
     if ((speed > 0 && pos >= max_pos) || (speed < 0 && pos <= min_pos)) {
-      speed = 0;  // Stop actuator if it would exceed limits
+      pwm_driver.stop();  // stop immediately
+        return; 
   }
 
 
