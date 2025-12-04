@@ -453,35 +453,27 @@ void loop() {
       // Update actuator positions.
 
 
-      float factor = (aL_pos - aR_pos) * vel_gain;
-      // Apply limits for left actuator
-      if ((aL_speed - factor) > 0 && aL_pos >= act_left.max_pos) {
-          aL_speed = factor;  // cancel positive motion
-      } else if ((aL_speed - factor) < 0 && aL_pos <= act_left.min_pos) {
-          aL_speed = factor;  // cancel negative motion
+      if (aLR_tgt >= 0) {
+        act_left.tgt_ctrl(aLR_tgt);
+        act_right.tgt_ctrl(aLR_tgt);
+      } else {
+        aL_pos = act_left.update_pos();
+aR_pos = act_right.update_pos();
+float factor = (aL_pos - aR_pos) * vel_gain;
+
+if ((aL_speed - factor) > 0 && aL_pos >= 150) aL_speed = factor;
+else if ((aL_speed - factor) < 0 && aL_pos <= 30) aL_speed = factor;
+
+if ((aR_speed + factor) > 0 && aR_pos >= 150) aR_speed = -factor;
+else if ((aR_speed + factor) < 0 && aR_pos <= 30) aR_speed = -factor;
+
+act_left.vel_ctrl(aL_speed - factor);
+act_right.vel_ctrl(aR_speed + factor);
+Serial.print(aL_pos); Serial.print(" "); Serial.println(aR_pos);
+
       }
 
-      // Apply limits for right actuator
-      if ((aR_speed + factor) > 0 && aR_pos >= act_right.max_pos) {
-          aR_speed = -factor; // cancel positive motion
-      } else if ((aR_speed + factor) < 0 && aR_pos <= act_right.min_pos) {
-          aR_speed = -factor; // cancel negative motion
-      }
-
-      // Send velocity commands
-      act_left.vel_ctrl(aL_speed - factor);
-      act_right.vel_ctrl(aR_speed + factor);
-
-      // Update positions
-      aL_pos = act_left.update_pos();
-      aR_pos = act_right.update_pos();
-
-      Serial.print(aL_pos);
-      Serial.print(" ");
-      Serial.println(aR_pos);
-
-
-
+      
       #endif
       #if BUCKET_ACTUATOR_ENABLED
       if (aB_tgt >= 0)
