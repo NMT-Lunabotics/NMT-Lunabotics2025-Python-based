@@ -458,18 +458,19 @@ void loop() {
         act_right.tgt_ctrl(aLR_tgt);
       } else {
         aL_pos = act_left.update_pos();
-aR_pos = act_right.update_pos();
-float factor = (aL_pos - aR_pos) * vel_gain;
-
-if ((aL_speed - factor) > 0 && aL_pos >= 150) aL_speed = factor;
-else if ((aL_speed - factor) < 0 && aL_pos <= 30) aL_speed = factor;
-
-if ((aR_speed + factor) > 0 && aR_pos >= 150) aR_speed = -factor;
-else if ((aR_speed + factor) < 0 && aR_pos <= 30) aR_speed = -factor;
-
-act_left.vel_ctrl(aL_speed - factor);
-act_right.vel_ctrl(aR_speed + factor);
-Serial.print(aL_pos); Serial.print(" "); Serial.println(aR_pos);
+        aR_pos = act_right.update_pos();
+        float factor = (aL_pos - aR_pos) * vel_gain;
+        
+        float l_speed = aL_speed - factor;
+        float r_speed = aR_speed + factor;
+        
+        if ((l_speed > 0 && aL_pos >= 150) || (l_speed < 0 && aL_pos <= 30)) l_speed = 0;
+        if ((r_speed > 0 && aR_pos >= 150) || (r_speed < 0 && aR_pos <= 30)) r_speed = 0;
+        
+        act_left.vel_ctrl(l_speed);
+        act_right.vel_ctrl(r_speed);
+        Serial.print(aL_pos); Serial.print(" "); Serial.println(aR_pos);
+        
 
       }
 
