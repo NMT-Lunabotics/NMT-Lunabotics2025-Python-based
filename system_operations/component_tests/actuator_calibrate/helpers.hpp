@@ -176,6 +176,7 @@ public:
 
   void vel_ctrl(int speed) {
     float pos = update_pos();
+    Serial.println(pos);
     if ((speed > 0 && pos >= max_pos) || (speed < 0 && pos <= min_pos)) {
       pwm_driver.stop();  // stop immediately
         return; 
