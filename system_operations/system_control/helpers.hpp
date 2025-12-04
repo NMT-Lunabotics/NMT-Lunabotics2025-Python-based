@@ -139,7 +139,7 @@ class Actuator {
   float min_pos;
   float max_pos;
   float curved_speed = 0;
-  float ramp_speed_time=2;
+  float ramp_speed_time=0.5;
   unsigned long last_vel_time = 0;
   PID pid;
 
@@ -181,6 +181,14 @@ public:
   }
 
   void vel_ctrl(int speed) {
+    if(MD04_drivers==false){
+    speed = constrain(speed, -act_max_vel, act_max_vel);
+    speed = speed / act_max_vel * 255;
+    }
+    pwm_driver.set_speed(speed);
+  }
+
+  void curved_vel_ctrl(int speed) {
     unsigned long now = millis();
     float dt = (now - last_vel_time) / 1000.0;
     last_vel_time = now;

@@ -470,8 +470,8 @@ if (aL_speed > 0 && aL_pos <= 30)  l_speed = -factor;  // user backward blocked,
 if (aR_speed < 0 && aR_pos >= 150) r_speed = factor;
 if (aR_speed > 0 && aR_pos <= 30)  r_speed = factor;
 
-act_left.vel_ctrl(l_speed);
-act_right.vel_ctrl(r_speed);
+act_left.curved_vel_ctrl(l_speed);
+act_right.curved_vel_ctrl(r_speed);
 Serial.print(aL_pos); Serial.print(" "); Serial.println(aR_pos);
       }
 
