@@ -473,7 +473,7 @@ class IBusReader {
       int idx = 0;
       int threshold = 1;
       int16_t channels[12];
-      int16_t joystick[5];
+      int16_t joystick[6];
       int16_t lastValues[4]; // store last mapped joystick values
       unsigned long lastUpdate = 0;
       const unsigned long timeoutMs = 2000; // 0.5s timeout
