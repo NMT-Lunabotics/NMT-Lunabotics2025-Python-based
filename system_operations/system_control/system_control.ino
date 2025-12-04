@@ -413,10 +413,6 @@ void loop() {
         aR_pos = act_right.update_pos();
         float factor = (aL_pos - aR_pos) * vel_gain;
 
-        Serial.print(aL_pos);
-        Serial.print("");
-        Serial.print(aR_pos);
-        Serial.println("");
         act_left.vel_ctrl(aL_speed - factor);
         act_right.vel_ctrl(aR_speed + factor);
         delay(5);
@@ -463,6 +459,12 @@ void loop() {
         act_left.vel_ctrl(aL_speed - factor);
         act_right.vel_ctrl(aR_speed + factor);
       }
+      aL_pos = act_left.update_pos();
+      aR_pos = act_right.update_pos();
+      Serial.print(aL_pos);
+      Serial.print("");
+      Serial.print(aR_pos);
+      Serial.println("");
       #endif
       #if BUCKET_ACTUATOR_ENABLED
       if (aB_tgt >= 0)
