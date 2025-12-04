@@ -199,7 +199,7 @@ const unsigned long estop_timeout = 2000;  // 2 second timeout for failed serial
 unsigned long last_message_time = 0;
 unsigned long last_error_message_time = 0;  
 int error_message_interval = 2000;
-bool emergency_stop = true;
+bool emergency_stop = false;
 String system_fault_msg = "";
 bool system_started = false;
 
