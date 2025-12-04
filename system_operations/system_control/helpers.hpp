@@ -475,7 +475,7 @@ class IBusReader {
       int16_t joystick[5];
       int16_t lastValues[4]; // store last mapped joystick values
       unsigned long lastUpdate = 0;
-      const unsigned long timeoutMs = 4000; // 0.5s timeout
+      const unsigned long timeoutMs = 2000; // 0.5s timeout
       // Joystick settings (leftJoyX, leftJoyY, rightJoyX, rightJoyY) (MotorX, MotorY, actuatorX, actuatorY)
       int16_t maxJoyValues[4]=    {1979, 1971, 2000, 2000}; // Joystick max values
       int16_t minJoyValues[4]=    {1045, 1000, 1071, 1060}; // Joystick min values

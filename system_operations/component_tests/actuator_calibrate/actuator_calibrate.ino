@@ -34,12 +34,6 @@ void setup() {
 
 void loop() {
   if (done == 0) {
-    act_left.vel_ctrl(10);
-    act_right.vel_ctrl(10);
-    delay(10000);
-    act_left.stop();
-    act_right.stop();
-
     int potL = analogRead(POTL_PIN);
     int potR = analogRead(POTR_PIN);
     Serial.print(potL);
