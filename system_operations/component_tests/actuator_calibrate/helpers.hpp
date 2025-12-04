@@ -175,13 +175,6 @@ public:
   }
 
   void vel_ctrl(int speed) {
-    float pos = update_pos();
-    if ((speed > 0 && pos >= max_pos) || (speed < 0 && pos <= min_pos)) {
-      pwm_driver.stop();  // stop immediately
-        return; 
-  }
-
-
     if(MD04_drivers==false){
       speed = constrain(speed, -act_max_vel, act_max_vel);
       speed = speed / act_max_vel * 255;
