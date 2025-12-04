@@ -6,7 +6,7 @@ TRIPWIRE_FILE=".tripwire"
 EXCLUDE_FROM_PULL=(
     "README.md" 
     "LiDAR_Project/"  
-    "system_operations/component_tests/" 
+    #"system_operations/component_tests/" 
     "system_operations/documents/" 
     ".gitgnore"
     "Map.png"
