@@ -179,8 +179,10 @@ public:
   }
 
   void vel_ctrl(int speed) {
-    update_pos();
-    if ((speed > 0 && pos_mm >= max_pos) || (speed < 0 && pos_mm <= min_pos)) speed = 0;
+    float pos = update_pos();
+    if ((speed > 0 && pos >= max_pos) || (speed < 0 && pos <= min_pos)) {
+      speed = 0;  // Stop actuator if it would exceed limits
+  }
 
 
     if(MD04_drivers==false){
