@@ -16,10 +16,10 @@ PID pidL(2.2, 0.0022, 0.34, 2.0);
 PID pidR(1.85, 0.0018, 0.31, 1.7);
 
 PWM_Driver left_driver(DRV12_PWM_PIN, DRV12_DIR1_PIN, DRV12_DIR2_PIN, false);
-Actuator act_left(left_driver, pidL, POTL_PIN, 0, 1023, 191, act_max_vel);
+Actuator act_left(left_driver, pidL, POTL_PIN, -20, 1023, 191, act_max_vel);
 
 PWM_Driver right_driver(DRV11_PWM_PIN, DRV11_DIR1_PIN, DRV11_DIR2_PIN, false);
-Actuator act_right(right_driver, pidR, POTR_PIN, 0, 1023, 191, act_max_vel);
+Actuator act_right(right_driver, pidR, POTR_PIN, -20, 1023, 191, act_max_vel);
 
 int done = 0;
 
