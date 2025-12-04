@@ -354,7 +354,7 @@ void loop() {
       aB_tgt = -1;
       aL_speed = -joy[3];
       aR_speed = aL_speed;
-      aB_speed = joy[2];
+      aB_speed = -joy[2];
       if(RC_connection_established==false){
         RC_connection_established=true;
         systemFault(false,"","", NONE, NONE, ON);
