@@ -197,7 +197,7 @@ unsigned long led_blink_time=0;
 unsigned long current_time = 0;
 const unsigned long estop_timeout = 2000;  // 2 second timeout for failed serial commication
 unsigned long last_message_time = 0;
-bool emergency_stop = false;
+bool emergency_stop = true;
 String system_fault_msg = "";
 bool system_started = false;
 
