@@ -464,8 +464,8 @@ void loop() {
         float l_speed = aL_speed - factor;
         float r_speed = aR_speed + factor;
         
-        if ((l_speed > 0 && aL_pos >= 150) || (l_speed < 0 && aL_pos <= 30)) l_speed = 0;
-        if ((r_speed > 0 && aR_pos >= 150) || (r_speed < 0 && aR_pos <= 30)) r_speed = 0;
+        if ((l_speed < 0 && aL_pos >= 150) || (l_speed > 0 && aL_pos <= 30)) l_speed = 0;
+        if ((r_speed < 0 && aR_pos >= 150) || (r_speed > 0 && aR_pos <= 30)) r_speed = 0;
         
         act_left.vel_ctrl(l_speed);
         act_right.vel_ctrl(r_speed);
