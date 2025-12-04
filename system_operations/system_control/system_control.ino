@@ -6,7 +6,7 @@
 
 // List of components flags to enable/disable for testing
 #define ERROR_LEDS_ENABLED           1
-#define MOTORS_ENABLED               0
+#define MOTORS_ENABLED               1
 #define BUCKET_ACTUATOR_ENABLED      1
 #define ARM_ACTUATORS_ENABLED        1
 #define SERVO_MOTOR_ENABLED          0
@@ -476,16 +476,13 @@ void loop() {
       Serial.print(aB_speed);
       Serial.println("");
       if (aB_tgt >= 0) act_bucket.tgt_ctrl(aB_tgt);
-      else {
-      //if ((aB_speed > 0 && aB_pos < bucket_max) || (aB_speed < 0 && aB_pos > bucket_min)) {
-        if (aB_speed > 0 && aB_pos >= 100) aB_speed = 0;  
-        if (aB_speed < 0 && aB_pos <= 30)  aB_speed = 0;
+      else if ((aB_speed > 0 && aB_pos < bucket_max) || (aB_speed < 0 && aB_pos > bucket_min)) {
+        if (aB_speed > 0 && aB_pos >= 105) aB_speed = 0;  
+        if (aB_speed < 0 && aB_pos <= 25)  aB_speed = 0;
         act_bucket.curved_vel_ctrl(aB_speed, 0);
         //act_bucket.vel_ctrl(aB_speed);
       }
-      //else {
-      //  act_bucket.stop();
-      //}
+      else act_bucket.stop();
       #endif
       #if MOTORS_ENABLED
         // Update motor speeds
