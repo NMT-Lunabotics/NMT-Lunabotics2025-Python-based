@@ -471,14 +471,10 @@ void loop() {
     
       #endif
       #if BUCKET_ACTUATOR_ENABLED
-      Serial.print(aB_pos);
-      Serial.print(" ");
-      Serial.print(aB_speed);
-      Serial.println("");
       if (aB_tgt >= 0) act_bucket.tgt_ctrl(aB_tgt);
       else if ((aB_speed > 0 && aB_pos < bucket_max) || (aB_speed < 0 && aB_pos > bucket_min)) {
         if (aB_speed > 0 && aB_pos >= 105) aB_speed = 0;  
-        if (aB_speed < 0 && aB_pos <= 25)  aB_speed = 0;
+        if (aB_speed < 0 && aB_pos <= 30)  aB_speed = 0;
         act_bucket.curved_vel_ctrl(aB_speed, 0);
         //act_bucket.vel_ctrl(aB_speed);
       }
