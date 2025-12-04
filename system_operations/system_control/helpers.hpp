@@ -139,7 +139,7 @@ class Actuator {
   float min_pos;
   float max_pos;
   float curved_speed = 0;
-  float ramp_speed_time=0.5;
+  float ramp_speed_time=0.25;
   unsigned long last_vel_time = 0;
   PID pid;
 
@@ -194,10 +194,14 @@ public:
     last_vel_time = now;
 
     float target_speed = speed;
-    float max_delta = abs(target_speed) / ramp_speed_time * dt;
     float delta = target_speed - curved_speed;
-    if(delta > max_delta) delta = max_delta;
-    if(delta < -max_delta) delta = -max_delta;
+
+    if(curved_speed * target_speed >= 0) { // same direction or from 0
+        float max_delta = abs(target_speed) / ramp_speed_time * dt;
+        if(delta > max_delta) delta = max_delta;
+        if(delta < -max_delta) delta = -max_delta;
+    } // else deceleration or direction change: no limit
+
     curved_speed += delta;
 
     int out_speed = curved_speed;
@@ -206,7 +210,8 @@ public:
         out_speed = out_speed / act_max_vel * 255;
     }
     pwm_driver.set_speed(out_speed);
-  }
+}
+
 
   void stop() {
     pwm_driver.stop();
