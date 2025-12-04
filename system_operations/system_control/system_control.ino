@@ -76,7 +76,7 @@ IBusReader ibus(Serial1);
 #define POTB_PIN A3
 
 // Allowed actuator stroke lengths (mm)
-#define ALR_STROKE 191
+#define ALR_STROKE 100//191
 #define AB_STROKE 140
 
 // Actuator potentiometer min and max values
