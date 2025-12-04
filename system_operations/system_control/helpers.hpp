@@ -218,43 +218,61 @@ class Motor {
   OutPin dac1, dac2, enable;
   int motor_max_vel;
   bool reverse;
-
-  int current_dir = 0; 
-  unsigned long block_until = 0;
+  float curved_speed = 0;
+  float ramp_speed_time = 0.5; // seconds to max speed
+  unsigned long last_update = 0;
+  unsigned long direction_change_block_until = 0;
 
 public:
   Motor(OutPin d1, OutPin d2, OutPin en, int maxv, bool rev)
-      : dac1(d1), dac2(d2), enable(en), motor_max_vel(maxv), reverse(rev) {}
+      : dac1(d1), dac2(d2), enable(en), motor_max_vel(maxv), reverse(rev) {
+      last_update = millis();
+  }
 
-  void motor_ctrl(int s) {
+  void motor_ctrl(int target_speed) {
       unsigned long now = millis();
+      float dt = (now - last_update) / 1000.0;
+      last_update = now;
 
-      if (s == 0) {
+      target_speed = constrain(target_speed, -motor_max_vel, motor_max_vel);
+
+      bool target_dir = (target_speed > 0);
+      bool current_dir = (curved_speed > 0);
+
+      // Check for direction change
+      if (curved_speed != 0 && target_dir != current_dir) {
+          // ramp down
+          float max_delta = motor_max_vel / ramp_speed_time * dt;
+          if (curved_speed > 0) curved_speed -= max_delta;
+          else curved_speed += max_delta;
+
+          if (abs(curved_speed) < 1) {
+              curved_speed = 0;
+              direction_change_block_until = now + 1000; // 1s block
+          }
+      } else {
+          if (now < direction_change_block_until) {
+              curved_speed = 0;
+          } else {
+              float delta = target_speed - curved_speed;
+              float max_delta = motor_max_vel / ramp_speed_time * dt;
+              if (delta > max_delta) delta = max_delta;
+              if (delta < -max_delta) delta = -max_delta;
+              curved_speed += delta;
+          }
+      }
+
+      // Apply output
+      if (curved_speed == 0) {
           stop();
-          current_dir = 0;
           return;
       }
 
-      int new_dir = (s > 0) ? 1 : -1;
-      if (reverse) new_dir = -new_dir;
-
-      if (current_dir != 0 && new_dir != current_dir) {
-          stop();
-          block_until = now + 1000;
-          current_dir = new_dir;
-          return;
-      }
-
-      if (now < block_until) return;
-
-      current_dir = new_dir;
-
+      int pwm = map(abs((int)curved_speed), 0, motor_max_vel, 0, 255);
       enable.write(1);
-
-      s = constrain(s, -motor_max_vel, motor_max_vel);
-      int pwm = map(abs(s), 0, motor_max_vel, 0, 255);
-
-      if (current_dir == 1) {
+      bool forward = (curved_speed > 0);
+      if (reverse) forward = !forward;
+      if (forward) {
           dac1.write_pwm_raw(pwm);
           dac2.write_pwm_raw(0);
       } else {
@@ -269,6 +287,7 @@ public:
       dac2.write_pwm_raw(0);
   }
 };
+
 
   
   
