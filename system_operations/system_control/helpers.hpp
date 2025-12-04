@@ -219,7 +219,7 @@ class Motor {
   int motor_max_vel;
   bool reverse;
   float curved_speed = 0;
-  float ramp_speed_time = 0.5; // seconds to max speed
+  float ramp_speed_time = 0.75; // seconds to max speed
   unsigned long last_update = 0;
   unsigned long direction_change_block_until = 0;
 
@@ -241,14 +241,13 @@ public:
 
       // Check for direction change
       if (curved_speed != 0 && target_dir != current_dir) {
-          // ramp down
           float max_delta = motor_max_vel / ramp_speed_time * dt;
           if (curved_speed > 0) curved_speed -= max_delta;
           else curved_speed += max_delta;
 
           if (abs(curved_speed) < 1) {
               curved_speed = 0;
-              direction_change_block_until = now + 1000; // 1s block
+              direction_change_block_until = now + 250; 
           }
       } else {
           if (now < direction_change_block_until) {
@@ -261,8 +260,6 @@ public:
               curved_speed += delta;
           }
       }
-
-      // Apply output
       if (curved_speed == 0) {
           stop();
           return;
