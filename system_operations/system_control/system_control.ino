@@ -452,7 +452,6 @@ void loop() {
       #if ARM_ACTUATORS_ENABLED
       // Update actuator positions.
 
-      Serial.print(aL_speed); Serial.print(" "); Serial.println(aR_speed);
       if (aLR_tgt >= 0) {
         act_left.tgt_ctrl(aLR_tgt);
         act_right.tgt_ctrl(aLR_tgt);
@@ -461,10 +460,10 @@ void loop() {
         aR_pos = act_right.update_pos();
         float factor = (aL_pos - aR_pos) * vel_gain;
   
-        if (aL_speed < 0 && aL_pos >= 150) aL_speed = 0;  
-        if (aL_speed > 0 && aL_pos <= 30)  aL_speed = 0;
-        if (aR_speed < 0 && aR_pos >= 150) aR_speed = 0;
-        if (aR_speed > 0 && aR_pos <= 30)  aR_speed = 0;
+        if (aL_speed < 0 && aL_pos >= ALR_STROKE) aL_speed = 0;  
+        if (aL_speed > 0 && aL_pos <= 0)  aL_speed = 0;
+        if (aR_speed < 0 && aR_pos >= ALR_STROKE) aR_speed = 0;
+        if (aR_speed > 0 && aR_pos <= 0)  aR_speed = 0;
     
         act_left.curved_vel_ctrl(aL_speed, -factor);
         act_right.curved_vel_ctrl(aR_speed, factor);
