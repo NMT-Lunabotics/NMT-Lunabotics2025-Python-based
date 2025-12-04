@@ -140,7 +140,7 @@ class Actuator {
   float max_pos;
   float curved_speed = 0;
   float ramp_speed_time=0.5;
-  unsigned long last_vel_time = 0;
+  unsigned long last_accel_time = 0;
   PID pid;
 
   SmoothedInput<MEDIAN_SIZE> pot;
@@ -189,8 +189,8 @@ public:
   }
 
   void curved_vel_ctrl(int speed, float factor) {
-    float dt = (millis() - last_vel_time) / 1000.0;
-    last_vel_time = millis();
+    float dt = (millis() - last_accel_time) / 1000.0;
+    last_accel_time = millis();
     float delta = speed - curved_speed;
     float max_delta = abs(speed)/ramp_speed_time*dt;
     if(curved_speed*speed >= 0){
@@ -222,11 +222,52 @@ class Motor {
     int motor_max_vel; //rpm
 
     bool reverse = false;
+    float curved_speed = 0;
+    float ramp_speed_time=0.5;
+    unsigned long last_accel_time = 0;
 
 public:
     Motor(OutPin dac1, OutPin dac2, OutPin enable, int motor_max_vel, bool reverse) : dac1(dac1), dac2(dac2), enable(enable), motor_max_vel(motor_max_vel), reverse(reverse) {}
 
-    void motor_ctrl(int signed_speed) {
+    void motor_ctrl(int target) {
+      unsigned long now = millis();
+      float dt = (now - last_accel_time) / 1000.0;
+      last_accel_time = now;
+      // Convert motor speeds (in rpm) to PWM values (0-255)
+      // Constrain speeds to max velocity first
+      if (target == 0) {
+          curved_speed = 0;
+          stop();
+          return;
+      }
+
+      target = constrain(target, -motor_max_vel, motor_max_vel);
+      float delta = target - curved_speed;
+
+      if (curved_speed * target >= 0) {
+          float maxd = abs(target) / ramp_speed_time * dt;
+          if (delta > maxd) delta = maxd;
+          if (delta < -maxd) delta = -maxd;
+      }
+
+      curved_speed += delta;
+      int out = map(abs((int)curved_speed), 0, motor_max_vel, 0, 255);
+
+      enable.write(1);
+
+      bool dir = (curved_speed > 0);
+      if (reverse) dir = !dir;
+
+      if (dir) {
+          dac1.write_pwm_raw(out);
+          dac2.write_pwm_raw(0);
+      } else {
+          dac1.write_pwm_raw(0);
+          dac2.write_pwm_raw(out);
+      }
+  }
+
+    /*void motor_ctrl(int signed_speed) {
         // Convert motor speeds (in rpm) to PWM values (0-255)
         // Constrain speeds to max velocity first
         if (signed_speed == 0) {
@@ -251,7 +292,7 @@ public:
       enable.write(0);
       dac1.write_pwm_raw(0);
       dac2.write_pwm_raw(0);
-    }
+    }*/
 };
 
 class SimpleMotor {
