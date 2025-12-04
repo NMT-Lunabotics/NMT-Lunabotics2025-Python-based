@@ -775,6 +775,9 @@ void systemFault(bool criticalError,String fault_msg, String error_msg, LedState
         int16_t* joy = ibus.getJoystick();
         if(joy[4]==0 && joy[5]==1) {
           emergency_stop=false;
+          #if ERROR_LEDS_ENABLED
+            ledr_pin.write(0);
+          #endif
           return;
         }
       } 
