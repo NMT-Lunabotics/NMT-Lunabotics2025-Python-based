@@ -188,7 +188,7 @@ public:
     pwm_driver.set_speed(speed);
   }
 
-  void curved_vel_ctrl(int speed) {
+  void curved_vel_ctrl(int speed, float factor) {
     unsigned long now = millis();
     float dt = (now - last_vel_time) / 1000.0;
     last_vel_time = now;
@@ -209,7 +209,7 @@ public:
         out_speed = constrain(out_speed, -act_max_vel, act_max_vel);
         out_speed = out_speed / act_max_vel * 255;
     }
-    pwm_driver.set_speed(out_speed);
+    pwm_driver.set_speed(out_speed+factor);
 }
 
 

@@ -457,31 +457,23 @@ void loop() {
         act_left.tgt_ctrl(aLR_tgt);
         act_right.tgt_ctrl(aLR_tgt);
       } else {
-        // Update current actuator positions
         aL_pos = act_left.update_pos();
         aR_pos = act_right.update_pos();
-    
-        // Calculate alignment correction factor
         float factor = (aL_pos - aR_pos) * vel_gain;
     
-        // Apply correction instantly (no ramp)
-        act_left.vel_ctrl(-factor);
-        act_right.vel_ctrl(factor);
-    
-        // Compute user-commanded speeds, apply limits only to user input
-        float l_speed = aL_speed;
+        float l_speed = aL_speed;  // user input only
         float r_speed = aR_speed;
     
-        if (aL_speed < 0 && aL_pos >= 150) l_speed = 0;  // forward blocked
-        if (aL_speed > 0 && aL_pos <= 30)  l_speed = 0;  // backward blocked
+        // Apply limits only to user commands
+        if (aL_speed < 0 && aL_pos >= 150) l_speed = 0;  // block user forward
+        if (aL_speed > 0 && aL_pos <= 30)  l_speed = 0;  // block user backward
         if (aR_speed < 0 && aR_pos >= 150) r_speed = 0;
         if (aR_speed > 0 && aR_pos <= 30)  r_speed = 0;
     
-        // Apply ramped main velocity
-        act_left.curved_vel_ctrl(l_speed);
-        act_right.curved_vel_ctrl(r_speed);
+        // curved_vel_ctrl ramps the user speed, factor applied on top
+        act_left.curved_vel_ctrl(l_speed, factor);
+        act_right.curved_vel_ctrl(r_speed, factor);
     
-        // Optional: debug
         Serial.print(aL_pos); Serial.print(" "); Serial.println(aR_pos);
     }
     
