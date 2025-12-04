@@ -138,7 +138,6 @@ class Actuator {
   float pos_mm;
   float min_pos;
   float max_pos;
-  float offset;
   PID pid;
 
   SmoothedInput<MEDIAN_SIZE> pot;
@@ -148,11 +147,8 @@ class Actuator {
   }
 
 public:
-  Actuator(PWM_Driver driver, PID pid, InPin pot, float pot_min, float pot_max, float stroke, float act_max_vel, 
-           float min_pos=0, float max_pos=0)
-    : pwm_driver(driver), stroke(stroke), pot_min(pot_min), pot_max(pot_max), act_max_vel(act_max_vel), 
-      pid(pid), pot(pot), min_pos(min_pos), max_pos(max_pos == 0 ? stroke : max_pos) {
-      }
+  Actuator(PWM_Driver driver, PID pid, InPin pot, float pot_min, float pot_max, float stroke, float act_max_vel, float min_pos=0, float max_pos=0)
+    : pwm_driver(driver), stroke(stroke), pot_min(pot_min), pot_max(pot_max), act_max_vel(act_max_vel), pid(pid), pot(pot), min_pos(min_pos), max_pos(max_pos == 0 ? stroke : max_pos) {}
     
   float update_pos() {
     float analog_raw = pot.read_analog_raw();

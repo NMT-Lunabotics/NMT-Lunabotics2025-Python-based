@@ -76,7 +76,7 @@ IBusReader ibus(Serial1);
 #define POTB_PIN A3
 
 // Allowed actuator stroke lengths (mm)
-#define ALR_STROKE 100//191
+#define ALR_STROKE 191
 #define AB_STROKE 140
 
 // Actuator potentiometer min and max values
@@ -228,9 +228,9 @@ PID pidL(2.2, 0.0022, 0.34, 2.0);
 PID pidR(1.85, 0.0018, 0.31, 1.7);
 
 PWM_Driver left_driver(DRV12_PWM_PIN, DRV12_DIR1_PIN, DRV12_DIR2_PIN, false);
-Actuator act_left(left_driver, pidL, POTL_PIN, AL_POT_MIN, AL_POT_MAX, ALR_STROKE, act_max_vel, aL_offset);
+Actuator act_left(left_driver, pidL, POTL_PIN, AL_POT_MIN, AL_POT_MAX, ALR_STROKE, act_max_vel,20,150);
 PWM_Driver right_driver(DRV11_PWM_PIN, DRV11_DIR1_PIN, DRV11_DIR2_PIN, false);
-Actuator act_right(right_driver, pidR, POTR_PIN, AR_POT_MIN, AR_POT_MAX, ALR_STROKE, act_max_vel, aR_offset);
+Actuator act_right(right_driver, pidR, POTR_PIN, AR_POT_MIN, AR_POT_MAX, ALR_STROKE, act_max_vel,20,150);
 #endif 
 
 #if BUCKET_ACTUATOR_ENABLED
