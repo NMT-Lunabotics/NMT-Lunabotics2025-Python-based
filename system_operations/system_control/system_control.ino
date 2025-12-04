@@ -460,10 +460,10 @@ void loop() {
         aR_pos = act_right.update_pos();
         float factor = (aL_pos - aR_pos) * vel_gain;
         // Actuator bound chacks, softwere side stops
-        if (aL_speed < 0 && aL_pos >= 5) aL_speed = 0;  
-        if (aL_speed > 0 && aL_pos <= 181)  aL_speed = 0;
-        if (aR_speed < 0 && aR_pos >= 5) aR_speed = 0;
-        if (aR_speed > 0 && aR_pos <= 181)  aR_speed = 0;
+        if (aL_speed < 0 && aL_pos >= 181) aL_speed = 0;  
+        if (aL_speed > 0 && aL_pos <= 10)  aL_speed = 0;
+        if (aR_speed < 0 && aR_pos >= 181) aR_speed = 0;
+        if (aR_speed > 0 && aR_pos <= 10)  aR_speed = 0;
     
         act_left.curved_vel_ctrl(aL_speed, -factor);
         act_right.curved_vel_ctrl(aR_speed, factor);
@@ -476,8 +476,8 @@ void loop() {
       if (aB_tgt >= 0)
         act_bucket.tgt_ctrl(aB_tgt);
       else if ((aB_speed > 0 && aB_pos < bucket_max) || (aB_speed < 0 && aB_pos > bucket_min)) {
-        if (aB_speed < 0 && aL_pos >= 100) aB_speed = 0;  
-        if (aB_speed > 0 && aL_pos <= 30)  aB_speed = 0;
+        if (aB_speed > 0 && aL_pos >= 100) aB_speed = 0;  
+        if (aB_speed < 0 && aL_pos <= 30)  aB_speed = 0;
         act_bucket.curved_vel_ctrl(aB_speed, 0);
         //act_bucket.vel_ctrl(aB_speed);
       }
