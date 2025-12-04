@@ -465,10 +465,10 @@ float l_speed = aL_speed - factor;
 float r_speed = aR_speed + factor;
 
 // Apply limits only to user commands, not the correction factor
-if (aL_speed > 0 && aL_pos >= 150) l_speed = -factor;  // user forward blocked, allow correction back
-if (aL_speed < 0 && aL_pos <= 30)  l_speed = -factor;  // user backward blocked, allow correction back
-if (aR_speed > 0 && aR_pos >= 150) r_speed = factor;
-if (aR_speed < 0 && aR_pos <= 30)  r_speed = factor;
+if (aL_speed < 0 && aL_pos >= 150) l_speed = -factor;  // user forward blocked, allow correction back
+if (aL_speed > 0 && aL_pos <= 30)  l_speed = -factor;  // user backward blocked, allow correction back
+if (aR_speed < 0 && aR_pos >= 150) r_speed = factor;
+if (aR_speed  0 && aR_pos <= 30)  r_speed = factor;
 
 act_left.vel_ctrl(l_speed);
 act_right.vel_ctrl(r_speed);
