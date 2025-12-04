@@ -344,8 +344,8 @@ void loop() {
       aB_speed=0;
     }
     else{
-      int16_t throttle = joy[0]; 
-      int16_t steering = joy[1];
+      int16_t throttle = -joy[0]; 
+      int16_t steering = -joy[1];
       mR_speed = constrain(throttle - steering, -30, 30);
       mL_speed = constrain(throttle + steering, -30, 30);
       aLR_tgt = -1;
@@ -460,9 +460,9 @@ void loop() {
         aR_pos = act_right.update_pos();
         float factor = (aL_pos - aR_pos) * vel_gain;
         // Actuator bound chacks, softwere side stops
-        if (aL_speed < 0 && aL_pos >= 181) aL_speed = 0;  
+        if (aL_speed < 0 && aL_pos >= 175) aL_speed = 0;  
         if (aL_speed > 0 && aL_pos <= 15)  aL_speed = 0;
-        if (aR_speed < 0 && aR_pos >= 181) aR_speed = 0;
+        if (aR_speed < 0 && aR_pos >= 175) aR_speed = 0;
         if (aR_speed > 0 && aR_pos <= 15)  aR_speed = 0;
     
         act_left.curved_vel_ctrl(aL_speed, -factor);
@@ -474,7 +474,7 @@ void loop() {
       if (aB_tgt >= 0) act_bucket.tgt_ctrl(aB_tgt);
       else if ((aB_speed > 0 && aB_pos < bucket_max) || (aB_speed < 0 && aB_pos > bucket_min)) {
         if (aB_speed > 0 && aB_pos >= 105) aB_speed = 0;  
-        if (aB_speed < 0 && aB_pos <= 35)  aB_speed = 0;
+        if (aB_speed < 0 && aB_pos <= 25)  aB_speed = 0;
         act_bucket.curved_vel_ctrl(aB_speed, 0);
         //act_bucket.vel_ctrl(aB_speed);
       }
