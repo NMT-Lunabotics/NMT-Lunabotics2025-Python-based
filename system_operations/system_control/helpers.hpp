@@ -223,8 +223,8 @@ class Motor {
   bool waiting_dir_change = false;
 
 public:
-  Motor(OutPin dac1, OutPin dac2, OutPin enable, int motor_max_vel, bool reverse)
-      : dac1(dac1), dac2(dac2), enable(enable), motor_max_vel(motor_max_vel), reverse(reverse) {}
+  Motor(OutPin d1, OutPin d2, OutPin en, int maxv, bool rev)
+      : dac1(d1), dac2(d2), enable(en), motor_max_vel(maxv), reverse(rev) {}
 
   void motor_ctrl(int s) {
       unsigned long now = millis();
@@ -264,7 +264,6 @@ public:
       dac2.write_pwm_raw(0);
   }
 };
-
   
   
 
