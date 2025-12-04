@@ -14,14 +14,12 @@
 #define IBUS_RECIVER_ENABLED         1
 
 // List of faults to disable
-#define SERIAL_COMM_TIMEOUT_FAULT    0
-#define COMPONENT_TIMEOUT_FAULTS     0
-#define ACTUATOR_SAFETY              1 //DO NOT TOUCH  
-#define ACTUATOR_FAILURE             1 //DO NOT TOUCH 
+#define SERIAL_COMM_TIMEOUT_FAULT    1
+#define COMPONENT_TIMEOUT_FAULTS     1
 
 // Debug mode flags
 #define DEBUG_MODE                   0
-#define SENSOR_OUTPUT                4  // 1: IMU, 2: IBUS, 3: IBUS raw, 4: pots
+#define SENSOR_OUTPUT                0  // 1: IMU, 2: IBUS, 3: IBUS raw
 
 #else
 //--------------- NUC TEST ROBOT SETTINGS ---------------
@@ -32,7 +30,7 @@
 #define SERVO_MOTOR_ENABLED          1
 #define IMU_SENSOR_ENABLED           0
 #define IBUS_RECIVER_ENABLED         0
-#define SERIAL_COMM_TIMEOUT_FAULT    0
+#define SERIAL_COMM_TIMEOUT_FAULT    1
 #define COMPONENT_TIMEOUT_FAULTS     0
 #define DEBUG_MODE                   0
 #define SENSOR_OUTPUT                0  
@@ -82,10 +80,10 @@ IBusReader ibus(Serial1);
 #define AB_STROKE 140
 
 // Actuator potentiometer min and max values
-#define AL_POT_MIN 30
+#define AL_POT_MIN 47
 #define AL_POT_MAX 893
 #define AR_POT_MIN 0
-#define AR_POT_MAX 850
+#define AR_POT_MAX 840
 #define AB_POT_MIN 30
 #define AB_POT_MAX 782
 
@@ -226,12 +224,9 @@ PID pidL(2.2, 0.0022, 0.34, 2.0);
 PID pidR(1.85, 0.0018, 0.31, 1.7);
 
 PWM_Driver left_driver(DRV12_PWM_PIN, DRV12_DIR1_PIN, DRV12_DIR2_PIN, false);
-Actuator act_left(left_driver, pidL, POTL_PIN, AR_POT_MIN, AR_POT_MAX, ALR_STROKE, act_max_vel);
+Actuator act_left(left_driver, pidL, POTL_PIN, AL_POT_MIN, AL_POT_MAX, ALR_STROKE, act_max_vel);
 PWM_Driver right_driver(DRV11_PWM_PIN, DRV11_DIR1_PIN, DRV11_DIR2_PIN, false);
-Actuator act_right(right_driver, pidR, POTR_PIN, AL_POT_MIN, AL_POT_MAX, ALR_STROKE, act_max_vel);
-
-//Actuator act_left(left_driver, pidL, POTL_PIN, AL_POT_MIN, AL_POT_MAX, ALR_STROKE, act_max_vel);
-//Actuator act_right(right_driver, pidR, POTR_PIN, AR_POT_MIN, AR_POT_MAX, ALR_STROKE, act_max_vel);
+Actuator act_right(right_driver, pidR, POTR_PIN, AR_POT_MIN, AR_POT_MAX, ALR_STROKE, act_max_vel);
 #endif 
 
 #if BUCKET_ACTUATOR_ENABLED
@@ -300,11 +295,11 @@ void setup() {
   #endif
   for (int i = 0; i < 10; i++) {
     #if ARM_ACTUATORS_ENABLED
-      aL_pos = act_left.update_pos();
-      aR_pos = act_right.update_pos();
+    aL_pos = act_left.update_pos();
+    aR_pos = act_right.update_pos();
     #endif
     #if BUCKET_ACTUATOR_ENABLED
-      aB_pos = act_bucket.update_pos();
+    aB_pos = act_bucket.update_pos();
     #endif
   }
   #if SERVO_MOTOR_ENABLED
@@ -351,7 +346,7 @@ void loop() {
       mL_speed = constrain(throttle + steering, -30, 30);
       aLR_tgt = -1;
       aB_tgt = -1;
-      aL_speed = joy[3];
+      aL_speed = -joy[3];
       aR_speed = aL_speed;
       aB_speed = joy[2];
       if(RC_connection_established==false){
@@ -369,11 +364,11 @@ void loop() {
   if (current_time - last_update_actuator_time >= 1000 / update_actuator_feedback) {
     last_update_actuator_time = current_time;
     #if ARM_ACTUATORS_ENABLED
-      aL_pos = act_left.update_pos();
-      aR_pos = act_right.update_pos();
+    aL_pos = act_left.update_pos();
+    aR_pos = act_right.update_pos();
     #endif
     #if BUCKET_ACTUATOR_ENABLED
-      aB_pos = act_bucket.update_pos();
+    aB_pos = act_bucket.update_pos();
     #endif
   }
 
@@ -402,16 +397,9 @@ void loop() {
     #endif
     // Correct dual actuator misalignment
     #if ARM_ACTUATORS_ENABLED
-    #if SENSOR_OUTPUT == 4
-      Serial.print(aL_pos);
-      Serial.print(" ");
-      Serial.print(aR_pos);
-      Serial.println("");
-    #endif
     float lr_err = abs(aL_pos - aR_pos);
-    #if ACTUATOR_FAILURE
     if (lr_err >= act_fix_err && lr_err < act_max_err) {
-        stop_all();
+      stop_all();
       float prev_err = lr_err;
       while (lr_err >= 0.5 * act_fix_err) {
         #if BUCKET_ACTUATOR_ENABLED
@@ -427,15 +415,13 @@ void loop() {
 
         prev_err = lr_err;
         lr_err = abs(aL_pos - aR_pos);
-
         if (lr_err > prev_err) systemFault(true,"Actuator diverging fix failed.","", NONE, NONE, NONE);
         else systemFault(false,"","Actuator arms diverging, Fixing actuators...", BLINK, NONE, NONE);
       }
-        act_left.stop();
-        act_right.stop();
+      act_left.stop();
+      act_right.stop();
       ledy_pin.write(0);
     } //else if (lr_err >= act_max_err) systemFault(true,"Actuator relative error too large: " + String(aL_pos) + " " + String(aR_pos),"", NONE, NONE, NONE);
-    #endif
   #endif
     // Run motors and actuators
     if (!emergency_stop) {
@@ -465,10 +451,7 @@ void loop() {
         act_left.tgt_ctrl(aLR_tgt);
         act_right.tgt_ctrl(aLR_tgt);
       } else {
-        float factor = 0;
-        #if ACTUATOR_SAFETY
-          factor=(aL_pos - aR_pos) * vel_gain;
-        #endif
+        float factor = (aL_pos - aR_pos) * vel_gain;
         act_left.vel_ctrl(aL_speed - factor);
         act_right.vel_ctrl(aR_speed + factor);
       }
@@ -479,9 +462,7 @@ void loop() {
       else if ((aB_speed > 0 && aB_pos < bucket_max) || (aB_speed < 0 && aB_pos > bucket_min))
         act_bucket.vel_ctrl(aB_speed);
       else
-        #if ACTUATOR_SAFETY
-          act_bucket.stop();
-        #endif
+        act_bucket.stop();
       #endif
       #if MOTORS_ENABLED
         // Update motor speeds
@@ -720,6 +701,7 @@ void stop_all() {
   #endif
   #if BUCKET_ACTUATOR_ENABLED
   act_bucket.stop();
+  motor_left.stop();
   #endif
   #if MOTORS_ENABLED
     #if MAIN_ROBOT==1
