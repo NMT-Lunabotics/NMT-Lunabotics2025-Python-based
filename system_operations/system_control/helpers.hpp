@@ -139,7 +139,7 @@ class Actuator {
   float min_pos;
   float max_pos;
   float curved_speed = 0;
-  float ramp_speed_time=0.25;
+  float ramp_speed_time=0.75;
   unsigned long last_vel_time = 0;
   PID pid;
 
