@@ -452,7 +452,7 @@ void loop() {
       #if ARM_ACTUATORS_ENABLED
       // Update actuator positions.
 
-
+      Serial.print(aL_speed); Serial.print(" "); Serial.println(aR_speed);
       if (aLR_tgt >= 0) {
         act_left.tgt_ctrl(aLR_tgt);
         act_right.tgt_ctrl(aLR_tgt);
@@ -473,8 +473,6 @@ void loop() {
         // curved_vel_ctrl ramps the user speed, factor applied on top
         act_left.curved_vel_ctrl(l_speed, factor);
         act_right.curved_vel_ctrl(r_speed, factor);
-    
-        Serial.print(aL_pos); Serial.print(" "); Serial.println(aR_pos);
     }
     
 
