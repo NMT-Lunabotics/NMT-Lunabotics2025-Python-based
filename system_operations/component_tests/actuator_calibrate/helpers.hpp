@@ -138,6 +138,9 @@ class Actuator {
   float pos_mm;
   float min_pos;
   float max_pos;
+  float curved_speed = 0;
+  float ramp_speed_time=2;
+  unsigned long last_vel_time = 0;
   PID pid;
 
   SmoothedInput<MEDIAN_SIZE> pot;
@@ -175,12 +178,24 @@ public:
   }
 
   void vel_ctrl(int speed) {
-    if(MD04_drivers==false){
-      speed = constrain(speed, -act_max_vel, act_max_vel);
-      speed = speed / act_max_vel * 255;
+    unsigned long now = millis();
+    float dt = (now - last_vel_time) / 1000.0;
+    last_vel_time = now;
+
+    float target_speed = speed;
+    float max_delta = abs(target_speed) / ramp_speed_time * dt;
+    float delta = target_speed - curved_speed;
+    if(delta > max_delta) delta = max_delta;
+    if(delta < -max_delta) delta = -max_delta;
+    curved_speed += delta;
+
+    int out_speed = curved_speed;
+    if(!MD04_drivers){
+        out_speed = constrain(out_speed, -act_max_vel, act_max_vel);
+        out_speed = out_speed / act_max_vel * 255;
     }
-    pwm_driver.set_speed(speed);
-  }
+    pwm_driver.set_speed(out_speed);
+}
 
   void stop() {
     pwm_driver.stop();

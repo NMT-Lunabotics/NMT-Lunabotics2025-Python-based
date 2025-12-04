@@ -775,13 +775,13 @@ void systemFault(bool criticalError,String fault_msg, String error_msg, LedState
     stop_all();
     // If the system is E-STOPPED no normal commands are able to take place, however we keep listening to serial for a E-STOP reset command
     processSerialBuffer();
-    #if IBUS_RECIVER_ENABLED
-    if (ibus.update()) {
-      int16_t* joy = ibus.getJoystick();
-      if(joy[4]==0 && joy[7]==1) {
-        emergency_stop=false;
-        return;
-      }
+    //#if IBUS_RECIVER_ENABLED
+    //if (ibus.update()) {
+    //  int16_t* joy = ibus.getJoystick();
+    //  if(joy[4]==0 && joy[7]==1) {
+    //    emergency_stop=false;
+    //    return;
+    //  }
     } 
     #endif
     if(emergency_stop==false) break;
