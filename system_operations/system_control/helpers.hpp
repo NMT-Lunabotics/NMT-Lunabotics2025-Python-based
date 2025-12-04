@@ -250,7 +250,7 @@ public:
           curved_speed=0;
           stop();
           if(dir_change_time==0) dir_change_time=now;
-          if(now-dir_change_time<500) return;
+          if(now-dir_change_time<1000) return;
           dir_change_time=0;
       }else dir_change_time=0;
   
@@ -267,11 +267,11 @@ public:
       if(reverse) dir=!dir;
   
       if(dir){
-          dac1.write_pwm_raw(out);
-          dac2.write_pwm_raw(0);
-      }else{
           dac1.write_pwm_raw(0);
           dac2.write_pwm_raw(out);
+      }else{
+          dac1.write_pwm_raw(out);
+          dac2.write_pwm_raw(0);
       }
   }
   
