@@ -286,13 +286,13 @@ public:
             dac1.write_pwm_raw(0);
             dac2.write_pwm_raw(motor_speed);
         }
-    }
+    }*/
 
     void stop() {
       enable.write(0);
       dac1.write_pwm_raw(0);
       dac2.write_pwm_raw(0);
-    }*/
+    }
 };
 
 class SimpleMotor {
