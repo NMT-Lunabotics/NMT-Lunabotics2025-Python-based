@@ -193,28 +193,40 @@ public:
     float dt = (now - last_vel_time) / 1000.0;
     last_vel_time = now;
 
-    // Ramp user input only
-    float delta = speed - curved_speed;
-    if(curved_speed * speed >= 0) { // same direction or from 0
-        float max_delta = abs(speed) / ramp_speed_time * dt;
+    float target_speed = speed;
+
+    // Ramp delta
+    float delta = target_speed - curved_speed;
+    if(curved_speed * target_speed >= 0) {
+        float max_delta = abs(target_speed) / ramp_speed_time * dt;
         if(delta > max_delta) delta = max_delta;
         if(delta < -max_delta) delta = -max_delta;
     }
-
     curved_speed += delta;
 
-    // Apply factor **only if the user is commanding motion**
-    float applied_factor = (speed != 0) ? factor : 0;
+    // Deadband: stop motor if target speed is zero
+    if(target_speed == 0.0) {
+        curved_speed = 0.0;
+    }
 
-    int out_speed = curved_speed + applied_factor;
+    int out_speed = 0;
 
     if(!MD04_drivers){
-        out_speed = constrain(out_speed, -act_max_vel, act_max_vel);
+        // Convert curved_speed to PWM
+        out_speed = constrain(curved_speed, -act_max_vel, act_max_vel);
         out_speed = out_speed / act_max_vel * 255;
+    } else {
+        out_speed = curved_speed;
+    }
+
+    // Apply factor only if the motor is actually moving
+    if(curved_speed != 0.0) {
+        out_speed += factor;
     }
 
     pwm_driver.set_speed(out_speed);
 }
+
 
 
 
