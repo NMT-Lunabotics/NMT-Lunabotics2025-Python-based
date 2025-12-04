@@ -138,6 +138,7 @@ class Actuator {
   float pos_mm;
   float min_pos;
   float max_pos;
+  float offset;
   PID pid;
 
   SmoothedInput<MEDIAN_SIZE> pot;
@@ -156,7 +157,7 @@ public:
   float update_pos() {
     float analog_raw = pot.read_analog_raw();
     // Serial.println(analog_raw);
-    pos_mm = f_map(analog_raw, pot_min, pot_max, 0, stroke);
+    pos_mm = f_map(analog_raw, pot_min, pot_max, 0, stroke) + offset;
     return pos_mm;
   }
 

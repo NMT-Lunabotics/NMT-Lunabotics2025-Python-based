@@ -100,6 +100,10 @@ float act_max_err = 5.0;  // mm
 int aLR_tgt = -1;
 int aB_tgt = -1;
 
+// Offset factor to max sure actuators start/stop in same spots
+int aL_offset = 0; //mm
+int aR_offset = 3; //mm
+
 // Actuator speed and position variables
 int aL_speed = 0;
 int aR_speed = 0;
@@ -224,9 +228,9 @@ PID pidL(2.2, 0.0022, 0.34, 2.0);
 PID pidR(1.85, 0.0018, 0.31, 1.7);
 
 PWM_Driver left_driver(DRV12_PWM_PIN, DRV12_DIR1_PIN, DRV12_DIR2_PIN, false);
-Actuator act_left(left_driver, pidL, POTL_PIN, AL_POT_MIN, AL_POT_MAX, ALR_STROKE, act_max_vel);
+Actuator act_left(left_driver, pidL, POTL_PIN, AL_POT_MIN, AL_POT_MAX, ALR_STROKE, act_max_vel, aL_offset);
 PWM_Driver right_driver(DRV11_PWM_PIN, DRV11_DIR1_PIN, DRV11_DIR2_PIN, false);
-Actuator act_right(right_driver, pidR, POTR_PIN, AR_POT_MIN, AR_POT_MAX, ALR_STROKE, act_max_vel);
+Actuator act_right(right_driver, pidR, POTR_PIN, AR_POT_MIN, AR_POT_MAX, ALR_STROKE, act_max_vel, aR_offset);
 #endif 
 
 #if BUCKET_ACTUATOR_ENABLED
