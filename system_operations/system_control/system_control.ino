@@ -346,13 +346,13 @@ void loop() {
       aB_speed=0;
     }
     else{
-      int16_t throttle = joy[1]; 
+      int16_t throttle = -joy[1]; 
       int16_t steering = -joy[0];
-      mR_speed = constrain(throttle + steering, -30, 30);
-      mL_speed = constrain(throttle - steering, -30, 30);
+      mR_speed = constrain(throttle - steering, -30, 30);
+      mL_speed = constrain(throttle + steering, -30, 30);
       aLR_tgt = -1;
       aB_tgt = -1;
-      aL_speed = joy[3];
+      aL_speed = -joy[3];
       aR_speed = aL_speed;
       aB_speed = joy[2];
       if(RC_connection_established==false){
