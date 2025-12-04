@@ -16,10 +16,10 @@ START_SYSTEM_CONTROL=false
 GITHUB_PULL=false
 
 # Determin what containors to run
-RUN_PYTHON_IMAGE=true
-RUN_ROS_IMAGE=false
-ARDUINO_UPDATER_IMAGE=true
-CONTAINER_MODE=1
+RUN_PYTHON_IMAGE=false
+RUN_ROS_IMAGE=true
+ARDUINO_UPDATER_IMAGE=false
+CONTAINER_MODE=2 #//1=python, 2=ros
 
 
 # Container directorys and mount point

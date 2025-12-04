@@ -17,7 +17,7 @@
 #define SERIAL_COMM_TIMEOUT_FAULT    0
 #define COMPONENT_TIMEOUT_FAULTS     0
 #define ACTUATOR_SAFETY              1 //DO NOT TOUCH  
-#define ACTUATOR_FAILURE             0 //DO NOT TOUCH 
+#define ACTUATOR_FAILURE             1 //DO NOT TOUCH 
 
 // Debug mode flags
 #define DEBUG_MODE                   0
