@@ -197,6 +197,8 @@ unsigned long led_blink_time=0;
 unsigned long current_time = 0;
 const unsigned long estop_timeout = 2000;  // 2 second timeout for failed serial commication
 unsigned long last_message_time = 0;
+const unsigned long last_error_message_time = 0;  
+int error_message_interval = 2000;
 bool emergency_stop = true;
 String system_fault_msg = "";
 bool system_started = false;
@@ -783,7 +785,10 @@ void systemFault(bool criticalError,String fault_msg, String error_msg, LedState
       } 
     #endif
     if(emergency_stop==false) break;
-    //Serial.println("Critical System Fault (E-STOPPED): " + system_fault_msg + " -Reset arduino to continue.");
+    if (current_time - last_error_message_time >= error_message_interval) {
+      Serial.println("Critical System Fault (E-STOPPED): " + system_fault_msg + " - Reset Arduino to continue.");
+      last_error_message_time = current_time;
+    }
     #if ERROR_LEDS_ENABLED
       ledr_pin.write(1);
       ledy_pin.write(0);
