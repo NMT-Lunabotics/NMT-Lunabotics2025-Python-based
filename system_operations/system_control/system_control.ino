@@ -19,7 +19,7 @@
 
 // Debug mode flags
 #define DEBUG_MODE                   0
-#define SENSOR_OUTPUT                0  // 1: IMU, 2: IBUS, 3: IBUS raw
+#define SENSOR_OUTPUT                2  // 1: IMU, 2: IBUS, 3: IBUS raw
 
 #else
 //--------------- NUC TEST ROBOT SETTINGS ---------------
@@ -329,7 +329,7 @@ void loop() {
   #elif SENSOR_OUTPUT == 2
     int16_t* joy = ibus.getJoystick();
     Serial.print("RC controller inputs: ");
-    for (int i = 0; i < 5; i++) {  
+    for (int i = 0; i < 6; i++) {  
       Serial.print(joy[i]);
       Serial.print(" ");
     }
@@ -783,7 +783,7 @@ void systemFault(bool criticalError,String fault_msg, String error_msg, LedState
       } 
     #endif
     if(emergency_stop==false) break;
-    //Serial.println("Critical System Fault (E-STOPPED): " + system_fault_msg + " -Reset arduino to continue.");
+    Serial.println("Critical System Fault (E-STOPPED): " + system_fault_msg + " -Reset arduino to continue.");
     #if ERROR_LEDS_ENABLED
       ledr_pin.write(1);
       ledy_pin.write(0);
