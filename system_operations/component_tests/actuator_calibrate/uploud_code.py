@@ -2,7 +2,7 @@
 
 #import required packages and moduals and setup serial and cli tools.
 import sys, time; from pathlib import Path
-ROOT = Path(__file__).resolve().parent.parent.parent; sys.path.insert(0, str(ROOT))
+ROOT = Path(__file__).resolve().parent.parent.parent.parent; sys.path.insert(0, str(ROOT))
 from system_operations.arduino_cli import arduinoConsole
 from system_operations.arduino_serial_commuication import serialCommands
 
