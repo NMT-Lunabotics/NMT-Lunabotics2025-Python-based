@@ -179,6 +179,7 @@ public:
   }
 
   void vel_ctrl(int speed) {
+    update_pos();
     if ((speed > 0 && pos_mm >= max_pos) || (speed < 0 && pos_mm <= min_pos)) speed = 0;
 
 
