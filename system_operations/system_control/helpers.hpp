@@ -223,7 +223,7 @@ class Motor {
 
     bool reverse = false;
     float curved_speed = 0;
-    float ramp_speed_time=0.5;
+    float ramp_speed_time=1;
     unsigned long last_accel_time = 0;
 
 public:
@@ -233,31 +233,46 @@ public:
       unsigned long now = millis();
       float dt = (now - last_accel_time) / 1000.0;
       last_accel_time = now;
+  
       // Convert motor speeds (in rpm) to PWM values (0-255)
-      // Constrain speeds to max velocity first
       if (target == 0) {
           curved_speed = 0;
           stop();
           return;
       }
-
+  
+      // Constrain speeds to max velocity first
       target = constrain(target, -motor_max_vel, motor_max_vel);
-      float delta = target - curved_speed;
-
-      if (curved_speed * target >= 0) {
-          float maxd = abs(target) / ramp_speed_time * dt;
-          if (delta > maxd) delta = maxd;
-          if (delta < -maxd) delta = -maxd;
+  
+      // Detect direction change
+      bool targetDir = (target > 0);
+      bool currentDir = (curved_speed > 0);
+  
+      // If switching direction, enforce pause and no ramp
+      static unsigned long dir_change_time = 0;
+      if (curved_speed != 0 && targetDir != currentDir) {
+          curved_speed = 0; // instant stop before switching
+          stop();
+          if (dir_change_time == 0) dir_change_time = now;
+          if (now - dir_change_time < 150) return; // 150ms delay
+          dir_change_time = 0; // finished waiting
+      } else {
+          dir_change_time = 0;
       }
-
+  
+      // Normal acceleration (same direction only)
+      float delta = target - curved_speed;
+      float maxd = abs(target) / ramp_speed_time * dt;
+      if (delta > maxd) delta = maxd;
+      if (delta < -maxd) delta = -maxd;
       curved_speed += delta;
+  
       int out = map(abs((int)curved_speed), 0, motor_max_vel, 0, 255);
-
       enable.write(1);
-
+  
       bool dir = (curved_speed > 0);
       if (reverse) dir = !dir;
-
+  
       if (dir) {
           dac1.write_pwm_raw(out);
           dac2.write_pwm_raw(0);
@@ -266,6 +281,7 @@ public:
           dac2.write_pwm_raw(out);
       }
   }
+  
 
     /*void motor_ctrl(int signed_speed) {
         // Convert motor speeds (in rpm) to PWM values (0-255)
