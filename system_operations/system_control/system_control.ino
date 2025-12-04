@@ -712,12 +712,11 @@ void processMessage(byte *data, int length) {
 // Shutdown all eletronic systems in case of E-stop.
 void stop_all() {
   #if ARM_ACTUATORS_ENABLED
-  act_left.stop();
-  act_right.stop();
+    act_left.stop();
+    act_right.stop();
   #endif
   #if BUCKET_ACTUATOR_ENABLED
-  act_bucket.stop();
-  motor_left.stop();
+    act_bucket.stop();
   #endif
   #if MOTORS_ENABLED
     #if MAIN_ROBOT==1
