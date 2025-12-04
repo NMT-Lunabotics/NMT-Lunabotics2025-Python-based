@@ -218,9 +218,9 @@ class Motor {
   OutPin dac1, dac2, enable;
   int motor_max_vel;
   bool reverse;
-  int last_speed = 0;
-  unsigned long dir_change_start = 0;
-  bool waiting_dir_change = false;
+
+  int current_dir = 0; 
+  unsigned long block_until = 0;
 
 public:
   Motor(OutPin d1, OutPin d2, OutPin en, int maxv, bool rev)
@@ -228,28 +228,33 @@ public:
 
   void motor_ctrl(int s) {
       unsigned long now = millis();
-      if ((s > 0 && last_speed < 0) || (s < 0 && last_speed > 0)) {
-          stop();
-          waiting_dir_change = true;
-          dir_change_start = now;
-          last_speed = s;
-          return;
-      }
-      if (waiting_dir_change) {
-          if (now - dir_change_start < 1000) return;
-          waiting_dir_change = false;
-      }
-      last_speed = s;
+
       if (s == 0) {
           stop();
+          current_dir = 0;
           return;
       }
+
+      int new_dir = (s > 0) ? 1 : -1;
+      if (reverse) new_dir = -new_dir;
+
+      if (current_dir != 0 && new_dir != current_dir) {
+          stop();
+          block_until = now + 1000;
+          current_dir = new_dir;
+          return;
+      }
+
+      if (now < block_until) return;
+
+      current_dir = new_dir;
+
       enable.write(1);
+
       s = constrain(s, -motor_max_vel, motor_max_vel);
       int pwm = map(abs(s), 0, motor_max_vel, 0, 255);
-      bool f = s > 0;
-      if (reverse) f = !f;
-      if (f) {
+
+      if (current_dir == 1) {
           dac1.write_pwm_raw(pwm);
           dac2.write_pwm_raw(0);
       } else {
@@ -264,6 +269,7 @@ public:
       dac2.write_pwm_raw(0);
   }
 };
+
   
   
 
