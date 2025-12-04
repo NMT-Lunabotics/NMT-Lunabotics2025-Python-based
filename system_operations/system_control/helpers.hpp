@@ -193,25 +193,29 @@ public:
     float dt = (now - last_vel_time) / 1000.0;
     last_vel_time = now;
 
-    float target_speed = speed;
-    float delta = target_speed - curved_speed;
-
-    if(curved_speed * target_speed >= 0) { // same direction or from 0
-        float max_delta = abs(target_speed) / ramp_speed_time * dt;
+    // Ramp user input only
+    float delta = speed - curved_speed;
+    if(curved_speed * speed >= 0) { // same direction or from 0
+        float max_delta = abs(speed) / ramp_speed_time * dt;
         if(delta > max_delta) delta = max_delta;
         if(delta < -max_delta) delta = -max_delta;
-    } // else deceleration or direction change: no limit
+    }
 
     curved_speed += delta;
 
-    int out_speed = curved_speed;
+    // Apply factor **only if the user is commanding motion**
+    float applied_factor = (speed != 0) ? factor : 0;
+
+    int out_speed = curved_speed + applied_factor;
+
     if(!MD04_drivers){
         out_speed = constrain(out_speed, -act_max_vel, act_max_vel);
         out_speed = out_speed / act_max_vel * 255;
     }
-    if (out_speed != 0 || abs(factor) > 0.01) out_speed += factor;
+
     pwm_driver.set_speed(out_speed);
 }
+
 
 
   void stop() {
