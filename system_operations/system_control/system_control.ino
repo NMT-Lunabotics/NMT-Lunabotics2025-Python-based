@@ -782,8 +782,8 @@ void systemFault(bool criticalError,String fault_msg, String error_msg, LedState
     //    emergency_stop=false;
     //    return;
     //  }
-    } 
-    #endif
+    //} 
+    //#endif
     if(emergency_stop==false) break;
     Serial.println("Critical System Fault (E-STOPPED): " + system_fault_msg + " -Reset arduino to continue.");
     #if ERROR_LEDS_ENABLED
