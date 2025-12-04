@@ -14,8 +14,8 @@
 #define IBUS_RECIVER_ENABLED         1
 
 // List of faults to disable
-#define SERIAL_COMM_TIMEOUT_FAULT    1
-#define COMPONENT_TIMEOUT_FAULTS     1
+#define SERIAL_COMM_TIMEOUT_FAULT    0
+#define COMPONENT_TIMEOUT_FAULTS     0
 #define ACTUATOR_SAFETY              1 //DO NOT TOUCH  
 #define ACTUATOR_FAILURE             1 //DO NOT TOUCH 
 
