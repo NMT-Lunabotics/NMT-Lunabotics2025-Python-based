@@ -471,7 +471,7 @@ class IBusReader {
       uint8_t buffer[32];
       int idx = 0;
       int threshold = 1;
-      int16_t channels[8];
+      int16_t channels[12];
       int16_t joystick[5];
       int16_t lastValues[4]; // store last mapped joystick values
       unsigned long lastUpdate = 0;
