@@ -34,6 +34,23 @@ ROS_DIR="ros2_ws"
 : "${DISPLAY:=$DISPLAY}"
 : "${XAUTHORITY:=$HOME/.Xauthority}"
 
+
+usage() {
+    echo "Usage: $0 [commands]"
+    echo "This script is used to start and manage a Docker and running the whole system controller"
+
+    echo "Options:"
+    echo "  --display (-d)              Enable display support (forward X11 display)"
+    echo "  --build (-b)                Build the Docker container (will stop the running container if any)"
+    echo "  --restart (-r)              Restart all Docker containers"
+    echo "  --start (-s)                Start the main system control loop"
+    echo "  --mount (-m)                Mounts a directory into jetson across wifi"
+    echo "  --pull (-p)                 Pulls the most recent files from github"
+    echo "  --containor (-c)            Switches between entering the ros or python container with bash"
+    echo "  --help (-h)                 Show this help message"
+    exit 1
+}
+
 # Parse input flags
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
@@ -42,6 +59,7 @@ while [[ "$#" -gt 0 ]]; do
         -r|--restart) RESTART_CONTAINER=true; shift ;;        # Remove old containers first
         -s|--start) START_SYSTEM_CONTROL=true; shift ;;       # Start system control script
         -p|--pull) GITHUB_PULL=true; shift ;;                 # Pull github changes before building
+        -h|--help) usage; shift ;;                            # Shows help infomation about the system
         -mm|--mount) [[ "$#" -lt 3 ]] && { echo "Error: --mount <username> <host_path>"; exit 1; }; MOUNT_USERNAME="$2"; MOUNT_HOST_PATH="$3"; shift 3 ;; # Custom mount point
         -c|--container) [[ -n "$2" && ! "$2" =~ ^- ]] && case "$2" in ros) CONTAINER_MODE=2 ;; python) CONTAINER_MODE=1 ;; *) CONTAINER_MODE=0 ;; esac && shift 2 || { CONTAINER_MODE=0; shift; } ;; # Container mount mode
         *) echo "Unknown parameter: $1"; exit 1 ;;
