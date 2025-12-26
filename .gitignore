@@ -1,4 +1,6 @@
 myenv/
+.venv/
+venv/
 core
 ros/ros2_ws/build/
 ros/ros2_ws/install/

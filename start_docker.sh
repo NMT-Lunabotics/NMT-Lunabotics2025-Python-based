@@ -30,6 +30,10 @@ WORKING_DIR_CONTAINER="/home/luna/$REPOSITORY_NAME"
 WORKING_DIR_HOST="$(pwd)"
 ROS_DIR="ros2_ws"
 
+# Ros stuff to start
+APRIAL_TAG_POSE=false
+APRIAL_TAG_POSE_DISPLAY=false
+
 # Use current environment variables if available, fallback to defaults
 : "${DISPLAY:=$DISPLAY}"
 : "${XAUTHORITY:=$HOME/.Xauthority}"
@@ -40,26 +44,28 @@ usage() {
     echo "This script is used to start and manage a Docker and running the whole system controller"
 
     echo "Options:"
-    echo "  --display (-d)              Enable display support (forward X11 display)"
-    echo "  --build (-b)                Build the Docker container (will stop the running container if any)"
-    echo "  --restart (-r)              Restart all Docker containers"
-    echo "  --start (-s)                Start the main system control loop"
-    echo "  --mount (-m)                Mounts a directory into jetson across wifi"
-    echo "  --pull (-p)                 Pulls the most recent files from github"
-    echo "  --containor (-c)            Switches between entering the ros or python container with bash"
-    echo "  --help (-h)                 Show this help message"
+    echo "  --display (-d)                         Enable display support (forward X11 display)"
+    echo "  --build (-b)                           Build the Docker container (will stop the running container if any)"
+    echo "  --restart (-r)                         Restart all Docker containers"
+    echo "  --start (-s)                           Start the main system control loop"
+    echo "  --mount (-m)                           Mounts a directory into jetson across wifi"
+    echo "  --pull (-p)                            Pulls the most recent files from github"
+    echo "  --containor (-c)                       Switches between entering the ros or python container with bash"
+    echo "  --aprial_tag (-tag) [display|d]       Starts the aprial tag position system, and realsense camera IMU sensor"
+    echo "  --help (-h)                            Show this help message"
     exit 1
 }
 
 # Parse input flags
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
-        -d|--display) DISPLAY_ENABLED=true; shift ;;          # Enable GUI forwarding
-        -b|--build) BUILD_IMAGE=true; shift ;;                # Force image rebuild
-        -r|--restart) RESTART_CONTAINER=true; shift ;;        # Remove old containers first
-        -s|--start) START_SYSTEM_CONTROL=true; shift ;;       # Start system control script
-        -p|--pull) GITHUB_PULL=true; shift ;;                 # Pull github changes before building
-        -h|--help) usage; shift ;;                            # Shows help infomation about the system
+        -d|--display) DISPLAY_ENABLED=true; shift ;;                                     # Enable GUI forwarding
+        -b|--build) BUILD_IMAGE=true; shift ;;                                           # Force image rebuild
+        -r|--restart) RESTART_CONTAINER=true; shift ;;                                   # Remove old containers first
+        -s|--start) START_SYSTEM_CONTROL=true; shift ;;                                  # Start system control script
+        -p|--pull) GITHUB_PULL=true; shift ;;                                            # Pull github changes before building
+        -tag|--aprial_tag) APRIAL_TAG_POSE=true; if [[ "$2" == "display" || "$2" == "d" ]]; then APRIAL_TAG_POSE_DISPLAY=true; shift; fi; shift ;;  # Starts node which publishs april tag to ros topic
+        -h|--help) usage; shift ;;                                                       # Shows help infomation about the system
         -mm|--mount) [[ "$#" -lt 3 ]] && { echo "Error: --mount <username> <host_path>"; exit 1; }; MOUNT_USERNAME="$2"; MOUNT_HOST_PATH="$3"; shift 3 ;; # Custom mount point
         -c|--container) [[ -n "$2" && ! "$2" =~ ^- ]] && case "$2" in ros) CONTAINER_MODE=2 ;; python) CONTAINER_MODE=1 ;; *) CONTAINER_MODE=0 ;; esac && shift 2 || { CONTAINER_MODE=0; shift; } ;; # Container mount mode
         *) echo "Unknown parameter: $1"; exit 1 ;;
@@ -180,7 +186,21 @@ if [ "$CONTAINER_MODE" = 2 ]; then
         source /opt/ros/humble/setup.bash && \
         colcon build --symlink-install --continue-on-error"
     fi
-    
+
+    if [ "$APRIAL_TAG_POSE" = true ]; then
+        if [ "$APRIAL_TAG_POSE_DISPLAY" = true ]; then
+            docker exec -it $ROS_CONTAINER_ID bash -c "\
+            source /opt/ros/humble/setup.bash && \
+            source $WORKING_DIR_CONTAINER/$ROS_DIR/install/setup.bash && \
+            ros2 run aprial_tag_pose aprial_tag_pose_node.py --ros-args -p visual_display:=True"
+        else
+            docker exec -it $ROS_CONTAINER_ID bash -c "\
+            source /opt/ros/humble/setup.bash && \
+            source $WORKING_DIR_CONTAINER/$ROS_DIR/install/setup.bash && \
+            ros2 run aprial_tag_pose aprial_tag_pose_node.py"
+        fi
+    fi
+
     # Open interactive shell terminal
     docker exec -it $ROS_CONTAINER_ID bash -c \
     "cd $ROS_DIR && \

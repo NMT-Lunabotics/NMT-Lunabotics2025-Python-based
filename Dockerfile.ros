@@ -48,6 +48,7 @@ RUN apt-get update && apt-get upgrade -y \
 # Python Packages to install
 RUN pip install --no-cache-dir \
     #Essiental packages .ie fundelmental compatition package that are required to run the robot
+    pyrealsense2 \
     pyserial
 
 # Install ROS packages to install

@@ -28,7 +28,6 @@ install(DIRECTORY
   DESTINATION share/${PROJECT_NAME}/config
 )
 
-
 ament_export_dependencies(rosidl_default_runtime)
 
 ament_package()
