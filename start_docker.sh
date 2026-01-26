@@ -184,7 +184,7 @@ if [ "$CONTAINER_MODE" = 2 ]; then
         "cd $ROS_DIR && \
         rm -rf build/ install/ log/ && \
         source /opt/ros/humble/setup.bash && \
-        colcon build --symlink-install --continue-on-error"
+        colcon build --symlink-install --continue-on-error --packages-skip rplidar_slam"
     fi
 
     if [ "$APRIAL_TAG_POSE" = true ]; then
