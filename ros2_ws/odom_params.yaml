@@ -1,0 +1,6 @@
+rgbd_odometry:
+  ros__parameters:
+    frame_id: "base_link"
+    odom_frame_id: "odom"
+    publish_tf: true
+    Odom/ResetCountdown: "1"

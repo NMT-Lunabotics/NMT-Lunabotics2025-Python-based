@@ -96,7 +96,7 @@ fi
 
 # If --restart flag is used, restart all containors
 if [ "$RESTART_CONTAINER" = true ] || [ "$BUILD_IMAGE" = true ]; then
-    docker rm -f $(docker ps -aq)
+    docker rm -f $(docker ps -aq) || true
 fi
 
 # Build image if needed or if --build flag is used
@@ -174,13 +174,13 @@ if [ "$CONTAINER_MODE" = 1 ]; then
 fi
 if [ "$CONTAINER_MODE" = 2 ]; then
     # Create a bashrc file for auto source in ros
-    docker exec -it $ROS_CONTAINER_ID bash -c "\
+    docker exec -u 0 -it $ROS_CONTAINER_ID bash -c "\
     echo 'source /opt/ros/humble/setup.bash' >> ~/.bashrc && \
     echo 'source $WORKING_DIR_CONTAINER/$ROS_DIR/install/setup.bash' >> ~/.bashrc"
 
     # If containor is being build rebuild all packages at same time
     if [ "$BUILD_IMAGE" = true ]; then
-        docker exec -it $ROS_CONTAINER_ID bash -c \
+        docker exec -u 0 -it $ROS_CONTAINER_ID bash -c \
         "cd $ROS_DIR && \
         rm -rf build/ install/ log/ && \
         source /opt/ros/humble/setup.bash && \
@@ -189,12 +189,12 @@ if [ "$CONTAINER_MODE" = 2 ]; then
 
     if [ "$APRIAL_TAG_POSE" = true ]; then
         if [ "$APRIAL_TAG_POSE_DISPLAY" = true ]; then
-            docker exec -it $ROS_CONTAINER_ID bash -c "\
+            docker exec -u 0 -it $ROS_CONTAINER_ID bash -c "\
             source /opt/ros/humble/setup.bash && \
             source $WORKING_DIR_CONTAINER/$ROS_DIR/install/setup.bash && \
             ros2 run aprial_tag_pose aprial_tag_pose_node.py --ros-args -p visual_display:=True"
         else
-            docker exec -it $ROS_CONTAINER_ID bash -c "\
+            docker exec -u 0 -it $ROS_CONTAINER_ID bash -c "\
             source /opt/ros/humble/setup.bash && \
             source $WORKING_DIR_CONTAINER/$ROS_DIR/install/setup.bash && \
             ros2 run aprial_tag_pose aprial_tag_pose_node.py"
@@ -202,7 +202,7 @@ if [ "$CONTAINER_MODE" = 2 ]; then
     fi
 
     # Open interactive shell terminal
-    docker exec -it $ROS_CONTAINER_ID bash -c \
+    docker exec -u 0 -it $ROS_CONTAINER_ID bash -c \
     "cd $ROS_DIR && \
     source /opt/ros/humble/setup.bash && \
     source install/setup.bash && \

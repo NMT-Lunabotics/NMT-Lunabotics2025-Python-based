@@ -188,8 +188,6 @@ class AprialTagPose:
         if pose_map: cv2.imshow("Pose Map", map_vis)
         cv2.waitKey(1)
 
-
-
 # -------------------- ROS Node --------------------
 class AprialTagPoseNode(Node):
     def __init__(self):
