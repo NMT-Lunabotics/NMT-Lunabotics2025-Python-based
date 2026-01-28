@@ -128,16 +128,24 @@ start_container() {
             --group-add dialout                              # Ensure USB serial access
             --device /dev:/dev                               # Map devices  
             -v $WORKING_DIR_HOST:$WORKING_DIR_CONTAINER      # Mount host folder
-            -w $WORKING_DIR_CONTAINER                        # Set working directory                 
+            -w $WORKING_DIR_CONTAINER                        # Set working directory               
         )
 
         # Enable display if requested and $DISPLAY is set
         if [ "$DISPLAY_ENABLED" = true ] && [ -n "$DISPLAY" ]; then
-            DOCKER_FLAGS+=(
-                -e DISPLAY=$DISPLAY
-                -v $XAUTHORITY:$XAUTHORITY:ro
-                -e XAUTHORITY=$XAUTHORITY
-            )
+            # Check if we are in windows and if we are use wsl variables instead of linux ones
+            if grep -qi microsoft /proc/version 2>/dev/null || [[ -n "$WSL_DISTRO_NAME" ]]; then
+                DOCKER_FLAGS+=(
+                    -v /tmp/.X11-unix:/tmp/.X11-unix
+                    -e DISPLAY=unix:0
+                )
+            else
+                DOCKER_FLAGS+=(
+                    -e DISPLAY=$DISPLAY
+                    -v $XAUTHORITY:$XAUTHORITY:ro
+                    -e XAUTHORITY=$XAUTHORITY
+                )
+            fi
         fi
 
         # Start container detached
