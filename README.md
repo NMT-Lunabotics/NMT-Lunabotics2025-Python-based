@@ -12,7 +12,7 @@ Follow the (GUI) steps if you are automatically running the robot using the gui.
 
 ***
 ### (shh) Jetson
-1. Join the same network as the target jetson. The Jetson will mostly be connected to our router `team-14`, or it will be connected to `NMT-Weblogin`.
+1. Join the same network as the target jetson. The Jetson will mostly likely be connected to our router `team-14`, or it will be connected to `NMT-Weblogin`.
 2. ssh into the jetson, using it's name and ip address. The ip address can change, but the most recent ip and usernames are listed below. The jetsons also have a sticker that have the ip address. 
 ```
 ssh luna@192.168.0.207
