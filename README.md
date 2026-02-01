@@ -13,7 +13,7 @@ Follow the (GUI) steps if you are automatically running the robot using the gui.
 ***
 ### (shh) Jetson
 1. Join the same network as the target jetson. The Jetson will mostly likely be connected to our router `team-14`, or it will be connected to `NMT-Weblogin`.
-2. ssh into the jetson, using it's name and ip address. The ip address can change, but the most recent ip and usernames are listed below. The jetsons also have a sticker that have the ip address. 
+2. ssh into the jetson, using it's name and ip address. The ip address can change, but the most recent ip and usernames are listed below. The jetsons also have a sticker that lists the ip address. 
 ```
 ssh luna@192.168.0.207
 ```
@@ -129,20 +129,26 @@ ros2 run rviz2 rviz2
 <br>
 
 # USAGE
-This script is used to start and manage a Docker and running the whole system. You can start the script by just using `./start_docker.sh`, adding other parameters change how the containor is ran and waht starts up on it's own.
 ```
-Actions (pick ONE):
-    --start (-s)                           Start the main system control loop
-    --aprial_tag (-tag) [display|d]        Starts the aprial tag position system, and realsense camera IMU sensor system
+Usage: ./start_docker.sh [--display | --build | --restart | --mount | --pull | --arduino | --containor | --quiet | --stop | --help] [--start | --aprial_tag | --usb-cam | --command]
+This script is used to start and manage Docker and run the whole system. You can start the script by just using ./start_docker.sh, adding other parameters that change how the container is run and what starts up on its own.
 
+Actions (pick ONE):
+  --start (-s)                           Start the main system control loop
+  --command (-cmd) <command>             Execute a command inside the container without entering the container
+  --aprial_tag (-tag) [display|d]        Starts the aprial tag position system, and realsense camera IMU sensor
+  --usb-cam (-u)                         Launch system cameras
 Options:
-    --display (-d)                         Enable display support (forward X11 display)
-    --build (-b)                           Build the Docker container (will stop the running container if any)
-    --restart (-r)                         Restart all Docker containers
-    --mount (-mm)                          Mounts a directory into jetson across wifi
-    --pull (-p)                            Pulls the most recent files from github
-    --containor (-c)                       Switches between entering the ros or python container with bash
-    --help (-h)                            Show this help message
+  --display (-d)                         Enable display support (forward X11 display)
+  --build (-b)                           Build the Docker container (will stop the running container if any)
+  --restart (-r)                         Restart all Docker containers
+  --mount (-m) <username> <host_path>    Mounts a directory into jetson across wifi
+  --pull (-p)                            Pulls the most recent files from github
+  --arduino (-sys)                       Force updates arduino without requiring a full build
+  --container (-c) [ros|python]          Switches between entering the ros or python container with bash
+  --quiet (-q)                           Suppress bash messages
+  --stop (-x)                            Stop the running Docker container
+  --help (-h)                            Show this help message
 ```
 
 ***
@@ -151,7 +157,20 @@ Options:
 <br>
 
 # TOOLS
-1. For local testing without a sensor you can run fake lidar node. This node runs a fake simulation using a fake map, posting fake data that simulates a 2D lidar sensor and aprial tags. The simulator opens a gui where you have full access to the robots position like location, rotation, and camera rotation. However like the real robot to simulate movment by other means you will need to publish commands via the command topic node. 
+**ros simulator:**<br>
+1\. For local testing without a sensor you can run fake lidar node. This node runs a fake simulation using a fake map, posting fake data that simulates a 2D lidar sensor and aprial tags. The simulator opens a gui where you have full access to the robots position like location, rotation, and camera rotation. However like the real robot to simulate movment by other means you will need to publish commands via the command topic node. 
 ```
 ros2 run fake_lidar fake_lidar_node.py
 ```
+***
+**uplode code:**<br>
+2. For the quick testing of code two option were made for fast iteration. These methiods do not need to be used when testing locally but are usful while working on testing the main system.
+<br>
+<br>
+a. The first is github, it's suggested that you setup [Visual stuido code](https://code.visualstudio.com/download), and linking it up with github. Doing this allows you to quickly push code to github, and then on the jetson end you can quickly pull and recompile the code using `./start_docker.sh -r -p -b`. The arduino's code will be also updated everytime the containor rebuilds, the `--arduino` flag can be used to force an update or in the system_control folder there are multiple ways to uploude code to the arduino yourself.
+<br>
+<br>
+b. The second way is a volume mount which makes the jetson use files from your pc. TODO update section
+<br>
+<br>
+c. Safty gaurd: Since linux systems can nativly execute .sh files, there's a chance that you may run `./start_docker.sh -p` which will pull files from github force overwriting un-saved work. To prevent this any local repositorys should include a file named `.tripwire` which stops this operation. Only the jetson repositorys should not include this file, and no coding should be done directly on the jetsons.
