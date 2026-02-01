@@ -1,16 +1,26 @@
 # NMT-Lunabotics2025-Python-based
 The main repository for the New Mexico Tech Lunabotics 2026 competition Team
 
+### Table of Contents:
+
+**Installation:**
+- The [(coding)](#coding-visual-studio-code-and-github-setup) setup guide explains how to setup Visual studio code and github for writting code and pushing/pulling code from the repository.<br>
+- The [(local)](#local-windows-11) setup guide explains how to install and run a local version of the ros system for testing on your respective system.<br>
+
+**Running system** 
+- The [(shh)](#shh-jetson) guide walks through sshing onto the jetsons for running and testing the system.<br>
+- The [(gui)](#gui-system-gui) walk you through the steps needed to run the gui which can run the ros system withput the need of terminal commands.<br> 
+
+**Docker** <br>
+- The [(usage)](#usage) section lists the docker commands that our custom bash file can execute for running docker and ros.<br>
+- The [(tools)](#tools) section lists usful tools that can help out when working with the system.<br>
+
 <br>
 <br>
 <br>
 
 # INSTALLATION AND SETUP
-Follow the (local) install steps on your respective platform if you wish to run a local version of the robotic system for testing.<br>
-Follow the (ssh) steps if you are manually running the robot or testing on the jetson.<br>
-Follow the (GUI) steps if you are automatically running the robot using the gui.
 
-***
 ### (shh) Jetson
 1. Join the same network as the target jetson. The Jetson will mostly likely be connected to our router `team-14`, or it will be connected to `NMT-Weblogin`.
 2. ssh into the jetson, using it's name and ip address. The ip address can change, but the most recent ip and usernames are listed below. The jetsons also have a sticker that lists the ip address. 
@@ -39,6 +49,8 @@ cd NMT-Lunabotics2025-Python-based/
 ***
 <br>
 
+### (gui) system gui
+TODO: update section
 
 ### (Local) Windows 11<br>
 (NOTE, windows linux will Not have access to cameras or usb ports)
@@ -51,20 +63,20 @@ cd NMT-Lunabotics2025-Python-based/
 ```
 wsl --install
 ```
-4. Follow (Local) System setup steps.
+4. Follow [(local system setup)](#local-system-setup) steps to install docker and run ros.
 
 ***
 <br>
 
 ### (Local) Linux<br>
-1. Follow (Local) System setup steps. 
-
+1. Follow [(local system setup)](#local-system-setup) steps to install docker and run ros.<br>
+TODO: expand section
 ***
 <br>
 
 ### (Local) System setup<br>
 **Docker installation:**<br>
-1. Install [Docker](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository) using the apt repository method inside of Linux terminal.<br>
+1. Install Docker using the [apt repository method](https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository) inside of Linux terminal.<br>
 ```
 sudo apt update
 sudo apt install ca-certificates curl
@@ -105,7 +117,7 @@ CONTAINER ID IMAGE COMMAND CREATED STATUS PORTS NAMES
 ***
 <br>
 
-**Repository setup and running:**
+**Running system:**
 1. Inside of your Linux terminal clone the lunabotics repository.
 ```
 git clone https://github.com/NMT-Lunabotics/NMT-Lunabotics2025-Python-based
@@ -122,6 +134,28 @@ cd NMT-Lunabotics2025-Python-based/
 ```
 ros2 run rviz2 rviz2
 ```
+
+***
+<br>
+
+### (coding) Visual studio code and Github setup:
+1. Download and install [Visual studio code](https://code.visualstudio.com/download) with the default settings.
+
+2. Once installed in visual studio code select the (Source Control) tab. If git is not installed Visual studio code will promt you to install it. Install it using the default options. Restart visual studio code after it is installed.
+
+3. Install [Github pull requests](https://marketplace.visualstudio.com/items?itemName=GitHub.vscode-pull-request-github) from the exstensions tab. estart visual studio code after it is installed.
+
+4. After a few seconds under the buttom left profile section the (signin with github) option will be visible. Sign into your github account using that option.
+
+5. Config your git email and password by opening a new terminal, and setting your username and email.
+```
+git config --global user.email "email@gmail.com"
+git config --global user.name "username"
+``` 
+
+6. Clone the repository by going to the source control tab, and clicking (clone repository). The top bar will ask for the repostirtoy url: `https://github.com/NMT-Lunabotics/NMT-Lunabotics2025-Python-based`
+
+7. Github and Visual studio code is now setup. You can pull most recent changes by running: `git pull` in a new terminal. And you can push changes by entering the source control tab, adding a commit message, and clicking (commit and sync).
 
 ***
 <br>
@@ -158,19 +192,17 @@ Options:
 
 # TOOLS
 **ros simulator:**<br>
-1\. For local testing without a sensor you can run fake lidar node. This node runs a fake simulation using a fake map, posting fake data that simulates a 2D lidar sensor and aprial tags. The simulator opens a gui where you have full access to the robots position like location, rotation, and camera rotation. However like the real robot to simulate movment by other means you will need to publish commands via the command topic node. 
+For local testing without a sensor you can run fake lidar node. This node runs a fake simulation using a fake map, posting fake data that simulates a 2D lidar sensor and aprial tags. The simulator opens a gui where you have full access to the robots position like location, rotation, and camera rotation. However like the real robot to simulate movment by other means you will need to publish commands via the command topic node. 
 ```
 ros2 run fake_lidar fake_lidar_node.py
 ```
 ***
 **uplode code:**<br>
-2. For the quick testing of code two option were made for fast iteration. These methiods do not need to be used when testing locally but are usful while working on testing the main system.
+For the quick testing of code two option were made for fast iteration. These methiods do not need to be used when testing locally but are usful while working on testing the main system.
 <br>
-<br>
-a. The first is github, it's suggested that you setup [Visual stuido code](https://code.visualstudio.com/download), and linking it up with github. Doing this allows you to quickly push code to github, and then on the jetson end you can quickly pull and recompile the code using `./start_docker.sh -r -p -b`. The arduino's code will be also updated everytime the containor rebuilds, the `--arduino` flag can be used to force an update or in the system_control folder there are multiple ways to uploude code to the arduino yourself.
-<br>
-<br>
-b. The second way is a volume mount which makes the jetson use files from your pc. TODO update section
-<br>
-<br>
-c. Safty gaurd: Since linux systems can nativly execute .sh files, there's a chance that you may run `./start_docker.sh -p` which will pull files from github force overwriting un-saved work. To prevent this any local repositorys should include a file named `.tripwire` which stops this operation. Only the jetson repositorys should not include this file, and no coding should be done directly on the jetsons.
+1. The first is github, it's suggested that you setup [Visual stuido code and github](#coding-visual-studio-code-and-github-setup). Doing this allows you to quickly push code to github, and then on the jetson end you can quickly pull and recompile the code using `./start_docker.sh -r -p -b`. The arduino's code will be also updated everytime the containor rebuilds, the `--arduino` flag can be used to force an update or in the system_control folder there are multiple ways to uploude code to the arduino yourself.
+
+2. The second way is a volume mount which makes the jetson use files from your pc.<br>
+TODO: update section
+
+3. Safty gaurd: Since linux systems can nativly execute .sh files, there's a chance that you may run `./start_docker.sh -p` which will pull files from github force overwriting un-saved work. To prevent this local repositorys should include a file named `.tripwire` which stops this operation. Only the jetson repositorys should not include this file, and no coding should be done directly on the jetsons to prevent loss of work.
