@@ -58,7 +58,7 @@ usage() {
     echo "  --restart (-r)                         Restart all Docker containers"
     echo "  --mount (-m) <username> <host_path>    Mounts a directory into jetson across wifi"
     echo "  --pull (-p)                            Pulls the most recent files from github"
-    echo "  --arduino (-sys)                       Force updates arduino without requiring a full build"
+    echo "  --arduino (-sys)                       Force updates arduino, does not do full build"
     echo "  --container (-c) [ros|python]          Switches between entering the ros or python container with bash"
     echo "  --quiet (-q)                           Suppress bash messages"
     echo "  --stop (-x)                            Stop the running Docker container"
@@ -226,7 +226,7 @@ if [ "$CONTAINER_MODE" = 2 ]; then
     echo 'source $WORKING_DIR_CONTAINER/$ROS_DIR/install/setup.bash' >> ~/.bashrc"
 
     # If containor is being build rebuild all packages at same time
-    if [ "$BUILD_IMAGE" = true ]; then
+    if [ "$BUILD_IMAGE" = true ] && ["ARDUINO_UPDATER_IMAGE" = false]; then
         run_cmd docker exec -u 0 -it $ROS_CONTAINER_ID bash -c \
         "cd $ROS_DIR && \
         rm -rf build/ install/ log/ && \
