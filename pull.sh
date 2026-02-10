@@ -34,9 +34,7 @@ elif [[ "$LOCAL" == true ]]; then
     done
 
     rsync -avz --delete --exclude-from=<(printf "%s\n" "${EXCLUDE_FROM_PULL[@]}") --exclude-from=.gitignore $LOCAL_USERNAME@$PC_IP:/home/$LOCAL_USERNAME/$REPO/ "$(pwd)/"
-    exit 0
 else
-    exit 0
     git config --global user.email "benjamin.peterson@student.nmt.edu"
     git config --global user.name "benjamin-p15"
     git remote add origin git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git 2>/dev/null || true
