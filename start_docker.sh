@@ -256,3 +256,4 @@ if [ "$CONTAINER_MODE" = 2 ]; then
     source /opt/ros/humble/setup.bash && \
     source install/setup.bash && \
     bash"
+fi
