@@ -16,6 +16,7 @@ EXCLUDE_FROM_PULL=(
     "ros/guides-documents/"
     "ros/ros1_ws"
     ".tripwire"
+    ".git/"
     )
 
 if [[ -f "$TRIPWIRE_FILE" ]]; then
