@@ -25,7 +25,7 @@ The main repository for the New Mexico Tech Lunabotics 2026 competition Team
 1. Join the same network as the target jetson. The Jetson will mostly likely be connected to our router `team-14`, or it will be connected to `NMT-Weblogin`.
 2. ssh into the jetson, using it's name and ip address. The ip address can change, but the most recent ip and usernames are listed below. The jetsons also have a sticker that lists the ip address. 
 ```
-ssh luna@192.168.0.207
+ssh -X luna@192.168.0.207
 ```
 
 **Jetson infomation:**
@@ -33,6 +33,7 @@ ssh luna@192.168.0.207
 | Computer | Username | Ip address | Password |
 |-----|-----|-----|-----|
 | Main jetson used in eletronics box | luna | 192.168.0.207 | 123456789 |
+| --> Ethernet | luna | 192.168.10.2 | 123456789 |
 | Jetson used in goliath test robot | nuc | 192.168.0.139 | 123456789 |
 | Other jetson | luna | This jetson has No wifi | 123456789 |
 
