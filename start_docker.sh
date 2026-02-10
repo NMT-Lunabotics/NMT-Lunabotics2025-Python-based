@@ -14,6 +14,8 @@ BUILD_IMAGE=false
 RESTART_CONTAINER=false
 START_SYSTEM_CONTROL=false
 GITHUB_PULL=false
+LOCAL_PULL=false
+LOCAL_USERNAME=unknown
 EXECUTE_COMMAND=false
 COMMAND_STRING=""
 STOP_CONTAINER=false
@@ -57,7 +59,7 @@ usage() {
     echo "  --build (-b)                           Build the Docker container (will stop the running container if any)"
     echo "  --restart (-r)                         Restart all Docker containers"
     echo "  --mount (-m) <username> <host_path>    Mounts a directory into jetson across wifi"
-    echo "  --pull (-p)                            Pulls the most recent files from github"
+    echo "  --pull (-p) [local|l] <username>       Pulls the most recent files from github or pulls local files with local connection"
     echo "  --arduino (-sys)                       Force updates arduino, does not do full build"
     echo "  --container (-c) [ros|python]          Switches between entering the ros or python container with bash"
     echo "  --quiet (-q)                           Suppress bash messages"
@@ -73,7 +75,7 @@ while [[ "$#" -gt 0 ]]; do
         -b|--build) BUILD_IMAGE=true; shift ;;                                                                                                                                                       # Force image rebuild
         -r|--restart) RESTART_CONTAINER=true; shift ;;                                                                                                                                               # Remove old containers first
         -s|--start) START_SYSTEM_CONTROL=true; shift ;;                                                                                                                                              # Start system control script
-        -p|--pull) GITHUB_PULL=true; shift ;;                                                                                                                                                        # Pull github changes before building
+        -p|--pull) GITHUB_PULL=true; [[ "$2" == "local" || "$2" == "l" ]] && LOCAL_PULL=true && shift; [[ -n "$2" && "$2" != -* ]] && LOCAL_USERNAME="$2" && shift; shift ;;                                                                                                          # Pull github changes before building
         -tag|--aprial_tag) APRIAL_TAG_POSE=true; if [[ "$2" == "display" || "$2" == "d" ]]; then APRIAL_TAG_POSE_DISPLAY=true; shift; fi; shift ;;                                                   # Starts node which publishs april tag to ros topic
         -h|--help) usage; shift ;;                                                                                                                                                                   # Shows help infomation about the system
         -mm|--mount) [[ "$#" -lt 3 ]] && { echo "Error: --mount <username> <host_path>"; exit 1; }; MOUNT_USERNAME="$2"; MOUNT_HOST_PATH="$3"; shift 3 ;;                                            # Custom mount point
@@ -111,9 +113,9 @@ fi
 
 # Pull latest changes from GitHub if --pull flag is used
 if [ "$GITHUB_PULL" = true ]; then
-    ./pull.sh
-    RESTART_CONTAINER=true
-    BUILD_IMAGE=true
+        ./pull.sh $LOCAL_PULL $LOCAL_USERNAME
+        RESTART_CONTAINER=true
+        BUILD_IMAGE=true
 fi
 
 if [ "$STOP_CONTAINER" = true ]; then
@@ -254,4 +256,3 @@ if [ "$CONTAINER_MODE" = 2 ]; then
     source /opt/ros/humble/setup.bash && \
     source install/setup.bash && \
     bash"
-fi
