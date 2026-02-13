@@ -41,7 +41,7 @@ else
 
     git fetch origin
     git sparse-checkout init --no-cone
-    ALL_FILES=$(git ls-tree -r --name-only origin/main)
+    ALL_FILES=$(git ls-tree -r --name-only @{upstream})
     INCLUDE=()
     while IFS= read -r f; do
         f="${f#./}"
@@ -54,6 +54,6 @@ else
         fi
     done <<< "$ALL_FILES"
     git sparse-checkout set "${INCLUDE[@]}"
-    git reset --hard origin/main
+    git reset --hard @{upstream}
     git clean -fdx
 fi
