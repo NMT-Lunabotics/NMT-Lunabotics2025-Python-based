@@ -43,9 +43,10 @@ RUN apt-get update && apt-get upgrade -y \
     ros-humble-rviz2 \
     ros-humble-robot-state-publisher \
     ros-humble-tf2-tools \
-    gazebo \
     ros-humble-joy \
+    #
     ros-humble-turtlebot3* \
+    gazebo \
     libgazebo-dev \
     && rm -rf /var/lib/apt/lists/*
 

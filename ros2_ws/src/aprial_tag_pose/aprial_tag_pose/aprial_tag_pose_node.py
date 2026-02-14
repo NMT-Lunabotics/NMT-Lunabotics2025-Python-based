@@ -2,27 +2,29 @@
 import rclpy
 from rclpy.node import Node
 from aprial_tag_pose.msg import Pose 
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
 import cv2
 import numpy as np #math and data types
 import pyrealsense2 as rs #important for the camera
 import math
 
-# -------------------- Changeable Variables --------------------
-tag_type = cv2.aruco.DICT_6X6_250 #change according to which tag library
-markerLength = 0.269  # meters
+# -------------------- Settings --------------------
+# Camera settings
+framerate=60                                # Frame rate of camera stream
+resolution={"x":640,"y":480}
 
-map_size = 750 #the size of the displayed maps in pixels
-scale = 25 #how many pixels per meter
-
-history_length = 10 #for smoothing, how many past positions are used
-max_pos_jump = 0.15 #max jump in a single frame
-
+# Marker settings
+tag_type = cv2.aruco.DICT_6X6_250           # Change to match used tag libray
+markerLength = 0.269                        # Size of markers in m
+map_size = 750                              # Displayed map size
+scale = 25                                  # Density of pixles per m
+history_length = 10                         # Histroy length used for smoothing
+max_pos_jump = 0.15                         # Max position jump per single frame
 alpha_x, alpha_z, alpha_yaw = 0.1, 0.2, 0.4
 
 # -------------------- Camera setup --------------------
-camMatrix = np.array([[390.70924213, 0., 320.5518661],
-                      [0., 391.15479783, 239.81762185],
-                      [0., 0., 1.]])
+camMatrix = np.array([[390.70924213, 0., 320.5518661],[0., 391.15479783, 239.81762185],[0., 0., 1.]])
 distCoeffs = np.array([[-0.04335213, 0.0489175, 0.00186086, 0.00056816, 0.03206625]])
 
 dictionary = cv2.aruco.getPredefinedDictionary(tag_type)
@@ -30,8 +32,8 @@ parameters = cv2.aruco.DetectorParameters_create()
 
 pipe = rs.pipeline() #establishes camera operations
 cfg = rs.config()
-cfg.enable_stream(rs.stream.color, 640, 480, rs.format.bgr8, 15)
-cfg.enable_stream(rs.stream.depth, 640, 480, rs.format.z16, 15)
+cfg.enable_stream(rs.stream.color, resolution["x"], resolution["y"], rs.format.bgr8, framerate)
+cfg.enable_stream(rs.stream.depth, resolution["x"], resolution["y"], rs.format.z16, framerate)
 pipe.start(cfg)
 align = rs.align(rs.stream.color)
 
@@ -193,7 +195,7 @@ class AprialTagPoseNode(Node):
     def __init__(self):
         super().__init__('aprial_tag_pose_node')
         self.ser = AprialTagPose()
-        self.timer = self.create_timer(0.01, self.timer_callback)
+        self.timer = self.create_timer(1/framerate, self.timer_callback)
         self.pose_pub = self.create_publisher(Pose, '/aprial_tag/pose', 10)
         self.declare_parameter('visual_display', False)
         self.declare_parameter('rgb_camera', True)
@@ -205,10 +207,18 @@ class AprialTagPoseNode(Node):
         self.depth_camera = self.get_parameter('depth_camera').value
         self.pose_map = self.get_parameter('pose_map').value
 
+        # Create camera topic for camera stream
+        self.image_pub = self.create_publisher(Image, '/camera/rgb/image_raw', 10)
+        self.bridge = CvBridge()
+
     def timer_callback(self):
         img, depth = self.ser.get_frames()
         if img is None:
             return
+        
+        # Publish raw camera stream to camera topic
+        image_msg = self.bridge.cv2_to_imgmsg(img, encoding='bgr8')
+        self.image_pub.publish(image_msg)
 
         corners, ids = self.ser.detect_markers(img)
         X, Z, yaw = self.ser.estimate_pose(corners, ids, img)
