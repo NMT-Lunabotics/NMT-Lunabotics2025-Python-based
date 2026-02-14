@@ -228,7 +228,7 @@ if [ "$CONTAINER_MODE" = 2 ]; then
     echo 'source $WORKING_DIR_CONTAINER/$ROS_DIR/install/setup.bash' >> ~/.bashrc"
 
     # If containor is being build rebuild all packages at same time
-    if [ "$BUILD_IMAGE" = true ] && ["ARDUINO_UPDATER_IMAGE" = false]; then
+    if [ "$BUILD_IMAGE" = true ] && [ "$ARDUINO_UPDATER_IMAGE" = false ]; then
         run_cmd docker exec -u 0 -it $ROS_CONTAINER_ID bash -c \
         "cd $ROS_DIR && \
         rm -rf build/ install/ log/ && \
@@ -251,9 +251,9 @@ if [ "$CONTAINER_MODE" = 2 ]; then
     fi
 
     # Open interactive shell terminal
-    docker exec -u 0 -it $ROS_CONTAINER_ID bash -c \
-    "cd $ROS_DIR && \
-    source /opt/ros/humble/setup.bash && \
-    source install/setup.bash && \
-    bash"
+    docker exec -u 0 -it $ROS_CONTAINER_ID bash -c "\
+    cd $ROS_DIR && \
+    [ -f /opt/ros/humble/setup.bash ] && source /opt/ros/humble/setup.bash && \
+    [ -f install/setup.bash ] && source install/setup.bash && \
+    exec bash"
 fi

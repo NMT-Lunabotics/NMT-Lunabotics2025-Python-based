@@ -16,16 +16,16 @@ class MultiCameraPublisher(Node):
         # Usage variables
         self.bridge = CvBridge()
         self.frame_interval = 1.0 / fps
-        self.publishers = []
+        self._publishers = []
         # For each of our camera streams publish it's respective topic
         for cam in self.cameras:
             cap = cv2.VideoCapture(cam['device'])
             if cap.isOpened():
-                self.publishers.append({'cap': cap,'topic': cam['topic'],'pub': self.create_publisher(Image, cam['topic'], 10)})
+                self._publishers.append({'cap': cap,'topic': cam['topic'],'pub': self.create_publisher(Image, cam['topic'], 10)})
         self.timer = self.create_timer(self.frame_interval, self.publish_frames)
 
     def publish_frames(self):
-        for cam in self.publishers:
+        for cam in self._publishers:
             ret, frame = cam['cap'].read()
             if not ret: continue
             cam['pub'].publish(self.bridge.cv2_to_imgmsg(frame, 'bgr8'))
@@ -34,7 +34,7 @@ def main(args=None):
     rclpy.init(args=args)
     node = MultiCameraPublisher(fps=10)
     rclpy.spin(node)
-    for cam in node.publishers:
+    for cam in node._publishers:
         cam['cap'].release()
     node.destroy_node()
     rclpy.shutdown()

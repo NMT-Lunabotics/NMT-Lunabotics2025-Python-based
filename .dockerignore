@@ -1,0 +1,6 @@
+*
+!ros2_ws
+!Dockerfile.ros
+!entry_point.sh
+!start_docker.sh
+!pull.sh
