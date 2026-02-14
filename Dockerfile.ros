@@ -3,7 +3,8 @@ FROM ros:humble-ros-core
 
 # Create non-root user (luna) with access to full container
 ARG USER=luna
-RUN useradd -m $USER && usermod -aG dialout,video $USER \
+RUN useradd -m $USER \ 
+    && usermod -aG dialout,video,plugdev,root $USER \
     && apt-get update && apt-get install -y sudo git nano openssh-client rsync \
     && usermod -aG sudo $USER \
     && echo "$USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers \

@@ -35,6 +35,7 @@ REPOSITORY_NAME="NMT-Lunabotics2025-Python-based"
 WORKING_DIR_CONTAINER="/home/luna/$REPOSITORY_NAME"
 WORKING_DIR_HOST="$(pwd)"
 ROS_DIR="ros2_ws"
+ENV_FILE="env_file.txt"
 
 # Ros stuff to start
 APRIAL_TAG_POSE=false
@@ -154,10 +155,23 @@ start_container() {
         # Base Docker flags for privileged access, devices, working directory
         DOCKER_FLAGS=(
             --network=host                                   # Use host networking
+            --volume=/dev:/dev:rw
             --privileged                                     # Give container privileged access
+            --userns=host
+            --ipc=host 
+            --group-add root
+            #--runtime nvidia 
             --group-add video                                # Give video group access
             --group-add dialout                              # Ensure USB serial access
-            --device /dev:/dev                               # Map devices  
+            --group-add plugdev
+            #-v /dev:/dev
+            #--device=/dev/bus/usb:/dev/bus/usb:rwm
+            #-v /etc/udev/rules.d/:/etc/udev/rules.d/
+            -v /run/udev:/run/udev 
+            -v /etc/udev/rules.d/:/etc/udev/rules.d/:ro
+            --device-cgroup-rule='c 189:* rmw' 
+            --device /dev/bus/usb 
+                              # Map devices  
             -v $WORKING_DIR_HOST:$WORKING_DIR_CONTAINER      # Mount host folder
             -w $WORKING_DIR_CONTAINER                        # Set working directory               
         )
@@ -228,12 +242,12 @@ if [ "$CONTAINER_MODE" = 2 ]; then
     echo 'source $WORKING_DIR_CONTAINER/$ROS_DIR/install/setup.bash' >> ~/.bashrc"
 
     # If containor is being build rebuild all packages at same time
-    if [ "$BUILD_IMAGE" = true ] && ["ARDUINO_UPDATER_IMAGE" = false]; then
-        run_cmd docker exec -u 0 -it $ROS_CONTAINER_ID bash -c \
-        "cd $ROS_DIR && \
+    if [ "$BUILD_IMAGE" = true ] && [ "ARDUINO_UPDATER_IMAGE" = false ]; then
+        run_cmd docker exec -u 0 -it $ROS_CONTAINER_ID bash -c "\
+        cd $ROS_DIR && \
         rm -rf build/ install/ log/ && \
         source /opt/ros/humble/setup.bash && \
-        colcon build --symlink-install --continue-on-error --packages-skip rplidar_slam"
+        colcon build --symlink-install --continue-on-error --packages-skip"
     fi
 
     if [ "$APRIAL_TAG_POSE" = true ]; then
@@ -251,9 +265,11 @@ if [ "$CONTAINER_MODE" = 2 ]; then
     fi
 
     # Open interactive shell terminal
-    docker exec -u 0 -it $ROS_CONTAINER_ID bash -c \
-    "cd $ROS_DIR && \
-    source /opt/ros/humble/setup.bash && \
-    source install/setup.bash && \
-    bash"
-fi
+    # TODO FIX source install/setup.bash 
+
+    run_cmd docker exec -u 0 -it $ROS_CONTAINER_ID bash -c "\
+    cd $ROS_DIR && \
+    [ -f /opt/ros/humble/setup.bash ] && source /opt/ros/humble/setup.bash && \
+    [ -f install/setup.bash ] && source install/setup.bash && \
+    exec bash"
+fi                                      

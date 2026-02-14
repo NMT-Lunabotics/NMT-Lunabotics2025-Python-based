@@ -3,6 +3,8 @@ import rclpy
 from rclpy.node import Node
 from aprial_tag_pose.msg import Pose 
 import cv2
+from sensor_msgs.msg import Image
+from cv_bridge import CvBridge
 import numpy as np #math and data types
 import pyrealsense2 as rs #important for the camera
 import math
@@ -115,7 +117,7 @@ class AprialTagPose:
     #picks up frames for the program to read
     @staticmethod
     def get_frames():
-        frames = pipe.poll_for_frames()
+        frames = pipe.wait_for_frames()
         if not frames:
             return None, None
         aligned = align.process(frames)
@@ -205,10 +207,16 @@ class AprialTagPoseNode(Node):
         self.depth_camera = self.get_parameter('depth_camera').value
         self.pose_map = self.get_parameter('pose_map').value
 
+        self.rgb_pub = self.create_publisher(Image, '/camera/rgb/image_raw', 10)
+        self.bridge = CvBridge()
+
     def timer_callback(self):
         img, depth = self.ser.get_frames()
         if img is None:
             return
+        
+        rgb_msg = self.bridge.cv2_to_imgmsg(img, encoding="bgr8")
+        self.rgb_pub.publish(rgb_msg)
 
         corners, ids = self.ser.detect_markers(img)
         X, Z, yaw = self.ser.estimate_pose(corners, ids, img)
