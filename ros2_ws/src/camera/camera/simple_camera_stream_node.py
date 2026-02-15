@@ -1,41 +1,84 @@
 #!/usr/bin/env python3
+
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
+import pyudev
 import cv2
 
-class MultiCameraPublisher(Node):
-    def __init__(self, fps=30):
+class SimpleCameraNode(Node):
+    def __init__(self):
         super().__init__('simple_camera_stream_node')
-        # Raw camrea streams to publish
-        self.cameras = [
-            {'device': '/dev/video0', 'topic': '/camera/depth/image_raw'},
-            {'device': '/dev/video4', 'topic': '/camera/color/image_raw'}
-        ]
-        # Usage variables
+        # Camera devices and settings
+        framerate=30
+        
+        # Array of camera topics and capture devices
+        self.camera_captures=[]
+        self.camera_publishers=[]
+        self.cameras=[]
+
+        # Define class stuff
         self.bridge = CvBridge()
-        self.frame_interval = 1.0 / fps
-        self._publishers = []
-        # For each of our camera streams publish it's respective topic
-        for cam in self.cameras:
-            cap = cv2.VideoCapture(cam['device'])
-            if cap.isOpened():
-                self._publishers.append({'cap': cap,'topic': cam['topic'],'pub': self.create_publisher(Image, cam['topic'], 10)})
-        self.timer = self.create_timer(self.frame_interval, self.publish_frames)
+        self.pyudev_context = pyudev.Context()
+
+        # Find availible cameras
+        self.find_camera_streams()
+
+        # Loop through devices to check if they can be opened and add publishers 
+        for device in self.cameras:
+            capture = cv2.VideoCapture(device["camera"])
+            if not capture.isOpened():
+                self.get_logger().error(f'Failed to open {device["camera"]}')
+                continue
+            
+            # Create publisher for each camera stream
+            publisher = self.create_publisher(Image,device["topic"],framerate)
+
+            # Log camera streams and publishers
+            self.camera_captures.append(capture)
+            self.camera_publishers.append(publisher)
+
+        # Timer callback to publish camera feeds 
+        self.timer = self.create_timer(1.0/framerate,self.publish_frames)
 
     def publish_frames(self):
-        for cam in self._publishers:
-            ret, frame = cam['cap'].read()
-            if not ret: continue
-            cam['pub'].publish(self.bridge.cv2_to_imgmsg(frame, 'bgr8'))
+        # Try to publish all camera frames
+        for i in range(len(self.camera_captures)):
+            # Attempt to capture video frame
+            return_value, frame = self.camera_captures[i].read()
+            if not return_value: continue
 
+            # If frame capture is successful publish frame
+            msg = self.bridge.cv2_to_imgmsg(frame, 'bgr8')
+            self.camera_publishers[i].publish(msg)
+
+    def find_camera_streams(self):
+        i=0
+        for device in self.pyudev_context.list_devices(subsystem='video4linux'):
+            dev_node = device.device_node
+
+            # Check if device can be opened
+            capture = cv2.VideoCapture(dev_node)
+            if not capture.isOpened():
+                capture.release()
+                continue
+
+            # Store camera
+            name = device.get('ID_V4L_PRODUCT') or dev_node
+            self.cameras.append({"camera": dev_node, "name": name, "topic": f"/camera/rgb/img_raw{i}"})
+
+            capture.release()
+            i+=1
+
+# Handle node startup, running, and destorying
 def main(args=None):
     rclpy.init(args=args)
-    node = MultiCameraPublisher(fps=10)
+
+    node = SimpleCameraNode()
     rclpy.spin(node)
-    for cam in node._publishers:
-        cam['cap'].release()
+
+    for cap in node.camera_captures: cap.release()
     node.destroy_node()
     rclpy.shutdown()
 

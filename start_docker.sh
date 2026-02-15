@@ -157,6 +157,9 @@ start_container() {
             --privileged                                     # Give container privileged access
             --group-add video                                # Give video group access
             --group-add dialout                              # Ensure USB serial access
+            --device=/dev/video:/dev/video
+            -v /sys:/sys:ro 
+            -v /run/udev:/run/udev:ro
             --device /dev:/dev                               # Map devices  
             -v $WORKING_DIR_HOST:$WORKING_DIR_CONTAINER      # Mount host folder
             -w $WORKING_DIR_CONTAINER                        # Set working directory               

@@ -9,36 +9,29 @@ from controller_input.msg import Actuators, Camera
 import subprocess
 import time
 import sys
+Xbox_controller_map = {
+    # Axes
+    "LEFT_JOY_X": 0, "LEFT_JOY_Y": 1, "LEFT_TRIGGER": 2, "RIGHT_JOY_X": 3, "RIGHT_JOY_Y": 4, "RIGHT_TRIGGER": 5, "HORIZONTAL_DPAD": 6, "VERTICAL_DPAD": 7,
+    # Buttons
+    "BUTTON_A": 0, "BUTTON_B": 1, "BUTTON_X": 2, "BUTTON_Y": 3, "LEFT_BUMPER": 4, "RIGHT_BUMPER": 5, "BACK": 6, "START": 7, "MODE": 8, "LEFT_STICK_BUTTON": 9, "RIGHT_STICK_BUTTON": 10, "GUIDE": 11,
+}
 
 # Settings
-max_vel=30.0
-max_ang_vel=30.0
-act_max_vel=25.0
+max_vel=30.0                        # Highest motor drive speed allowed
+max_ang_vel=30.0                    # Highest motor turn speed allowed
+act_max_vel=25.0                    # Highest actuator velocity allowed
+deadzone=0.4                        # Deadzone of actuator joystick
+Schematic=Xbox_controller_map       # Defines what controler schematic to use
 
-# Mapping for xbox controller, tested on linux
-Axis_map = {
-    "LEFT_JOY_X": 0,        # Move bucket up/down
-    "LEFT_JOY_Y": 1,        # Move main actuator up/down   
-    "LEFT_TRIGGER": 2,      # Arming button
-    "RIGHT_JOY_X": 3,       # Turn left/right
-    "RIGHT_JOY_Y": 4,       # Drive forword/backwords
-    "RIGHT_TRIGGER": 5,
-    "HORIZONTAL_DPAD": 6,
-    "VERTICAL_DPAD": 7,
-}
-Button_map = {
-    "BUTTON_A": 0,
-    "BUTTON_B": 1,
-    "BUTTON_X": 2,
-    "BUTTON_Y": 3,
-    "LEFT_BUMPER": 4,
-    "RIGHT_BUMPER": 5,      
-    "BACK": 6,
-    "START": 7,
-    "MODE": 8,
-    "LEFT_STICK_BUTTON": 9,
-    "RIGHT_STICK_BUTTON": 10,   # Switch between camera views (hold held switches pov, double click switches main view type)
-    "GUIDE": 11,
+
+Buttons = {
+    "MOTOR_X": {"type": "axis", "input": Schematic["RIGHT_JOY_X"]},                 # Turn left/right
+    "MOTOR_Y": {"type": "axis", "input": Schematic["RIGHT_JOY_Y"]},                 # Drive forword/backwords
+    "ACTUATOR_X": {"type": "axis", "input": Schematic["LEFT_JOY_X"]},               # Move bucket up/down
+    "ACTUATOR_Y": {"type": "axis", "input": Schematic["LEFT_JOY_Y"]},               # Move main actuator up/down  
+    "ARM": {"type": "axis", "input": Schematic["LEFT_TRIGGER"]},                    # Arming button
+    "CAMERA_TOGGLE": {"type": "button", "input": Schematic["RIGHT_STICK_BUTTON"]},  # Toggle between camera views
+    "CAMERA_SWITCH": {"type": "button", "input": Schematic["START"]},               # Switch between camera views
 }
 
 # Button combos: 
@@ -51,20 +44,17 @@ Button_map = {
 # Save current slam map button. A way to start/stop slam mapping?
 
 # Variables used
-timeout=0.5
+timeout=1
 default_camera_view=0
 second_camera_view=1
 
+# Handles controller inputs
 class ControllerNode(Node):
     def __init__(self):
         super().__init__('controller_input_node')
         self.connected = False
         self.time=self.get_clock().now()
-
-        self.last_msg_time=self.time
-        self.last_camera_click=self.time
-        self.last_camera_click2=0
-        self.last_camera_release=self.time
+        self.last_camera_state_change=self.time
 
         # Start the /joy node to talk to controller
         try:
@@ -83,6 +73,7 @@ class ControllerNode(Node):
         self.actuator_velocity_publisher = self.create_publisher(Actuators, '/actuators', 10)
         self.camera_state_publisher = self.create_publisher(Camera, '/camera/toggle_view', 10)
 
+    # Handle joystick logic
     def joy_callback(self, msg: Joy):
         self.time = self.get_clock().now()
         
@@ -95,48 +86,59 @@ class ControllerNode(Node):
 
         # Send x and y joystick inputs as linear and angular velocity
         twist = Twist()
-        vel=msg.axes[Axis_map['RIGHT_JOY_X']]
-        ang_vel=msg.axes[Axis_map['RIGHT_JOY_Y']]
-        arm_act_vel=msg.axes[Axis_map['LEFT_JOY_Y']]
-        bucket_act_vel=msg.axes[Axis_map['LEFT_JOY_X']]
-        camera_state=msg.buttons[Button_map['RIGHT_STICK_BUTTON']]
+        ang_vel=self.get_input_values(msg, "MOTOR_X")
+        vel=self.get_input_values(msg, "MOTOR_Y")
+
+        # Deadzone mapping for actuator to prevent double inputs and movment issues
+        arm_act_vel=self.get_input_values(msg, "ACTUATOR_Y")
+        if(arm_act_vel<deadzone and arm_act_vel>-deadzone): arm_act_vel=0
+        elif(arm_act_vel > 0): arm_act_vel=self.map_value(arm_act_vel,deadzone,1.0,0.0,1.0)
+        else: arm_act_vel=self.map_value(arm_act_vel,-1.0,-deadzone,-1.0,0.0)
+
+        bucket_act_vel=self.get_input_values(msg, "ACTUATOR_X")
+        if(bucket_act_vel<deadzone and bucket_act_vel>-deadzone): bucket_act_vel=0
+        elif(bucket_act_vel > 0): bucket_act_vel=self.map_value(bucket_act_vel,deadzone,1.0,0.0,1.0)
+        else: bucket_act_vel=self.map_value(bucket_act_vel,-1.0,-deadzone,-1.0,0.0)
 
         # If unarmed or controller is disconnected send a speed of 0
-        if(msg.axes[Axis_map['LEFT_TRIGGER']] >= 0 or not self.connected): 
+        if(self.get_input_values(msg, "ARM") >= 0 or not self.connected): 
             vel=0
             ang_vel=0
             arm_act_vel=0
             bucket_act_vel=0
             
         # Motor velocity data
-        twist.linear.x = vel*act_max_vel
-        twist.angular.z = ang_vel*act_max_vel
+        twist.linear.x = vel*max_vel
+        twist.angular.z = ang_vel*max_ang_vel
         self.robot_velocity_publisher.publish(twist)
 
         # Publish actuator data
         actuator_msg = Actuators()
-        actuator_msg.arm = arm_act_vel * max_vel  
-        actuator_msg.bucket = bucket_act_vel * max_ang_vel
+        actuator_msg.arm = arm_act_vel * act_max_vel
+        actuator_msg.bucket = bucket_act_vel * act_max_vel
         self.actuator_velocity_publisher.publish(actuator_msg)
 
         # Publish camera data
+        camera_state_actiave=self.get_input_values(msg, "CAMERA_TOGGLE")
+        camera_state = self.get_input_values(msg, "CAMERA_SWITCH")
+        toggled=False
+        
         camera_msg = Camera()
-        if(camera_state==0): 
-            camera_msg.camera_view = default_camera_view
-            self.last_camera_release=self.time
+        if(camera_state_actiave==0): camera_msg.camera_view = default_camera_view
+        else: camera_msg.camera_view = second_camera_view
 
-            release_time=(self.time - self.last_camera_release).nanoseconds*1e-9
-            if(release_time>0.1): self.last_camera_click2=self.last_camera_click
-        else: 
-            release_time=(self.time - self.last_camera_release).nanoseconds*1e-9
-            click_time=(self.time - self.last_camera_click).nanoseconds*1e-9
-            if (release_time>0.02 and release_time<0.1) and (click_time>0.02 and click_time<0.1):
-                default=default_camera_view
-                default_camera_view=second_camera_view
-                second_camera_view=default
-            camera_msg.camera_view = second_camera_view
-            self.last_camera_click=self.time
+        if(camera_state==1 and (self.time-self.last_camera_state_change).nanoseconds*1e-9>0.3):
+            default=default_camera_view
+            default_camera_view=second_camera_view
+            second_camera_view=default
+            self.last_camera_state_change=self.time
         self.camera_state_publisher.publish(camera_msg)
+
+    # Get data dynamiclly from joystick using input type
+    def get_input_values(self, msg, input):
+        button = Buttons[input]
+        if(button["type"]=="axis"): return msg.axes[button["input"]]
+        else: return msg.buttons[button["input"]]
 
     # Constantly check to make sure controller is connected
     def check_connection(self):
@@ -161,7 +163,11 @@ class ControllerNode(Node):
                 actuator.arm = 0.0  
                 actuator.bucket = 0.0  
                 self.actuator_velocity_publisher.publish(actuator)
-
+    
+    # Map values to match range
+    def map_value(self, x, in_min, in_max, out_min, out_max):
+        x = max(min(x, in_max), in_min)
+        return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
     # Destory started sub-process
     def destroy_node(self):
