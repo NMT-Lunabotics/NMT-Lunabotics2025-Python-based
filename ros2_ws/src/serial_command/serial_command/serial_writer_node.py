@@ -131,8 +131,6 @@ class SerialCommandNode(Node):
         combined = [int(d) for d in msg.data]    
         self.ser.send_command(msg.command, combined)
 
-
-
 def main(args=None):
     rclpy.init(args=args)
     node = SerialCommandNode()

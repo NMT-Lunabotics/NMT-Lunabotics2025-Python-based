@@ -1,44 +1,46 @@
 #!/bin/bash
 set -e
 
-# Set default flags/settings of container
+# The diffrent containors core image and docker file path
 PYTHON_IMAGE_NAME="luna/python-robot:latest"
 PYTHON_DOCKERFILE="Dockerfile.python"
 
 ROS_IMAGE_NAME="luna/ros2-humble:latest"
 ROS_DOCKERFILE="Dockerfile.ros"
 
-# Containor settings and operations
-DISPLAY_ENABLED=false
-BUILD_IMAGE=false
-RESTART_CONTAINER=false
-START_SYSTEM_CONTROL=false
-GITHUB_PULL=false
-LOCAL_PULL=false
-LOCAL_USERNAME=unknown
-EXECUTE_COMMAND=false
-COMMAND_STRING=""
-STOP_CONTAINER=false
-QUIET_MODE=false
+ARDUINO_IMAGE_UPDATER="./system_operations/system_control/arduino_updater.sh"
 
-# Determin what containors to run
+# Variables which handle what containors run
 RUN_PYTHON_IMAGE=false
 RUN_ROS_IMAGE=true
 ARDUINO_UPDATER_IMAGE=false
 CONTAINER_MODE=2 #//1=python, 2=ros
 
+# Containor settings and operations
+DISPLAY_ENABLED=false               # Enable display forwording
+BUILD_IMAGE=false                   # Flag tells system if it should attempt to rebuild dependencies
+BUILD_SKIP=false                    # Skip the rebuild of dependencies
+RESTART_CONTAINER=false             # Stop all running docker containors   
+STOP_CONTAINER=false                # Stop all running containors and do not start new ones              
+GITHUB_PULL=false                   # Attempt to do a github pull
+LOCAL_PULL=false                    # Attempt to pull over ssh
+LOCAL_USERNAME=unknown              # Default username used for ssh pull             
+COMMAND_STRING=""                   # Command to execute in containor                  
+QUIET_MODE=false                    # Supresse command output
+ROS_DOMAIN_ID=42                    # Set domain id for network passthrough for controller     
 
-# Container directorys and mount point
+# Ros systems
+APRIAL_TAG_POSE=false               # Start aprial tag system
+APRIAL_TAG_POSE_DISPLAY=false       # Determines if a special video feed should be displayed
+START_SYSTEM_CONTROL=false          # Start main system control 
+
+# Setup a containor mount point
 MOUNT_USERNAME=false
 MOUNT_HOST_PATH=false
 REPOSITORY_NAME="NMT-Lunabotics2025-Python-based"
 WORKING_DIR_CONTAINER="/home/luna/$REPOSITORY_NAME"
 WORKING_DIR_HOST="$(pwd)"
 ROS_DIR="ros2_ws"
-
-# Ros stuff to start
-APRIAL_TAG_POSE=false
-APRIAL_TAG_POSE_DISPLAY=false
 
 # Use current environment variables if available, fallback to defaults
 : "${DISPLAY:=$DISPLAY}"
@@ -56,7 +58,7 @@ usage() {
     echo ""
     echo "Options:"
     echo "  --display (-d)                         Enable display support (forward X11 display)"
-    echo "  --build (-b)                           Build the Docker container (will stop the running container if any)"
+    echo "  --build (-b) [skip|s]                  Build the Docker container (will stop the running container if any)"
     echo "  --restart (-r)                         Restart all Docker containers"
     echo "  --mount (-m) <username> <host_path>    Mounts a directory into jetson across wifi"
     echo "  --pull (-p) [local|l] <username>       Pulls the most recent files from github or pulls local files with local connection"
@@ -72,7 +74,7 @@ usage() {
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
         -d|--display) DISPLAY_ENABLED=true; shift ;;                                                                                                                                                 # Enable GUI forwarding
-        -b|--build) BUILD_IMAGE=true; shift ;;                                                                                                                                                       # Force image rebuild
+        -b|--build) BUILD_IMAGE=true; if [[ "$2" == "skip" || "$2" == "s" ]]; then BUILD_SKIP=true; shift; fi; shift ;;                                                                                                                                                 # Force image rebuild
         -r|--restart) RESTART_CONTAINER=true; shift ;;                                                                                                                                               # Remove old containers first
         -s|--start) START_SYSTEM_CONTROL=true; shift ;;                                                                                                                                              # Start system control script
         -p|--pull) GITHUB_PULL=true; [[ "$2" == "local" || "$2" == "l" ]] && LOCAL_PULL=true && shift; [[ -n "$2" && "$2" != -* ]] && LOCAL_USERNAME="$2" && shift; shift ;;                                                                                                          # Pull github changes before building
@@ -80,7 +82,7 @@ while [[ "$#" -gt 0 ]]; do
         -h|--help) usage; shift ;;                                                                                                                                                                   # Shows help infomation about the system
         -mm|--mount) [[ "$#" -lt 3 ]] && { echo "Error: --mount <username> <host_path>"; exit 1; }; MOUNT_USERNAME="$2"; MOUNT_HOST_PATH="$3"; shift 3 ;;                                            # Custom mount point
         -c|--container) [[ -n "$2" && ! "$2" =~ ^- ]] && case "$2" in ros) CONTAINER_MODE=2 ;; python) CONTAINER_MODE=1 ;; *) CONTAINER_MODE=0 ;; esac && shift 2 || { CONTAINER_MODE=0; shift; } ;; # Container mount mode
-        -cmd|--command) EXECUTE_COMMAND=true; shift; COMMAND_STRING="$*"; break ;;                                                                                                                   # Execute command in container without entering
+        -cmd|--command) COMMAND_STRING="$*"; break ;;                                                                                                                   # Execute command in container without entering
         -x|--stop) STOP_CONTAINER=true; break ;;                                                                                                                                                     # Stop all running containers
         -q|--quite) QUIET_MODE=true; shift ;;   
         -sys|--arduino) ARDUINO_UPDATER_IMAGE=true; shift ;;                                                                                                                                                       # Start bash in quite mode
@@ -118,15 +120,15 @@ if [ "$GITHUB_PULL" = true ]; then
         BUILD_IMAGE=true
 fi
 
-if [ "$STOP_CONTAINER" = true ]; then
-    run_cmd docker rm -f $(docker ps -aq) 2>/dev/null || true
-    exit 0
+# Stop running containor when containor is stopped, restarted, or built
+if [[ "$STOP_CONTAINER" == true || "$RESTART_CONTAINER" == true || ( "$BUILD_IMAGE" == true && "$BUILD_SKIP" == false ) ]]; then
+    CONTAINERS=$(docker ps -aq)
+    if [ -n "$CONTAINERS" ]; then
+        run_cmd docker rm -f $CONTAINERS
+    fi
 fi
-
-
-# If --restart flag is used, restart all containors
-if [ "$RESTART_CONTAINER" = true ] || [ "$BUILD_IMAGE" = true ]; then
-    run_cmd docker rm -f $(docker ps -aq) || true
+if [ "$STOP_CONTAINER" == true ]; then
+    exit 0
 fi
 
 # Build image if needed or if --build flag is used
@@ -135,9 +137,9 @@ if [ "$BUILD_IMAGE" = true ] || ! docker image inspect $PYTHON_IMAGE_NAME >/dev/
         echo "Building Docker image: $PYTHON_IMAGE_NAME"
         run_cmd docker build -t $PYTHON_IMAGE_NAME -f $PYTHON_DOCKERFILE .
     fi
-    if [ "$RUN_ROS_IMAGE" = true ]; then
+    if [ "$RUN_ROS_IMAGE" = true ] && [ "$BUILD_SKIP" = false ]; then
         echo "Building Docker image: $ROS_IMAGE_NAME"
-        run_cmd docker build -t $ROS_IMAGE_NAME -f $ROS_DOCKERFILE .
+        run_cmd docker build --target base -t $ROS_IMAGE_NAME -f $ROS_DOCKERFILE .
     fi
     run_cmd docker image prune -f
 fi
@@ -183,7 +185,7 @@ start_container() {
         fi
 
         # Start container detached
-        CONTAINER_ID=$(docker run -dit "${DOCKER_FLAGS[@]}" $IMAGE_NAME bash)
+        CONTAINER_ID=$(docker run -dit -e ROS_DOMAIN_ID=$ROS_DOMAIN_ID "${DOCKER_FLAGS[@]}" $IMAGE_NAME bash)
     fi
     echo "$CONTAINER_ID"
 }
@@ -198,7 +200,8 @@ if [ "$RUN_ROS_IMAGE" = true ]; then
     run_cmd docker exec -it $ROS_CONTAINER_ID bash -c "source /opt/ros/humble/setup.bash"
 fi
 
-if [ "$EXECUTE_COMMAND" = true ]; then
+# Run command in containor
+if [ -n "$COMMAND_STRING" ]; then
     run_cmd docker exec -it "$ROS_CONTAINER_ID" bash -lc \
     "source /opt/ros/humble/setup.bash && \
     [ -f $WORKING_DIR_CONTAINER/$ROS_DIR/install/setup.bash ] && \
@@ -217,7 +220,7 @@ fi
 
 # Attempt arduino update cycle
 if [ "$ARDUINO_UPDATER_IMAGE" = true ] || [ "$BUILD_IMAGE" = true ]; then
-    ./system_operations/system_control/arduino_updater.sh
+    "$ARDUINO_IMAGE_UPDATER"
 fi
 
 # Attach to container shell

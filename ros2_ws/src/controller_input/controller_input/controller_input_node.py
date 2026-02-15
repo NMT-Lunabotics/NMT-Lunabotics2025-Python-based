@@ -9,6 +9,9 @@ from controller_input.msg import Actuators, Camera
 import subprocess
 import time
 import sys
+
+# Run on local system copy and then if robot and local domain id matches they can connect
+
 Xbox_controller_map = {
     # Axes
     "LEFT_JOY_X": 0, "LEFT_JOY_Y": 1, "LEFT_TRIGGER": 2, "RIGHT_JOY_X": 3, "RIGHT_JOY_Y": 4, "RIGHT_TRIGGER": 5, "HORIZONTAL_DPAD": 6, "VERTICAL_DPAD": 7,
