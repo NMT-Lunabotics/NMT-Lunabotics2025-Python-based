@@ -34,7 +34,7 @@ ssh -X luna@192.168.0.207
 |-----|-----|-----|-----|
 | Main jetson used in eletronics box | luna | 192.168.0.207 | 123456789 |
 | --> Ethernet | luna | 192.168.10.2 | 123456789 |
-| Jetson used in goliath test robot | nuc | 192.168.0.139 | 123456789 |
+| Jetson used in goliath test robot | nuc | 129.138.171.148 | 123456789 |
 | Other jetson | luna | This jetson has No wifi | 123456789 |
 
 
