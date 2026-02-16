@@ -1,11 +1,26 @@
 # Set base docker image
 FROM ros:humble-ros-core AS base
 
+USER root
+
+# Install apt-fast with pre-configuration to speed up apt-get operations
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    software-properties-common \
+    aria2 \
+    && add-apt-repository -y ppa:apt-fast/stable \
+    && apt-get update \
+    && echo debconf apt-fast/maxdownloads string 10 | debconf-set-selections \
+    && echo debconf apt-fast/dlflag boolean true | debconf-set-selections \
+    && echo debconf apt-fast/aptmanager string apt-get | debconf-set-selections \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y apt-fast \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
 # Create non-root user (luna) with access to full container
 ARG USER=luna
 # Base layer
 RUN useradd -m $USER && usermod -aG dialout,video $USER \
-    && apt-get update && apt-get install -y sudo git nano openssh-client rsync \
+    && apt-fast update && apt-fast install -y sudo git nano openssh-client rsync \
     && usermod -aG sudo $USER \
     && echo "$USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers \
     && rm -rf /var/lib/apt/lists/*
@@ -21,14 +36,9 @@ SHELL ["/bin/bash", "-c"]
 # Set USER back to root for package installation.
 USER root 
 
+# Packages are setup as layers. A certain layer can be targeted for quick installs, only updated essential stuff
 FROM base AS core
-RUN apt-get update && apt-get install -y \
-    # Development packages:
-    nano \
-    git \
-    x11-apps \
-    usbutils \
-    # Other
+RUN apt-fast update && apt-fast install -y --no-install-recommends \
     build-essential \
     cmake \
     python3-pip \
@@ -39,42 +49,39 @@ RUN apt-get update && apt-get install -y \
     ros-humble-image-transport \
     ros-humble-robot-state-publisher \
     ros-humble-joy \
-    && rm -rf /var/lib/apt/lists/*
-
-FROM core AS nav
-RUN apt-get update && apt-get install -y \
-    ros-humble-nav2-bringup \
-    ros-humble-pcl-ros \
+    #
     ros-humble-rviz2 \
-    ros-humble-rtabmap-ros \
-    ros-humble-tf2-tools \
     && rm -rf /var/lib/apt/lists/*
 
-FROM core AS sim
-RUN apt-get update && apt-get install -y \
-    ros-humble-turtlebot3* \
-    #gazebo \
-    #libgazebo-dev \
-    #libboost-all-dev \
-    && rm -rf /var/lib/apt/lists/*
-    
+FROM core AS dev
+RUN pip install --no-cache-dir \
+    nano \
+    git \
+    x11-apps \
+    usbutils
+
 FROM core AS python
 RUN pip install --no-cache-dir \
     pyrealsense2 \
     pyudev \
     pyserial
-    
 
+FROM core AS nav
+RUN apt-fast update && apt-fast install -y \
+    ros-humble-nav2-bringup \
+    ros-humble-pcl-ros \
+    ros-humble-rtabmap-ros \
+    ros-humble-tf2-tools \
+    && rm -rf /var/lib/apt/lists/*
 
-FROM core AS final
-#COPY --from=nav /opt/ros /opt/ros
-#COPY --from=sim /opt/ros /opt/ros
-#COPY --from=python /usr/local /usr/local
-
-
-    
-
-
+FROM core AS sim
+RUN apt-fast update && apt-fast install -y \
+    gazebo \
+    ros-humble-turtlebot3* \
+    && rm -rf /var/lib/apt/lists/*
+#libgazebo-dev \
+#libboost-all-dev \
+#ros-humble-turtlebot3* \
 
 # Install ROS packages to install
 USER $USER
@@ -87,6 +94,7 @@ USER $USER
 
 # Copy start_docker.sh into docker and make executable for accessing the container     && rosdep install --from-paths src --ignore-src -r -y \     #&& git clone https://github.com/hku-mars/FAST-LIVO2.git \
 USER root
+
 COPY start_docker.sh /usr/local/bin/start_docker
 RUN chmod +x /usr/local/bin/start_docker \
     && echo "alias mystart='/usr/local/bin/start_docker'" >> /etc/bash.bashrc

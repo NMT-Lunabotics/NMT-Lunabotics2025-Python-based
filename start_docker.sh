@@ -27,7 +27,9 @@ LOCAL_PULL=false                    # Attempt to pull over ssh
 LOCAL_USERNAME=unknown              # Default username used for ssh pull             
 COMMAND_STRING=""                   # Command to execute in containor                  
 QUIET_MODE=false                    # Supresse command output
-ROS_DOMAIN_ID=42                    # Set domain id for network passthrough for controller     
+ROS_DOMAIN_ID=42                    # Set domain id for network passthrough for controller 
+#sudo apt install docker-buildx-plugin
+export DOCKER_BUILDKIT=1 
 
 # Ros systems
 APRIAL_TAG_POSE=false               # Start aprial tag system
@@ -139,7 +141,7 @@ if [ "$BUILD_IMAGE" = true ] || ! docker image inspect $PYTHON_IMAGE_NAME >/dev/
     fi
     if [ "$RUN_ROS_IMAGE" = true ] && [ "$BUILD_SKIP" = false ]; then
         echo "Building Docker image: $ROS_IMAGE_NAME"
-        run_cmd docker build --target base -t $ROS_IMAGE_NAME -f $ROS_DOCKERFILE .
+        run_cmd docker build --target sim -t $ROS_IMAGE_NAME -f $ROS_DOCKERFILE .
     fi
     run_cmd docker image prune -f
 fi
