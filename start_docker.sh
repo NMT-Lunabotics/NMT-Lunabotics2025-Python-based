@@ -114,7 +114,7 @@ fi
 
 # Pull latest changes from GitHub if --pull flag is used
 if [ "$GITHUB_PULL" = true ]; then
-        sudo chown -R 1000:1000 "$WORKING_DIR_HOST"
+        run_cmd docker exec -u 0 $ROS_CONTAINER_ID bash "chown -R luna:luna $WORKING_DIR_CONTAINER"
         ./pull.sh $LOCAL_PULL $LOCAL_USERNAME
         RESTART_CONTAINER=true
         BUILD_IMAGE=true
