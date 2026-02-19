@@ -11,7 +11,7 @@ from sensor_msgs.msg import LaserScan
 from aprial_tag_pose.msg import Pose
 from serial_command.msg import Command 
 from math import sin, cos
-from geometry_msgs.msg import Quaternion
+from geometry_msgs.msg import Quaternion, Pose2D
 from nav_msgs.msg import Odometry
 
 class FakeLidar(Node):
@@ -86,6 +86,7 @@ class FakeLidar(Node):
         # Publishers that data is pushed to, used to fake real data
         self.pub_lidar = self.create_publisher(LaserScan, 'scan', 10)
         self.pub_tags = self.create_publisher(Pose, 'aprial_tag/pose', 10)
+        self.fake_lidar_pose = self.create_publisher(Pose2D, 'fake_lidar/pose', 10)
         #self.pub_odom = self.create_publisher(Odometry, '/odom', 10)
 
         # Subscriber used to lision to incomming serial commands so that simulator can match real robot
@@ -235,6 +236,11 @@ class FakeLidar(Node):
 
         vis = self.map.copy()
         ix, iy = int(self.x), int(self.y)
+
+        pose_msg = Pose2D()
+        pose_msg.x = self.x
+        pose_msg.y = self.y
+        self.fake_lidar_pose.publish(pose_msg)
 
         rect_length = self.robot_width*2*10
         rect_width = self.robot_width*10

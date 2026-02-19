@@ -6,7 +6,6 @@ from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 import cv2
 import numpy as np #math and data types
-import pyrealsense2 as rs #important for the camera
 import math
 
 # -------------------- Settings --------------------
@@ -29,16 +28,6 @@ distCoeffs = np.array([[-0.04335213, 0.0489175, 0.00186086, 0.00056816, 0.032066
 
 dictionary = cv2.aruco.getPredefinedDictionary(tag_type)
 parameters = cv2.aruco.DetectorParameters_create()
-
-pipe = rs.pipeline() #establishes camera operations
-cfg = rs.config()
-cfg.enable_stream(rs.stream.color, resolution["x"], resolution["y"], rs.format.bgr8, framerate)
-cfg.enable_stream(rs.stream.depth, resolution["x"], resolution["y"], rs.format.z16, framerate)
-pipe.start(cfg)
-align = rs.align(rs.stream.color)
-
-spatial = rs.spatial_filter()
-temporal = rs.temporal_filter() #the fourth dimension
 
 # -------------------- Utility Class --------------------
 class AprialTagPose:
@@ -116,22 +105,10 @@ class AprialTagPose:
     # -------------------- Frame Handling --------------------
     #picks up frames for the program to read
     @staticmethod
-    def get_frames():
-        frames = pipe.poll_for_frames()
-        if not frames:
-            return None, None
-        aligned = align.process(frames)
-        depth_frame = aligned.get_depth_frame()
-        color_frame = aligned.get_color_frame()
-        if not color_frame or not depth_frame:
-            return None, None
-        try:
-            depth_frame = spatial.process(depth_frame)
-            depth_frame = temporal.process(depth_frame)
-        except Exception as e:
-            print("Depth filter error:", e)
-        img = np.asanyarray(color_frame.get_data())
-        return img, depth_frame
+    def get_frames(img):
+        if img is None:
+            return None
+        return img
 
     #code for detecting and returning tags
     @staticmethod
@@ -169,24 +146,16 @@ class AprialTagPose:
         return X, Z, yaw
 
     # Handles windows and drawing
-    def visualize(self, X, Z, yaw, rgb_img, depth_frame, rgb_camera, depth_camera, pose_map):
+    def visualize(self, X, Z, yaw, rgb_img, depth_frame=None, rgb_camera=True, depth_camera=True, pose_map=True):
         map_vis = self.base_map.copy()
         self.draw_grid(map_vis, scale)
         self.draw_robot_orientation(map_vis, X, Z, box_size=30)
         self.draw_camera(map_vis, X, Z, yaw=yaw, scale=scale, size=10)
 
         info_text = f"Pos: ({X:.2f}, {Z:.2f}) m | Yaw: {math.degrees(yaw):.1f}"
-        cv2.putText(map_vis, info_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (0, 0, 0), 2)
         cv2.putText(map_vis, info_text, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.7, (255, 255, 255), 1)
 
         if rgb_camera: cv2.imshow("Camera RGB Vision", rgb_img)
-
-        if depth_camera and depth_frame is not None:
-            depth_vis = np.asanyarray(depth_frame.get_data())
-            depth_vis = cv2.convertScaleAbs(depth_vis, alpha=0.03)  # scale factor may need adjustment
-            depth_vis = cv2.applyColorMap(depth_vis, cv2.COLORMAP_JET)
-            cv2.imshow("Camera Depth Vision", depth_vis)
-
         if pose_map: cv2.imshow("Pose Map", map_vis)
         cv2.waitKey(1)
 
@@ -197,32 +166,38 @@ class AprialTagPoseNode(Node):
         self.ser = AprialTagPose()
         self.timer = self.create_timer(1/framerate, self.timer_callback)
         self.pose_pub = self.create_publisher(Pose, '/aprial_tag/pose', 10)
+        self.image_pub = self.create_publisher(Image, '/camera/rgb/image_raw', 10)
+        self.bridge = CvBridge()
+
         self.declare_parameter('visual_display', False)
         self.declare_parameter('rgb_camera', True)
-        self.declare_parameter('depth_camera', True)
         self.declare_parameter('pose_map', True)
 
         self.visual_display = self.get_parameter('visual_display').value
         self.rgb_camera = self.get_parameter('rgb_camera').value
-        self.depth_camera = self.get_parameter('depth_camera').value
         self.pose_map = self.get_parameter('pose_map').value
 
-        # Create camera topic for camera stream
-        self.image_pub = self.create_publisher(Image, '/camera/rgb/image_raw', 10)
-        self.bridge = CvBridge()
+        self.latest_image = None
+        self.create_subscription(
+            Image,
+            '/camera/color/image_raw',
+            self.image_callback,
+            10
+        )
+
+    def image_callback(self, msg):
+        self.latest_image = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
 
     def timer_callback(self):
-        img, depth = self.ser.get_frames()
-        if img is None:
+        if self.latest_image is None:
             return
-        
-        # Publish raw camera stream to camera topic
+        img = self.latest_image
         image_msg = self.bridge.cv2_to_imgmsg(img, encoding='bgr8')
         self.image_pub.publish(image_msg)
 
         corners, ids = self.ser.detect_markers(img)
         X, Z, yaw = self.ser.estimate_pose(corners, ids, img)
-        if(self.visual_display): self.ser.visualize(X, Z, yaw, img, depth, self.rgb_camera, self.depth_camera, self.pose_map)
+        if(self.visual_display): self.ser.visualize(X, Z, yaw, img, rgb_camera=self.rgb_camera, pose_map=self.pose_map)
 
         msg = Pose()
         msg.distance = math.sqrt(float(X)**2 + float(Z)**2)
@@ -241,7 +216,6 @@ def main(args=None):
     try:
         rclpy.spin(node)
     finally:
-        pipe.stop()
         cv2.destroyAllWindows()
         node.destroy_node()
         rclpy.shutdown()

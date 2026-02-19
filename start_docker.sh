@@ -157,17 +157,29 @@ start_container() {
 
         # Base Docker flags for privileged access, devices, working directory
         DOCKER_FLAGS=(
-            --network=host                                   # Use host networking
             --privileged                                     # Give container privileged access
+            --network=host                                   # Use host networking
+            #--volume=/dev:/dev:rw
+
             --group-add video                                # Give video group access
             --group-add dialout                              # Ensure USB serial access
-            --device=/dev/video:/dev/video
+            --group-add plugdev
+            #--device /dev:/dev
+            #--device=/dev/video:/dev/video
+            -v /usr/lib/aarch64-linux-gnu:/usr/lib/aarch64-linux-gnu:ro
+            -v /lib/modules:/lib/modules:ro
+            -v /dev:/dev
+            --device=/dev/video0
             -v /sys:/sys:ro 
             -v /run/udev:/run/udev:ro
-            --device /dev:/dev                               # Map devices  
+            --device-cgroup-rule='c 81:* rmw' 
+            --device-cgroup-rule='c 189:* rmw' 
+            --device-cgroup-rule='c 13:* rmw'
+            --device /dev/bus/usb:/dev/bus/usb                              # Map devices  
             -v $WORKING_DIR_HOST:$WORKING_DIR_CONTAINER      # Mount host folder
             -w $WORKING_DIR_CONTAINER                        # Set working directory               
         )
+        
 
         # Enable display if requested and $DISPLAY is set
         if [ "$DISPLAY_ENABLED" = true ] && [ -n "$DISPLAY" ]; then
@@ -259,7 +271,7 @@ if [ "$CONTAINER_MODE" = 2 ]; then
     fi
 
     # Open interactive shell terminal
-    docker exec -u 0 -it $ROS_CONTAINER_ID bash -c "\
+    docker exec -u root -it $ROS_CONTAINER_ID bash -c "\
     cd $ROS_DIR && \
     [ -f /opt/ros/humble/setup.bash ] && source /opt/ros/humble/setup.bash && \
     [ -f install/setup.bash ] && source install/setup.bash && \

@@ -1,0 +1,2 @@
+realsense2_camera:
+  enable_color: true

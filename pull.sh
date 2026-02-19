@@ -27,6 +27,11 @@ elif [[ "$LOCAL" == true ]]; then
         exit 1
     fi
     PC_IP=$(echo "$SSH_CLIENT" | awk '{print $1}')
+    if [ "$PC_IP" == "192.168.10.1" ]; then
+        PC_IP="192.168.10.2"
+    elif [ "$PC_IP" == "192.168.10.2" ]; then
+        PC_IP="192.168.10.1"
+    fi
 
     RSYNC_EXCLUDES=()
     for item in "${EXCLUDE_FROM_PULL[@]}"; do
