@@ -1,18 +1,17 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>camera</name>
+  <name>serial_commands</name>
   <version>0.0.0</version>
-  <description>TODO: Package description</description>
-  <maintainer email="root@todo.todo">root</maintainer>
-  <license>TODO: License declaration</license>
+  <description>serial sends commands to arduino to move robot and publishes received data</description>
+  <maintainer email="benjamin.peterson@student.nmt.edu">luna</maintainer>
+  <license>Apache-2.0</license>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
   <depend>rclcpp</depend>
-  <depend>rclpy</depend>
-  <depend>std_msgs</depend>
   <depend>sensor_msgs</depend>
+  <depend>nav_msgs</depend>
 
   <build_depend>rosidl_default_generators</build_depend>
   <exec_depend>rosidl_default_runtime</exec_depend>

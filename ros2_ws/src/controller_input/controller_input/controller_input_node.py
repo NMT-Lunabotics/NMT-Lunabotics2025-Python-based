@@ -1,10 +1,8 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-from geometry_msgs.msg import Twist, Vector3
+from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Joy
-from std_msgs.msg import Float32
-from rclpy.duration import Duration
 from controller_input.msg import Actuators, Camera
 import subprocess
 import time
@@ -20,13 +18,10 @@ Xbox_controller_map = {
 }
 
 # Settings
-max_vel=30.0                        # Highest motor drive speed allowed
-max_ang_vel=30.0                    # Highest motor turn speed allowed
-act_max_vel=25.0                    # Highest actuator velocity allowed
 deadzone=0.4                        # Deadzone of actuator joystick
 Schematic=Xbox_controller_map       # Defines what controler schematic to use
 
-
+# Button mappings
 Buttons = {
     "MOTOR_X": {"type": "axis", "input": Schematic["RIGHT_JOY_X"]},                 # Turn left/right
     "MOTOR_Y": {"type": "axis", "input": Schematic["RIGHT_JOY_Y"]},                 # Drive forword/backwords
@@ -53,11 +48,21 @@ second_camera_view=1
 
 # Handles controller inputs
 class ControllerNode(Node):
+    """This acts as an data interpretation layer, all controller actions and combos are converted into topics used by the rest of teh system"""
     def __init__(self):
         super().__init__('controller_input_node')
         self.connected = False
         self.time=self.get_clock().now()
         self.last_camera_state_change=self.time
+        self.last_msg_time = self.time
+
+        # Initalize used message types
+        self.cmd_vel_msg = Twist()
+        self.actuator_msg = Actuators()
+        self.actuator_msg.arm = 0.0
+        self.actuator_msg.bucket = 0.0
+        self.camera_msg = Camera()
+        self.camera_msg.camera_view = default_camera_view
 
         # Start the /joy node to talk to controller
         try:
@@ -71,10 +76,14 @@ class ControllerNode(Node):
         self.joy = self.create_subscription(Joy,'/joy',self.joy_callback,10)
         self.create_timer(0.1, self.check_connection)
 
+        self.create_timer(0.05, self.publish_cmd_vel)       
+        self.create_timer(0.05, self.publish_actuators)    
+        self.create_timer(0.1, self.publish_camera_state) 
+
         # Create publishers for robot commands
-        self.robot_velocity_publisher = self.create_publisher(Twist, '/cmd_vel', 10)
-        self.actuator_velocity_publisher = self.create_publisher(Actuators, '/actuators', 10)
-        self.camera_state_publisher = self.create_publisher(Camera, '/camera/toggle_view', 10)
+        self.robot_velocity_publisher = self.create_publisher(Twist, '/cmd_vel', 5)
+        self.actuator_velocity_publisher = self.create_publisher(Actuators, '/actuators', 5)
+        self.camera_state_publisher = self.create_publisher(Camera, '/camera/toggle_view', 5)
 
     # Handle joystick logic
     def joy_callback(self, msg: Joy):
@@ -111,20 +120,21 @@ class ControllerNode(Node):
             bucket_act_vel=0
             
         # Motor velocity data
-        twist.linear.x = vel*max_vel
-        twist.angular.z = ang_vel*max_ang_vel
-        self.robot_velocity_publisher.publish(twist)
+        twist.linear.x = vel
+        twist.angular.z = ang_vel
+        self.cmd_vel_msg=twist
+        #self.robot_velocity_publisher.publish(twist)
 
         # Publish actuator data
         actuator_msg = Actuators()
-        actuator_msg.arm = arm_act_vel * act_max_vel
-        actuator_msg.bucket = bucket_act_vel * act_max_vel
-        self.actuator_velocity_publisher.publish(actuator_msg)
+        actuator_msg.arm = arm_act_vel
+        actuator_msg.bucket = bucket_act_vel
+        self.actuator_msg=actuator_msg
+        #self.actuator_velocity_publisher.publish(actuator_msg)
 
         # Publish camera data
         camera_state_actiave=self.get_input_values(msg, "CAMERA_TOGGLE")
         camera_state = self.get_input_values(msg, "CAMERA_SWITCH")
-        toggled=False
         
         camera_msg = Camera()
         if(camera_state_actiave==0): camera_msg.camera_view = default_camera_view
@@ -135,7 +145,17 @@ class ControllerNode(Node):
             default_camera_view=second_camera_view
             second_camera_view=default
             self.last_camera_state_change=self.time
-        self.camera_state_publisher.publish(camera_msg)
+        self.camera_msg=camera_msg
+        #self.camera_state_publisher.publish(camera_msg)
+    
+    def publish_cmd_vel(self):
+        self.robot_velocity_publisher.publish(self.cmd_vel_msg)
+
+    def publish_actuators(self):
+        self.actuator_velocity_publisher.publish(self.actuator_msg)
+
+    def publish_camera_state(self):
+        self.camera_state_publisher.publish(self.camera_msg)
 
     # Get data dynamiclly from joystick using input type
     def get_input_values(self, msg, input):

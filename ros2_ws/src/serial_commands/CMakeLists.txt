@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(camera)
+project(serial_commands)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -7,24 +7,26 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(std_msgs REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/Pose.msg"
-  DEPENDENCIES std_msgs
+  "msg/Command.msg"
 )
 
-install(DIRECTORY launch config
+install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}/
 )
 
 install(PROGRAMS
-  camera/camera_apriltag_node.py
-  camera/camera_mux_node.py
-  camera/map_view_node.py
-  camera/simple_camera_stream_node.py
+  serial_commands/serial_talker_node.py
+  serial_commands/serial_writer_node.py
+  serial_commands/serial_listener_node.py
   DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY 
+  config/
+  DESTINATION share/${PROJECT_NAME}/config
 )
 
 ament_export_dependencies(rosidl_default_runtime)
