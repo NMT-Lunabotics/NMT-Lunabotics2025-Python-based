@@ -17,13 +17,18 @@ EXCLUDE_FROM_PULL=(
     "ros/ros1_ws"
     ".tripwire"
     ".git/"
+    ".venv/"
+    ".vscode/"
+    ".env_file.txt"
+    "Dockerfile.python"
+    "old/"
     )
 
 if [[ -f "$TRIPWIRE_FILE" ]]; then
-    echo -e "\e[31mERROR\e[0m Tripwire file detected, skipping pull. (Are you sure you are not on your local pc's files?)"
+    echo -e "\e[31m[ERROR]\e[0m Tripwire file detected, skipping pull. (Are you sure you are not on your local pc's files?)"
 elif [[ "$LOCAL" == true ]]; then
     if [[ "$LOCAL_USERNAME" == "unknown" ]]; then
-        echo -e "\e[31mERROR\e[0m Username for --pull not given"
+        echo -e "\e[31m[ERROR]\e[0m Username for --pull not given"
         exit 1
     fi
     PC_IP=$(echo "$SSH_CLIENT" | awk '{print $1}')

@@ -1,0 +1,22 @@
+Allows robot to auto reconnect back to a network if it becomes disconnected. Mainly ment for the NMT-weblogin which has connection issues the can 
+unsure that it stays connected to the network, handling the issues caused by the NMT-webloginweb-portal.
+
+----------------------------------------------------------------------
+1. Add script and startup files to jetson, and make py file execyable
+----------------------------------------------------------------------
+
+sudo nano /usr/local/bin/wifi-autoconnect.sh
+sudo chmod +x /usr/local/bin/wifi-autoconnect.sh
+
+sudo nano /etc/wifi-autoconnect.conf
+sudo chmod 600 /etc/wifi-autoconnect.conf
+
+sudo nano /etc/systemd/system/wifi-autoconnect.service
+
+----------------------------------------------------------------------
+2. Start the startup services
+----------------------------------------------------------------------
+
+sudo systemctl daemon-reload
+sudo systemctl enable wifi-autoconnect.service
+sudo systemctl start wifi-autoconnect.service

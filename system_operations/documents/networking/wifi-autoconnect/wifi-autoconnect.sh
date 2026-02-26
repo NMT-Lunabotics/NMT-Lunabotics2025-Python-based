@@ -23,13 +23,12 @@ check_internet() {
 
 while true; do
     connected_ssid=$(nmcli -t -f active,ssid dev wifi | grep "^yes:" | cut -d: -f2)
-    if [ -n "$connected_ssid" ]; then
-        if check_internet; then
-            sleep "$SCAN_INTERVAL"
-            continue
-        else
-            login_captive_portal "$connected_ssid"
-            sleep "$SCAN_INTERVAL"
+    if [ "$connected_ssid" != "$PRIORITY_SSID" ]; then
+        if echo "$found" | grep -q "^$PRIORITY_SSID$"; then
+            echo "[INFO] Switching to priority network $PRIORITY_SSID"
+            nmcli dev disconnect wlan0
+            connect_wifi "$PRIORITY_SSID" "$PRIORITY_PSK"
+            sleep "$CONNECT_TIMEOUT"
             continue
         fi
     fi

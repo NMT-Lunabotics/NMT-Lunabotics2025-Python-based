@@ -1,0 +1,15 @@
+[Unit]
+Description=NMT Robot Network Heartbeat
+After=network.target NetworkManager.service
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/heartbeat.sh
+Restart=always
+RestartSec=5
+User=root
+Environment="PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+
+[Install]
+WantedBy=multi-user.target

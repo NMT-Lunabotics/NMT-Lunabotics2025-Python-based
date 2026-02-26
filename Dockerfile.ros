@@ -4,23 +4,23 @@ FROM ros:humble-ros-core AS base
 USER root
 
 # Install apt-fast with pre-configuration to speed up apt-get operations
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    software-properties-common \
-    aria2 \
-    && add-apt-repository -y ppa:apt-fast/stable \
-    && apt-get update \
-    && echo debconf apt-fast/maxdownloads string 10 | debconf-set-selections \
-    && echo debconf apt-fast/dlflag boolean true | debconf-set-selections \
-    && echo debconf apt-fast/aptmanager string apt-get | debconf-set-selections \
-    && DEBIAN_FRONTEND=noninteractive apt-get install -y apt-fast \
-    && apt-get clean \
-    && rm -rf /var/lib/apt/lists/*
+#RUN apt-get update && apt-get install -y --no-install-recommends \
+#    software-properties-common \
+#    aria2 \
+#    && add-apt-repository -y ppa:apt-fast/stable \
+#    && apt-get update \
+#    && echo debconf apt-fast/maxdownloads string 10 | debconf-set-selections \
+#    && echo debconf apt-fast/dlflag boolean true | debconf-set-selections \
+#    && echo debconf apt-fast/aptmanager string apt-get | debconf-set-selections \
+#    && DEBIAN_FRONTEND=noninteractive apt-get install -y apt-fast \
+#    && apt-get clean \
+#    && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user (luna) with access to full container
 ARG USER=luna
 # Base layer
 RUN useradd -m $USER && usermod -aG dialout,video $USER \
-    && apt-fast update && apt-fast install -y sudo git nano openssh-client rsync \
+    && apt-get update && apt-get install -y sudo git nano openssh-client rsync \
     && usermod -aG sudo $USER \
     && echo "$USER ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers \
     && rm -rf /var/lib/apt/lists/*
@@ -38,13 +38,13 @@ USER root
 
 # Packages are setup as layers. A certain layer can be targeted for quick installs, only updated essential stuff
 FROM base AS core
-RUN apt-fast update && apt-fast install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
     cmake \
-    binutils \
-    binutils-dev \
-    gcc \
-    g++ \
+    #binutils \
+    #binutils-dev \
+    #gcc \
+    #g++ \
     python3-pip \
     python3-serial \
     libeigen3-dev \
@@ -60,7 +60,7 @@ RUN apt-fast update && apt-fast install -y --no-install-recommends \
 
 # Core packages used to interact with docker system, (Not strictly needed)
 FROM base AS dev
-RUN apt-fast update && apt-fast install -y --no-install-recommends \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     nano \
     git \
     x11-apps \
@@ -76,7 +76,7 @@ RUN pip install --no-cache-dir \
 
 # Packages used by docker to interact with sensors
 FROM core AS sensors
-RUN apt-fast update && apt-fast install -y \
+RUN apt-get update && apt-get install -y \
     #ros-humble-usb-cam \
     ros-humble-v4l2-camera \
     ros-humble-compressed-image-transport \
@@ -90,7 +90,7 @@ RUN apt-fast update && apt-fast install -y \
 
 # Packages used for navigation in the system
 FROM core AS nav
-RUN apt-fast update && apt-fast install -y \
+RUN apt-get update && apt-get install -y \
     ros-humble-slam-toolbox \
     #ros-humble-nav2-bringup \
     #ros-humble-pcl-ros \
@@ -100,19 +100,19 @@ RUN apt-fast update && apt-fast install -y \
 
 # Packages used for simulation
 FROM core AS sim
-RUN apt-fast update && apt-fast install -y \
+RUN apt-get update && apt-get install -y \
     #gazebo \
     #ros-humble-turtlebot3* \
     #libgazebo-dev \
     #libboost-all-dev \
 && rm -rf /var/lib/apt/lists/*
 
-FROM core AS final
-COPY --from=dev / /    
-COPY --from=python / /      
-COPY --from=sensors / /      
-COPY --from=nav / /         
-COPY --from=sim / /       
+#FROM core AS final
+#COPY --from=dev / /    
+#COPY --from=python / /      
+#COPY --from=sensors / /      
+#COPY --from=nav / /         
+#COPY --from=sim / /       
 
 
 

@@ -1,16 +1,4 @@
-The primary jetson username is: luna and it's password is: 123456789, and ip adress is 192.168.0.207
-
-
-To ssh into jetson use this:
-ssh luna@192.168.0.207
-123456789
-
-To ssh into golith(nuc)
-
-ssh nuc@192.168.0.139
-123456789
-
-nuc weblogin: 129.138.171.59
+General documentation used when testing and debuging networking on the robot.
 
 
 Ethnet:
@@ -20,8 +8,6 @@ Ethnet:
 
 3. Add a new wired connection on the jetson
 4. Add a adresses in ipv4 with an address of: 192.168.55.1 a netmask of: 255.255.255.0 and a gateway of: 192.168.55.1
-
-
 
 
 
@@ -63,13 +49,3 @@ sudo ethtool eno1 | grep "Link detected"
 
 
 http://tplinkwifi.net/
-
----
-ENABLE AUTO CONNECTOR, run these 3 commands past the contents from the github files, make one of the files executable, and enable the service on reload
----
-sudo nano /etc/wifi-autoconnect.conf
-sudo nano /usr/local/bin/wifi-autoconnect.sh
-sudo chmod +x /usr/local/bin/wifi-autoconnect.sh
-sudo nano /etc/systemd/system/wifi-autoconnect.service
-sudo systemctl daemon-reload
-sudo systemctl enable --now wifi-autoconnect.service
