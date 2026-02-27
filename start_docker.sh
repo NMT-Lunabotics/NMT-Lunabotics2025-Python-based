@@ -187,6 +187,12 @@ fi
 
 # Pull latest changes from GitHub if --pull flag is used
 if [ "$GITHUB_PULL" = true ]; then
+        if [ -d "ros2_ws" ]; then
+            echo -e "\e[36m[STARTUP]\e[0m Fixing file permissions for pull..."
+            sudo chown -R $USER:$USER ros2_ws/ 2>/dev/null || true
+            find ros2_ws -type d -exec chmod 755 {} \; 2>/dev/null || true
+            find ros2_ws -type f -exec chmod 644 {} \; 2>/dev/null || true
+        fi
         echo -e "\e[36m[STARTUP]\e[0m Pulling new files..."
         ./pull.sh $LOCAL_PULL $LOCAL_USERNAME
         RESTART_CONTAINER=true
@@ -203,7 +209,7 @@ if [ "$BUILD_IMAGE" = true ]; then
         echo -e "\e[36m[STARTUP]\e[0m Building Docker image: $ROS_IMAGE_NAME..."
         run_cmd docker build -t $ROS_IMAGE_NAME -f $ROS_DOCKERFILE . #--target final
     fi
-    run_cmd docker image prune -f
+    run_cmd docker builder prune -f
 fi
 
 # Stop running containor when containor is stopped, restarted, or built
@@ -239,12 +245,12 @@ start_container() {
             --group-add plugdev     
             #--device /dev:/dev
             #--device=/dev/video:/dev/video
-            -v /usr/lib/aarch64-linux-gnu:/usr/lib/aarch64-linux-gnu:ro
-            -v /lib/modules:/lib/modules:ro
+            -v /usr/lib/aarch64-linux-gnu:/usr/lib/aarch64-linux-gnu:rw
+            -v /lib/modules:/lib/modules:rw
             -v /dev:/dev
             --device=/dev/video0
-            -v /sys:/sys:ro 
-            -v /run/udev:/run/udev:ro
+            -v /sys:/sys:rw
+            -v /run/udev:/run/udev:rw
             --device-cgroup-rule='c 81:* rmw' 
             --device-cgroup-rule='c 189:* rmw' 
             --device-cgroup-rule='c 13:* rmw'
@@ -279,6 +285,15 @@ start_container() {
 
 CONTAINER_ID=$(start_container $ROS_IMAGE_NAME)
 echo -e "\e[36m[STARTUP]\e[0m Starting ros container..."
+
+# If containor is being build rebuild all packages at same time
+if [ "$BUILD_IMAGE" = true ] && [ "$ARDUINO_UPDATER_IMAGE" = false ]; then
+    run_cmd docker exec -u 0 -it $CONTAINER_ID bash -c \
+    "cd $ROS_DIR && \
+    rm -rf build/ install/ log/ && \
+    source /opt/ros/humble/setup.bash && \
+    colcon build --symlink-install --continue-on-error"
+fi
 #run_cmd docker exec -it $CONTAINER_ID bash -c "source /opt/ros/humble/setup.bash"
 
 # Run command in containor
@@ -303,14 +318,6 @@ run_cmd docker exec -u 0 -it $CONTAINER_ID bash -c "\
 echo 'source /opt/ros/humble/setup.bash' >> ~/.bashrc && \
 echo 'source $WORKING_DIR_CONTAINER/$ROS_DIR/install/setup.bash' >> ~/.bashrc"
 
-# If containor is being build rebuild all packages at same time
-if [ "$BUILD_IMAGE" = true ] && [ "$ARDUINO_UPDATER_IMAGE" = false ]; then
-    run_cmd docker exec -u 0 -it $CONTAINER_ID bash -c \
-    "cd $ROS_DIR && \
-    rm -rf build/ install/ log/ && \
-    source /opt/ros/humble/setup.bash && \
-    colcon build --symlink-install --continue-on-error"
-fi
 #--packages-skip rplidar_slam"
 
 # --------------------------------------------------------------------------------

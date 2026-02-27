@@ -3,13 +3,14 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
-from sensor_msgs.msg import Joy
-from controller_input.msg import Actuators
+from robot_interfaces.msg import Actuators
 import time
 import yaml
 import os
 import serial
 import serial.tools.list_ports
+
+# Converts /cmd_vel and /actuator messages which range from [-1,1] to [-30,30] or [-25,25] which are sent to run robot 
 
 class serialCommands:
     """Serial class, used to communicate with the arduino controller"""
@@ -71,12 +72,9 @@ class serialCommands:
 class SerialTalkerNode(Node):
     def __init__(self):
         super().__init__('talker_node')
-
-        self.actuator_max_vel=25
-        self.actuator_min_vel=0.5
-
         self.actuator_vel_scale=25
         self.motor_vel_scale=30
+        self.actuator_tolerence=2
 
         try:
             self.serial = serialCommands()  # could throw RuntimeError
@@ -88,7 +86,7 @@ class SerialTalkerNode(Node):
 
         # Subscribe topics that include robot command data
         self.cmd_vel = self.create_subscription(Twist,'/cmd_vel',self.cmd_vel_callback,10)
-        self.actuators = self.create_subscription(Twist,'/actuators',self.actuators_callback,10)
+        self.actuators = self.create_subscription(Actuators,'/actuators',self.actuators_callback,10)
     
     def handle_command(self, msg):
         combined = [int(d) for d in msg.data]    
@@ -100,12 +98,42 @@ class SerialTalkerNode(Node):
         angular_velocity=msg.angular.z
 
         # Apply diffrential driving and send motor command
-        left_motor = int(velocity - angular_velocity)*self.motor_vel_scale
-        right_motor = int(velocity + angular_velocity)*self.motor_vel_scale
+        left_motor=velocity - angular_velocity
+        right_motor=velocity + angular_velocity
+        max_val = max(abs(left_motor), abs(right_motor), 1.0)
+
+        left_motor = int((left_motor/max_val)*self.motor_vel_scale)
+        right_motor = int((right_motor/max_val)*self.motor_vel_scale)
+
         self.serial.send_command('M', [left_motor, right_motor])
 
     def actuators_callback(self, msg):
-        ...
+        # Get data from actuator topic
+        arm_velocity=msg.arm
+        bucket_velocity=msg.bucket
+        arm_state=msg.arm_abs_pos
+        bucket_state=msg.bucket_abs_pos
+
+        if arm_state:
+            arm_velocity=1
+        else:
+            # Scale speeds to actuator speed scale
+            arm_velocity = int(arm_velocity*self.actuator_vel_scale)
+            # Disable absolute positioning
+            arm_act_max_pos=-1
+            arm_act_min_pos=-1
+
+        if bucket_state:
+            bucket_velocity=1
+        else:
+            # Scale speeds to actuator speed scale
+            bucket_velocity = int(bucket_velocity*self.actuator_vel_scale)
+            # Disable absolute positioning
+            bucket_act_max_pos=-1
+            bucket_act_min_pos=-1
+
+        # Send command
+        self.serial.send_command('A', [arm_act_max_pos, arm_act_min_pos, bucket_act_max_pos, bucket_act_min_pos, arm_velocity, bucket_velocity])
 
 def main(args=None):
     rclpy.init(args=args)

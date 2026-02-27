@@ -3,18 +3,22 @@ import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Joy
-from controller_input.msg import Actuators, Camera
+from robot_interfaces.msg import Actuators, Camera
 import subprocess
 import time
 import sys
 
 # Run on local system copy and then if robot and local domain id matches they can connect
 
+# Axes, Buttons
 Xbox_controller_map = {
-    # Axes
-    "LEFT_JOY_X": 0, "LEFT_JOY_Y": 1, "LEFT_TRIGGER": 2, "RIGHT_JOY_X": 3, "RIGHT_JOY_Y": 4, "RIGHT_TRIGGER": 5, "HORIZONTAL_DPAD": 6, "VERTICAL_DPAD": 7,
-    # Buttons
+    "LEFT_JOY_X": 0, "LEFT_JOY_Y": 1, "RIGHT_JOY_X": 2, "RIGHT_JOY_Y": 3, "LEFT_TRIGGER": 4, "RIGHT_TRIGGER": 5, "HORIZONTAL_DPAD": 6, "VERTICAL_DPAD": 7,
     "BUTTON_A": 0, "BUTTON_B": 1, "BUTTON_X": 2, "BUTTON_Y": 3, "LEFT_BUMPER": 4, "RIGHT_BUMPER": 5, "BACK": 6, "START": 7, "MODE": 8, "LEFT_STICK_BUTTON": 9, "RIGHT_STICK_BUTTON": 10, "GUIDE": 11,
+}
+
+Logictech_controller_map = {
+    "LEFT_JOY_X": 0, "LEFT_JOY_Y": 1, "RIGHT_JOY_X": 3, "RIGHT_JOY_Y": 4, "LEFT_TRIGGER": 2, "RIGHT_TRIGGER": 5, "HORIZONTAL_DPAD": 6, "VERTICAL_DPAD": 7,
+    "BUTTON_A": 0, "BUTTON_B": 1, "BUTTON_X": 2, "BUTTON_Y": 3, "LEFT_BUMPER": 4, "RIGHT_BUMPER": 5, "BACK": 6, "START": 7, "LEFT_STICK_BUTTON": 9, "RIGHT_STICK_BUTTON": 10,
 }
 
 # Settings
@@ -61,6 +65,8 @@ class ControllerNode(Node):
         self.actuator_msg = Actuators()
         self.actuator_msg.arm = 0.0
         self.actuator_msg.bucket = 0.0
+        self.actuator_msg.arm_abs_pos = False
+        self.actuator_msg.bucket_abs_pos = False
         self.camera_msg = Camera()
         self.camera_msg.camera_view = default_camera_view
 
@@ -89,11 +95,23 @@ class ControllerNode(Node):
     def joy_callback(self, msg: Joy):
         self.time = self.get_clock().now()
         
-        global default_camera_view, second_camera_view
+        global default_camera_view, second_camera_view, Schematic
         # Connection code that helps handle timeouts
         self.last_msg_time = self.get_clock().now()
         if not self.connected:
-            self.get_logger().info("Controller connected.")
+            controller=""
+            # Switch to correct button layout
+            out = subprocess.check_output(["cat", "/proc/bus/input/devices"]).decode()
+            for line in out.splitlines():
+                lower = line.lower()
+                if "name=" in lower:
+                    if "logitech" in lower: 
+                        Schematic=Logictech_controller_map 
+                        controller="Logictech "
+                    elif "xbox" in lower: 
+                        Schematic=Xbox_controller_map 
+                        controller="Xbox "
+            self.get_logger().info(f"{controller}controller connected.")
             self.connected = True
 
         # Send x and y joystick inputs as linear and angular velocity
@@ -103,34 +121,34 @@ class ControllerNode(Node):
 
         # Deadzone mapping for actuator to prevent double inputs and movment issues
         arm_act_vel=self.get_input_values(msg, "ACTUATOR_Y")
-        if(arm_act_vel<deadzone and arm_act_vel>-deadzone): arm_act_vel=0
+        if(arm_act_vel<deadzone and arm_act_vel>-deadzone): arm_act_vel=0.0
         elif(arm_act_vel > 0): arm_act_vel=self.map_value(arm_act_vel,deadzone,1.0,0.0,1.0)
         else: arm_act_vel=self.map_value(arm_act_vel,-1.0,-deadzone,-1.0,0.0)
 
         bucket_act_vel=self.get_input_values(msg, "ACTUATOR_X")
-        if(bucket_act_vel<deadzone and bucket_act_vel>-deadzone): bucket_act_vel=0
+        if(bucket_act_vel<deadzone and bucket_act_vel>-deadzone): bucket_act_vel=0.0
         elif(bucket_act_vel > 0): bucket_act_vel=self.map_value(bucket_act_vel,deadzone,1.0,0.0,1.0)
         else: bucket_act_vel=self.map_value(bucket_act_vel,-1.0,-deadzone,-1.0,0.0)
 
         # If unarmed or controller is disconnected send a speed of 0
         if(self.get_input_values(msg, "ARM") >= 0 or not self.connected): 
-            vel=0
-            ang_vel=0
-            arm_act_vel=0
-            bucket_act_vel=0
+            vel=0.0
+            ang_vel=0.0
+            arm_act_vel=0.0
+            bucket_act_vel=0.0
             
         # Motor velocity data
         twist.linear.x = vel
         twist.angular.z = ang_vel
         self.cmd_vel_msg=twist
-        #self.robot_velocity_publisher.publish(twist)
 
         # Publish actuator data
         actuator_msg = Actuators()
         actuator_msg.arm = arm_act_vel
         actuator_msg.bucket = bucket_act_vel
+        actuator_msg.arm_abs_pos = False
+        actuator_msg.bucket_abs_pos = False
         self.actuator_msg=actuator_msg
-        #self.actuator_velocity_publisher.publish(actuator_msg)
 
         # Publish camera data
         camera_state_actiave=self.get_input_values(msg, "CAMERA_TOGGLE")
@@ -146,7 +164,6 @@ class ControllerNode(Node):
             second_camera_view=default
             self.last_camera_state_change=self.time
         self.camera_msg=camera_msg
-        #self.camera_state_publisher.publish(camera_msg)
     
     def publish_cmd_vel(self):
         self.robot_velocity_publisher.publish(self.cmd_vel_msg)

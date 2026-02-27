@@ -8,10 +8,9 @@ from system_operations.arduino_serial_commuication import serialCommands
 
 # Initialize arduino and serial classes with our deseried settings, and run our compile/upload function.
 #arduino = arduinoConsole(sketch_path = ROOT/"system_operations"/"remote_rc_serial"/"host_sheild_test"/"host_sheild_test.ino", board="arduino:avr:mega")
-arduino = arduinoConsole(sketch_path = ROOT/"system_operations"/"system_control"/"system_control.ino", board="arduino:avr:mega")
+arduino = arduinoConsole(sketch_path = ROOT/"system_operations"/"component_tests"/"system_control_led"/"system_control_led.ino", board="arduino:avr:mega")
 serial = serialCommands()
 arduino.compile_and_upload()
-
 
 # NOTE serial feedback is blocking, you will not recive serial error messages
 #feedback = serial.read_command_feedback()
@@ -20,11 +19,11 @@ arduino.compile_and_upload()
 #        print(packet)
 
 
-while True:
-    serial.send_command("S", [180])
-    time.sleep(0.5)
-    serial.send_command("S", [0])
-    time.sleep(0.5)
+#while True:
+#    serial.send_command("S", [180])
+#    time.sleep(0.5)
+#    serial.send_command("S", [0])
+#    time.sleep(0.5)
 
 
 
