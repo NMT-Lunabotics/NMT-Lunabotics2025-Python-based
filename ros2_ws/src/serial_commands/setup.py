@@ -1,6 +1,6 @@
 from setuptools import setup
 
-package_name = 'serial_command'
+package_name = 'serial'
 
 setup(
     name=package_name,

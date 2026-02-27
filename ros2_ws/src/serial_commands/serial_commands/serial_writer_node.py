@@ -2,7 +2,7 @@
 
 import rclpy
 from rclpy.node import Node
-from serial_command.msg import Command
+from serial_commands.msg import Command
 import time
 import yaml
 import os
@@ -130,8 +130,6 @@ class SerialCommandNode(Node):
     def handle_command(self, msg):
         combined = [int(d) for d in msg.data]    
         self.ser.send_command(msg.command, combined)
-
-
 
 def main(args=None):
     rclpy.init(args=args)
