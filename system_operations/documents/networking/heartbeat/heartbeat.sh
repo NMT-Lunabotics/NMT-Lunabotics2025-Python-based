@@ -10,7 +10,7 @@ if [ -z "$SSH_USER" ]; then
 fi
 
 # Create heartbeat message and publish UDP message
-HEARTBEAT="NMT2026:$SSH_USER"
+HEARTBEAT="NMT26:$SSH_USER"
 while true; do
     echo -n "$HEARTBEAT" | socat - UDP-DATAGRAM:255.255.255.255:$PORT,broadcast
     echo "Sent: $HEARTBEAT"

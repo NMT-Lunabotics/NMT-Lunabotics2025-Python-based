@@ -1,0 +1,8 @@
+{
+    "discovery_port": 11010,
+    "udp_port": 11000,
+    "command_port": 10001,
+    "telemetry_port": 11002,
+    "role": "P-NMT26",
+    "discovery_magic": "B-NMT26"
+}

@@ -23,6 +23,8 @@ SHELL ["/bin/bash", "-c"]
 FROM base AS core
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
+    binutils \
+    binutils-dev \
     cmake \
     python3-pip \
     python3-serial \
@@ -33,8 +35,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-image-transport \
     ros-humble-robot-state-publisher \
     ros-humble-joy \
-    ros-humble-rviz2 \
-    #
     ros-humble-rviz2 \
 && rm -rf /var/lib/apt/lists/*
 

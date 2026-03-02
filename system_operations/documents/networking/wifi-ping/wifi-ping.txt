@@ -7,13 +7,12 @@ and when it does it will ping back it's username and ip for the host to commuica
 1. Add script and startup files to jetson, and make py file execyable
 ----------------------------------------------------------------------
 
+sudo nano /usr/local/bin/wifi-ping-config.json
+
 sudo nano /etc/systemd/system/wifi-ping.service
 
 sudo nano /usr/local/bin/wifi-ping_service.py
 sudo chmod +x /usr/local/bin/wifi-ping_service.py
-
-sudo nano /usr/local/bin/wifi-ping-service.sh
-sudo chmod +x /usr/local/bin/wifi-ping-service.sh
 
 ----------------------------------------------------------------------
 2. Start the startup services
@@ -24,11 +23,3 @@ sudo systemctl enable wifi-ping.service
 sudo systemctl start wifi-ping.service
 
 sudo systemctl status wifi-ping.service
-
-
-
-
-
-
-sudo apt update
-sudo apt install socat -y

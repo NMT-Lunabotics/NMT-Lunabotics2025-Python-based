@@ -6,6 +6,7 @@ def generate_launch_description():
         Node(
             package='serial_command',
             executable='serial_writer_node',
-            name='serial_writer_node'
+            name='serial_writer_node',
+            additional_env={'ROS_DOMAIN_ID': '10'}
         )
     ])

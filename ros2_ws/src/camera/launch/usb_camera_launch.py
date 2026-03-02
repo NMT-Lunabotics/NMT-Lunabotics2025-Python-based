@@ -26,7 +26,8 @@ def launch_setup(context):
                 'image_width': cam['width'],
                 'image_height': cam['height'],
                 'frame_rate': cam['frame_rate'],
-            }]
+            }],
+            additional_env={'ROS_DOMAIN_ID': '11'}
         )
 
         # Republish node creates compressed version of raw feed
@@ -39,7 +40,8 @@ def launch_setup(context):
             remappings=[
                 ('in', 'image_raw'),                   # from camera node
                 ('out', 'image_raw/compressed')        # compressed topic
-            ]
+            ],
+            additional_env={'ROS_DOMAIN_ID': '11'}
         )
         
         # Allow shutdown of nodes when terminal closes
@@ -59,7 +61,8 @@ def launch_setup(context):
         Node(
             package='camera',
             executable='camera_mux_node.py',
-            name='camera_mux_node'
+            name='camera_mux_node',
+            additional_env={'ROS_DOMAIN_ID': '11'}
         )
     )
     return nodes + shutdown_handlers

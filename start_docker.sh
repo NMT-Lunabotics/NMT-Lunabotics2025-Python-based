@@ -136,8 +136,8 @@ if [ "$FIND_IP" = true ]; then
             if echo "$line" | grep -q "UDP"; then
                 src_ip=$(echo "$line" | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}\.[0-9]+' | cut -d. -f1-4 | head -1)
                 data=$(sudo tcpdump -n -i any udp port $PORT -c 1 -A 2>/dev/null)
-                if echo "$data" | grep -q "NMT2026"; then
-                    if [[ "$data" =~ (NMT2026)[^:]*:([A-Za-z0-9]+) ]]; then
+                if echo "$data" | grep -q "NMT26"; then
+                    if [[ "$data" =~ (NMT26)[^:]*:([A-Za-z0-9]+) ]]; then
                         USERNAME="${BASH_REMATCH[2]}"
                         IP="$src_ip"
                         break
@@ -323,6 +323,8 @@ echo 'source $WORKING_DIR_CONTAINER/$ROS_DIR/install/setup.bash' >> ~/.bashrc"
 # --------------------------------------------------------------------------------
 # Launch commands, starts ros system components
 # --------------------------------------------------------------------------------
+
+# All telop/serial topics use on DOMAIN_ID=10, All camera topics use on DOMAIN_ID=11
 
 # Start teleop
 if [ "$RUN_TELEOP_LAUNCH" == true ]; then

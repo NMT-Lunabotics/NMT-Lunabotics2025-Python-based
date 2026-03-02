@@ -21,8 +21,9 @@ def generate_launch_description():
                 'device_id': device_id,
                 'deadzone': 0.2,
                 'autorepeat_rate': 10.0,  # Set the publish rate in Hz
-                'coalesce_interval_ms': 100
-            }]
+                'coalesce_interval_ms': 100,
+            }],
+            additional_env={'ROS_DOMAIN_ID': '10'}
         ),
 
         # Start the controller_input node
@@ -34,6 +35,7 @@ def generate_launch_description():
             parameters=[{
                 'require_enable_button': True,
                 'inverted_reverse': False
-            }]
+            }],
+            additional_env={'ROS_DOMAIN_ID': '10'}
         )
     ])

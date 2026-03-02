@@ -1,32 +1,52 @@
 #!/usr/bin/env python3
-
 import socket
 import json
+import signal
+from pathlib import Path
 
-DISCOVERY_PORT = 10000
-DISCOVERY_MAGIC = "NMT_IP_PING"
+CONFIG_FILE = Path(__file__).parent/"wifi-ping-config.json"
 
-def get_local_ip():
-    sock=socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        sock.connect(("8.8.8.8", 80))
-        ip = sock.getsockname()[0]
-    finally: sock.close()
-    return ip
+# Load settings
+with open(CONFIG_FILE, "r") as f:
+    cfg = json.load(f)
 
-def main():
+DISCOVERY_PORT = cfg["discovery_port"]
+UDP_PORT = cfg["udp_port"]
+COMMAND_PORT = cfg["command_port"]
+TELEMETRY_PORT = cfg["telemetry_port"]
+ROLE = cfg["role"]
+DISCOVERY_MAGIC = cfg["discovery_magic"].encode("utf-8")
+
+running = True
+def signal_handler(sig, frame):
+    global running
+    running = False
+
+signal.signal(signal.SIGINT, signal_handler)
+signal.signal(signal.SIGTERM, signal_handler)
+
+def discovery_server():
+    global running
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    sock.bind(("", DISCOVERY_PORT))
-    print("IP ping service started...")
-    while True:
-        data, addr = sock.recvfrom(1024)
-        message = data.decode().strip()
-        if message == DISCOVERY_MAGIC:
-            response = {
-                "ip": get_local_ip(),
-                "hostname": socket.gethostname()
-            }
-            sock.sendto(json.dumps(response).encode(), addr)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind(("", DISCOVERY_PORT))  # listen on all interfaces
+    sock.settimeout(0.5)
+
+    while running:
+        try: data, addr = sock.recvfrom(256)
+        except socket.timeout: continue
+        except OSError: break
+        if data != DISCOVERY_MAGIC: continue  
+
+        response = {
+            "role": ROLE,
+            "udp_port": UDP_PORT,
+            "command_port": COMMAND_PORT,
+            "telemetry_port": TELEMETRY_PORT,
+        }
+        sock.sendto(json.dumps(response).encode("utf-8"), addr)
+
+    sock.close()
 
 if __name__ == "__main__":
-    main()
+    discovery_server()

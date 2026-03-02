@@ -8,6 +8,7 @@ def generate_launch_description():
             executable='image_view',
             name='image_view',
             arguments=['image:=/camera/stream'],  
-            output='screen'
+            output='screen',
+            additional_env={'ROS_DOMAIN_ID': '11'}
         )
     ])
