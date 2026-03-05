@@ -4,7 +4,7 @@ import json
 import signal
 from pathlib import Path
 
-CONFIG_FILE = Path(__file__).parent/"wifi-ping-config.json"
+CONFIG_FILE = Path(__file__).parent / "wifi-ping-config.json"
 
 # Load settings
 with open(CONFIG_FILE, "r") as f:
@@ -29,14 +29,21 @@ def discovery_server():
     global running
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    sock.bind(("", DISCOVERY_PORT))  # listen on all interfaces
+    sock.bind(("", DISCOVERY_PORT))  # Listen on all interfaces
     sock.settimeout(0.5)
 
+    print(f"Robot discovery server running on UDP port {DISCOVERY_PORT}...")
+
     while running:
-        try: data, addr = sock.recvfrom(256)
-        except socket.timeout: continue
-        except OSError: break
-        if data != DISCOVERY_MAGIC: continue  
+        try:
+            data, addr = sock.recvfrom(256)
+        except socket.timeout:
+            continue
+        except OSError:
+            break
+
+        if data.strip() != DISCOVERY_MAGIC:
+            continue
 
         response = {
             "role": ROLE,
@@ -45,8 +52,10 @@ def discovery_server():
             "telemetry_port": TELEMETRY_PORT,
         }
         sock.sendto(json.dumps(response).encode("utf-8"), addr)
+        print(f"Responded to discovery request from {addr[0]}")
 
     sock.close()
+    print("Server stopped.")
 
 if __name__ == "__main__":
     discovery_server()

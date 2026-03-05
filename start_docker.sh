@@ -93,7 +93,7 @@ while [[ "$#" -gt 0 ]]; do
         -ser|--serial) RUN_SERIAL_LAUNCH=true; shift ;;                                                                                                                                              # Launches serial talker
         -v|--video-stream) RUN_VIEW_CAMERA_LAUNCH=true; shift ;;                                                                                                                                     # Launches camera stream viewer (local)
 
-        -i|--host) INTERACTIVE_HOST=true; break ;;   
+        -i|--host) INTERACTIVE_HOST=true; shift ;;   
         -ip|--ip_address) FIND_IP=true; if [[ "$2" == "find" || "$2" == "f" ]]; then IP_FIND_MODE=1; shift; elif [[ "$2" == "all" || "$2" == "a" ]]; then IP_FIND_MODE=2; shift; fi; shift ;;        # Enabled system to auto ssh into system, list robot ip, or all ips
         -d|--display) DISPLAY_ENABLED=true; shift ;;                                                                                                                                                 # Enable GUI forwarding
         -b|--build) BUILD_IMAGE=true; if [[ "$2" == "skip" || "$2" == "s" ]]; then BUILD_SKIP=true; shift; fi; shift ;;                                                                              # Force image rebuild
@@ -101,8 +101,8 @@ while [[ "$#" -gt 0 ]]; do
         -p|--pull) GITHUB_PULL=true; [[ "$2" == "local" || "$2" == "l" ]] && LOCAL_PULL=true && shift; [[ -n "$2" && "$2" != -* ]] && LOCAL_USERNAME="$2" && shift; shift ;;                         # Pull github changes before building
         -h|--help) usage; shift ;;                                                                                                                                                                   # Shows help startupmation about the system
         -mm|--mount) [[ "$#" -lt 3 ]] && { echo "Error: --mount <username> <host_path>"; exit 1; }; MOUNT_USERNAME="$2"; MOUNT_HOST_PATH="$3"; shift 3 ;;                                            # Custom mount point
-        -cmd|--command) COMMAND_STRING="$*"; break ;;                                                                                                                                                # Execute command in container without entering
-        -x|--stop) STOP_CONTAINER=true; break ;;                                                                                                                                                     # Stop all running containers
+        -cmd|--command) COMMAND_STRING="$2"; shift 2 ;;                                                                                                                                               # Execute command in container without entering
+        -x|--stop) STOP_CONTAINER=true; shift ;;                                                                                                                                                     # Stop all running containers
         -q|--quite) QUIET_MODE=true; shift ;;                                                                                                                                                        # Start bash in quite mode
         -sys|--arduino) ARDUINO_UPDATER_IMAGE=true; shift ;;                                                                                                                                         # Update arduino code
         *) echo "Unknown parameter: $1"; exit 1 ;;
@@ -206,28 +206,30 @@ fi
 # Containor build code, handles rebuilding ros packages
 # --------------------------------------------------------------------------------
 
-# Build image if needed or if --build flag is used
-if [ "$BUILD_IMAGE" = true ]; then
-    if [ "$BUILD_SKIP" = false ]; then
-        echo -e "\e[36m[STARTUP]\e[0m Building Docker image: $ROS_IMAGE_NAME..."
-        run_cmd docker build -t $ROS_IMAGE_NAME -f $ROS_DOCKERFILE . #--target final
+if [ "$INTERACTIVE_HOST" = false ]; then
+    # Build image if needed or if --build flag is used
+    if [ "$BUILD_IMAGE" = true ]; then
+        if [ "$BUILD_SKIP" = false ]; then
+            echo -e "\e[36m[STARTUP]\e[0m Building Docker image: $ROS_IMAGE_NAME..."
+            run_cmd docker build -t $ROS_IMAGE_NAME -f $ROS_DOCKERFILE . #--target final
+        fi
+        run_cmd docker builder prune -f
     fi
-    run_cmd docker builder prune -f
-fi
 
-# Stop running containor when containor is stopped, restarted, or built
-if [[ "$STOP_CONTAINER" == true || "$RESTART_CONTAINER" == true || ( "$BUILD_IMAGE" == true && "$BUILD_SKIP" == false ) ]]; then
-    echo -e "\e[36m[STARTUP]\e[0m Stopping running containers..."
-    CONTAINERS=$(docker ps -aq)
-    if [ -n "$CONTAINERS" ]; then
-        run_cmd docker rm -f $CONTAINERS
+
+    # Stop running containor when containor is stopped, restarted, or built
+    if [[ "$STOP_CONTAINER" == true || "$RESTART_CONTAINER" == true || ( "$BUILD_IMAGE" == true && "$BUILD_SKIP" == false ) ]]; then
+        echo -e "\e[36m[STARTUP]\e[0m Stopping running containers..."
+        CONTAINERS=$(docker ps -aq)
+        if [ -n "$CONTAINERS" ]; then
+            run_cmd docker rm -f $CONTAINERS
+        fi
+    fi
+    if [ "$STOP_CONTAINER" == true ]; then
+        echo -e "\e[36m[STARTUP]\e[0m Exiting..."
+        exit 0
     fi
 fi
-if [ "$STOP_CONTAINER" == true ]; then
-    echo -e "\e[36m[STARTUP]\e[0m Exiting..."
-    exit 0
-fi
-
 # Script that can start one or more containers
 start_container() {
     local IMAGE_NAME=$1
