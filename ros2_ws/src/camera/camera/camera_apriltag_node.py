@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-from camera.msg import Pose 
+from robot_interfaces.msg import Pose
 from sensor_msgs.msg import Image
 from cv_bridge import CvBridge
 import cv2

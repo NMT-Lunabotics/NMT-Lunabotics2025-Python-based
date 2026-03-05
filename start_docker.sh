@@ -27,6 +27,7 @@ FIND_IP=false                                               # Find ip of robot
 IP_FIND_MODE=0                                              # Settings for ip finder
 PORT=10000                                                  # Port used for ip finder
 TIMEOUT=10                                                  # Timeout for ip finder
+INTERACTIVE_HOST=false                                      # Run on host system instead of docker
 
 # Ros2 launch files to launch diffrent system aspects
 RUN_SYSTEM_CONTROL_LAUNCH=false                             # Start whole system
@@ -69,6 +70,7 @@ usage() {
     echo "  --command (-cmd) <command>             Execute a command inside the container without entering the container"
     echo " "
     echo "Options:"
+    echo "  --host (-i)                            Runs system without docker, makes system less modual but allows it to bypass SDK issues"
     echo "  --display (-d)                         Enable display support (forward X11 display)"
     echo "  --build (-b) [skip|s]                  Build the Docker container (will stop the running container if any)"
     echo "  --restart (-r)                         Restart all Docker containers"
@@ -91,6 +93,7 @@ while [[ "$#" -gt 0 ]]; do
         -ser|--serial) RUN_SERIAL_LAUNCH=true; shift ;;                                                                                                                                              # Launches serial talker
         -v|--video-stream) RUN_VIEW_CAMERA_LAUNCH=true; shift ;;                                                                                                                                     # Launches camera stream viewer (local)
 
+        -i|--host) INTERACTIVE_HOST=true; break ;;   
         -ip|--ip_address) FIND_IP=true; if [[ "$2" == "find" || "$2" == "f" ]]; then IP_FIND_MODE=1; shift; elif [[ "$2" == "all" || "$2" == "a" ]]; then IP_FIND_MODE=2; shift; fi; shift ;;        # Enabled system to auto ssh into system, list robot ip, or all ips
         -d|--display) DISPLAY_ENABLED=true; shift ;;                                                                                                                                                 # Enable GUI forwarding
         -b|--build) BUILD_IMAGE=true; if [[ "$2" == "skip" || "$2" == "s" ]]; then BUILD_SKIP=true; shift; fi; shift ;;                                                                              # Force image rebuild
@@ -282,6 +285,44 @@ start_container() {
     fi
     echo "$CONTAINER_ID"
 }
+
+if [ "$INTERACTIVE_HOST" = true ]; then
+    echo -e "\e[36m[STARTUP]\e[0m Running ros system on host..."
+
+    # Source ROS
+    [ -f /opt/ros/humble/setup.bash ] && source /opt/ros/humble/setup.bash
+    [ -f $ROS_DIR/install/setup.bash ] && source $ROS_DIR/install/setup.bash
+
+    # Run command 
+    if [ -n "$COMMAND_STRING" ]; then
+        echo -e "\e[36m[STARTUP]\e[0m Executing command..."
+        eval "$COMMAND_STRING"
+        exit 0
+    fi
+
+    # Attempt arduino update cycle
+    if [ "$ARDUINO_UPDATER_IMAGE" = true ] || [ "$BUILD_IMAGE" = true ]; then
+        echo -e "\e[36m[STARTUP]\e[0m Updating arduino code..."
+        "$ARDUINO_IMAGE_UPDATER"
+    fi
+
+    # Launch logic (same as container section)
+    if [ "$RUN_TELEOP_LAUNCH" == true ]; then
+        ros2 launch controller_input teleop_launch.py
+    elif [ "$RUN_USB_CAMERA_NODE" == true ]; then
+        ros2 launch camera usb_camera_launch.py
+    elif [ "$RUN_VIEW_CAMERA_LAUNCH" == true ]; then
+        ros2 launch camera view_camera_launch.py
+    elif [ "$RUN_SYSTEM_CONTROL_LAUNCH" == true ]; then
+        ros2 launch system_start system_launch.py
+    elif [ "$RUN_SERIAL_LAUNCH" == true ]; then
+        ros2 launch serial_commands serial_launch.py
+    else
+        exec bash
+    fi
+
+    exit 0
+fi
 
 CONTAINER_ID=$(start_container $ROS_IMAGE_NAME)
 echo -e "\e[36m[STARTUP]\e[0m Starting ros container..."

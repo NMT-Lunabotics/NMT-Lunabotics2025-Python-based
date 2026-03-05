@@ -8,7 +8,7 @@ A heartbeat system requires more data then a ping based system but has less chan
 sudo nano /etc/systemd/system/heartbeat.service
 
 sudo nano /usr/local/bin/heartbeat.sh
-sudo chmod +x /usr/local/bin/heartbeat-service.sh
+sudo chmod +x /usr/local/bin/heartbeat.sh
 
 ----------------------------------------------------------------------
 2. Start the startup services

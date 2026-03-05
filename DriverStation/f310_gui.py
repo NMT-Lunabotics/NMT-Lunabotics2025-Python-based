@@ -60,7 +60,7 @@ else:  # pragma: no cover - non-Windows platforms never import inputs
 
 # --- Controller/UDP configuration test---192.168.0.207----------------------------------------------
 
-TARGET_CONTROLLER_NAME = "Logitech Gamepad F310"
+TARGET_CONTROLLER_NAME = "Logitech Logitech Cordless RumblePad 2"#"Logitech Gamepad F310"
 UDP_DESTINATION: Tuple[str, int] = ("0.0.0.0", 11000)
 SEND_RATE_HZ = 40.0
 IDLE_RATE_HZ = 40.0  # kee p the outbound stream at a constant 50 Hz
