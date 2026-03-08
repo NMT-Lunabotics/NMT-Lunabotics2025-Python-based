@@ -326,6 +326,12 @@ if [ "$INTERACTIVE_HOST" = true ]; then
     exit 0
 fi
 
+# Attempt arduino update cycle
+if [ "$ARDUINO_UPDATER_IMAGE" = true ] || [ "$BUILD_IMAGE" = true ]; then
+    echo -e "\e[36m[STARTUP]\e[0m Updating arduino code..."
+    "$ARDUINO_IMAGE_UPDATER"
+fi
+
 CONTAINER_ID=$(start_container $ROS_IMAGE_NAME)
 echo -e "\e[36m[STARTUP]\e[0m Starting ros container..."
 
@@ -348,12 +354,6 @@ if [ -n "$COMMAND_STRING" ]; then
     source $WORKING_DIR_CONTAINER/$ROS_DIR/install/setup.bash || true && \
     $COMMAND_STRING"
     exit 0
-fi
-
-# Attempt arduino update cycle
-if [ "$ARDUINO_UPDATER_IMAGE" = true ] || [ "$BUILD_IMAGE" = true ]; then
-    echo -e "\e[36m[STARTUP]\e[0m Updating arduino code..."
-    "$ARDUINO_IMAGE_UPDATER"
 fi
 
 # Create a bashrc file for auto source in ros

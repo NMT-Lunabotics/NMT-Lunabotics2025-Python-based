@@ -3,7 +3,7 @@
 import rclpy
 from rclpy.node import Node
 from geometry_msgs.msg import Twist
-from robot_interfaces.msg import Actuators
+from robot_interfaces.msg import Command
 import time
 import yaml
 import os
@@ -72,9 +72,15 @@ class serialCommands:
 class SerialTalkerNode(Node):
     def __init__(self):
         super().__init__('talker_node')
-        self.actuator_vel_scale=25
-        self.motor_vel_scale=30
-        self.actuator_tolerence=2
+        self.blocking={}
+        self.blocking_timer={}
+
+        self.blocking_timeout=3
+        self.blocking_last_time=time.monotonic()
+
+        self.actuator_vel_scale=25  # Actuator velocity scale (-25 - 25)
+        self.motor_vel_scale=30     # Motor velocity scale (-30 - 30)
+        self.wheel_base=2           # Distance between wheels (m)
 
         try:
             self.serial = serialCommands()  # could throw RuntimeError
@@ -86,44 +92,78 @@ class SerialTalkerNode(Node):
 
         # Subscribe topics that include robot command data
         self.cmd_vel = self.create_subscription(Twist,'/cmd_vel',self.cmd_vel_callback,10)
-        self.actuators = self.create_subscription(Actuators,'/actuators',self.actuators_callback,10)
-    
-    def handle_command(self, msg):
-        combined = [int(d) for d in msg.data]    
-        self.serial.send_command(msg.command, combined)
+        self.cmd = self.create_subscription(Command,'/robot_commands',self.cmd_callback,10)
 
+    # System callbacks which handle the the cmd_vel and /robot_command topics
+    def cmd_callback(self, msg):
+        self.handle_special_cmd(msg.command, msg.data, msg.blocking_id)
     def cmd_vel_callback(self, msg):
-        # Get data from velocity topic
-        velocity=msg.linear.x
-        angular_velocity=msg.angular.z
+        self.send_vel_command([msg.linear.x,msg.angular.z],None)
+
+    # Handle speical cmd cases, right now only the 'M' and 'A' speical cases exist
+    def handle_special_cmd(self, command, data, blocking_id):
+        if command == "M": self.send_vel_command(data, blocking_id)
+        elif command == "A": self.send_act_command(data, blocking_id)
+        else: self.handle_command(command, data, blocking_id)
+    
+    # Handles the sent command taking into account if a command is blocking
+    def handle_command(self, command, data, blocking_id):
+        # Blocking and command sender logic
+        if command in self.blocking:
+            if blocking_id == -1:
+                del self.blocking[command]
+                del self.blocking_timer[command]
+            elif blocking_id == self.blocking[command]:
+                self.blocking_timer[command]=time.monotonic()
+                combined = [int(d) for d in data]    
+                self.serial.send_command(command, combined)
+            elif time.monotonic()-self.blocking_timer[command]>=self.blocking_timeout:
+                del self.blocking[command]
+                del self.blocking_timer[command]
+        else:
+            if blocking_id != -1 and blocking_id != None: 
+                self.blocking[command]=blocking_id
+                self.blocking_timer[command]=time.monotonic()
+
+            combined = [int(d) for d in data]    
+            self.serial.send_command(command, combined)
+
+    # Apply diffrential driving to 'M' command
+    def send_vel_command(self, data, blocking_id):
+        # Save sent data or cmd_vel data as variables
+        velocity=data[0]
+        angular_velocity=data[1]
 
         # Apply diffrential driving and send motor command
-        left_motor=velocity - angular_velocity
-        right_motor=velocity + angular_velocity
+        left_motor=velocity-(angular_velocity*self.wheel_base/2)
+        right_motor=velocity+(angular_velocity*self.wheel_base/2)
+
         max_val = max(abs(left_motor), abs(right_motor), 1.0)
 
         left_motor = int((left_motor/max_val)*self.motor_vel_scale)
         right_motor = int((right_motor/max_val)*self.motor_vel_scale)
 
-        self.serial.send_command('M', [left_motor, right_motor])
+        self.handle_command('M', [left_motor, right_motor], blocking_id)
 
-    def actuators_callback(self, msg):
-        # Get data from actuator topic
-        arm_velocity=msg.arm
-        bucket_velocity=msg.bucket
-        arm_state=msg.arm_abs_pos
-        bucket_state=msg.bucket_abs_pos
+    # Apply scaling to 'A' command
+    def send_act_command(self, data, blocking_id):
+        arm_act_max_pos=data[0]
+        arm_act_min_pos=data[1]
+        bucket_act_max_pos=data[2]
+        bucket_act_min_pos=data[3]
+        arm_velocity=data[4]
+        bucket_velocity=data[5]
 
-        if arm_state:
+        if arm_act_max_pos != -1 and arm_act_min_pos != -1: 
             arm_velocity=1
-        else:
+        else: 
             # Scale speeds to actuator speed scale
             arm_velocity = int(arm_velocity*self.actuator_vel_scale)
             # Disable absolute positioning
             arm_act_max_pos=-1
             arm_act_min_pos=-1
 
-        if bucket_state:
+        if bucket_act_max_pos != -1 and bucket_act_min_pos != -1:
             bucket_velocity=1
         else:
             # Scale speeds to actuator speed scale
@@ -132,8 +172,7 @@ class SerialTalkerNode(Node):
             bucket_act_max_pos=-1
             bucket_act_min_pos=-1
 
-        # Send command
-        self.serial.send_command('A', [arm_act_max_pos, arm_act_min_pos, bucket_act_max_pos, bucket_act_min_pos, arm_velocity, bucket_velocity])
+        self.handle_command('A', [arm_act_max_pos, arm_act_min_pos, bucket_act_max_pos, bucket_act_min_pos, arm_velocity, bucket_velocity], blocking_id)
 
 def main(args=None):
     rclpy.init(args=args)

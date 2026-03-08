@@ -91,7 +91,7 @@ float act_end_tolerance = 1;      // mm
 
 float act_max_vel = 25;   // mm/s
 float act_fix_err = 3.0;  // mm
-float act_max_err = 5.0;  // mm
+float act_max_err = 7.0;  // mm
 
 // Actuator target position
 int aLR_tgt = -1;
@@ -351,9 +351,9 @@ void loop() {
       mL_speed = constrain(throttle + steering, -30, 30);
       aLR_tgt = -1;
       aB_tgt = -1;
-      aL_speed = -joy[3];
+      aL_speed = joy[3];
       aR_speed = aL_speed;
-      aB_speed = joy[2];
+      aB_speed = -joy[2];
       if(RC_connection_established==false){
         RC_connection_established=true;
         systemFault(false,"","", NONE, NONE, ON);

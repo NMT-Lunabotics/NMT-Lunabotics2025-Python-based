@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 import rclpy
 from rclpy.node import Node
-from geometry_msgs.msg import Twist
 from sensor_msgs.msg import Joy
-from robot_interfaces.msg import Actuators, Camera
+from robot_interfaces.msg import Camera, Command
 import subprocess
 import time
 import sys
@@ -61,12 +60,9 @@ class ControllerNode(Node):
         self.last_msg_time = self.time
 
         # Initalize used message types
-        self.cmd_vel_msg = Twist()
-        self.actuator_msg = Actuators()
-        self.actuator_msg.arm = 0.0
-        self.actuator_msg.bucket = 0.0
-        self.actuator_msg.arm_abs_pos = False
-        self.actuator_msg.bucket_abs_pos = False
+        self.cmd_vel_msg = Command()
+        self.actuator_msg = Command()
+        
         self.camera_msg = Camera()
         self.camera_msg.camera_view = default_camera_view
 
@@ -87,8 +83,7 @@ class ControllerNode(Node):
         self.create_timer(0.1, self.publish_camera_state) 
 
         # Create publishers for robot commands
-        self.robot_velocity_publisher = self.create_publisher(Twist, '/cmd_vel', 5)
-        self.actuator_velocity_publisher = self.create_publisher(Actuators, '/actuators', 5)
+        self.robot_command_publisher = self.create_publisher(Command, '/robot_commands', 5)
         self.camera_state_publisher = self.create_publisher(Camera, '/camera/toggle_view', 5)
 
     # Handle joystick logic
@@ -115,7 +110,7 @@ class ControllerNode(Node):
             self.connected = True
 
         # Send x and y joystick inputs as linear and angular velocity
-        twist = Twist()
+        motor=Command()
         ang_vel=self.get_input_values(msg, "MOTOR_X")
         vel=self.get_input_values(msg, "MOTOR_Y")
 
@@ -138,16 +133,16 @@ class ControllerNode(Node):
             bucket_act_vel=0.0
             
         # Motor velocity data
-        twist.linear.x = vel
-        twist.angular.z = ang_vel
-        self.cmd_vel_msg=twist
+        motor.command="M"
+        motor.data=[vel,ang_vel]
+        motor.blocking_id=None
+        self.cmd_vel_msg=motor
 
         # Publish actuator data
-        actuator_msg = Actuators()
-        actuator_msg.arm = arm_act_vel
-        actuator_msg.bucket = bucket_act_vel
-        actuator_msg.arm_abs_pos = False
-        actuator_msg.bucket_abs_pos = False
+        actuator_msg = Command()
+        actuator_msg.command="A"
+        actuator_msg.data=[-1, -1, -1, -1, arm_act_vel, bucket_act_vel]
+        actuator_msg.blocking_id=None
         self.actuator_msg=actuator_msg
 
         # Publish camera data
@@ -166,10 +161,10 @@ class ControllerNode(Node):
         self.camera_msg=camera_msg
     
     def publish_cmd_vel(self):
-        self.robot_velocity_publisher.publish(self.cmd_vel_msg)
+        self.robot_command_publisher.publish(self.cmd_vel_msg)
 
     def publish_actuators(self):
-        self.actuator_velocity_publisher.publish(self.actuator_msg)
+        self.robot_command_publisher.publish(self.actuator_msg)
 
     def publish_camera_state(self):
         self.camera_state_publisher.publish(self.camera_msg)
@@ -183,7 +178,6 @@ class ControllerNode(Node):
     # Constantly check to make sure controller is connected
     def check_connection(self):
         self.time=self.get_clock().now()
-
         elapsed = (self.time - self.last_msg_time).nanoseconds * 1e-9
 
         # If controler is detected as timed out, set /vel to 0 and only send velocity=0 cmds
@@ -193,16 +187,18 @@ class ControllerNode(Node):
                 self.get_logger().warn("Controller disconnected!")
 
                 # Motor velocity
-                twist = Twist()
-                twist.linear.x = 0.0
-                twist.angular.z = 0.0
-                self.robot_velocity_publisher.publish(twist)
+                motor=Command()
+                motor.command="M"
+                motor.data=[0.0,0.0]
+                motor.blocking_id=None
+                self.robot_command_publisher.publish(motor)
                 self.connected = False
                 # Actuator velocity
-                actuator = Actuators()
-                actuator.arm = 0.0  
-                actuator.bucket = 0.0  
-                self.actuator_velocity_publisher.publish(actuator)
+                actuator=Command()
+                actuator.command="A" 
+                actuator.data=[-1,-1,-1,-1,0.0,0.0]
+                actuator.blocking_id=None
+                self.robot_command_publisher.publish(actuator)
     
     # Map values to match range
     def map_value(self, x, in_min, in_max, out_min, out_max):

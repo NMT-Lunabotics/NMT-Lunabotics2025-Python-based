@@ -11,3 +11,4 @@ system_operations/system_control/arduino.sketch_hash
 .vscode/
 __pycache__/
 env_file.txt
+userpassword

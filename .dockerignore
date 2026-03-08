@@ -13,6 +13,7 @@
 !*.yml
 !scripts/
 !config/
+!userpassword
 
 **/__pycache__/
 **/*.pyc

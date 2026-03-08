@@ -120,12 +120,7 @@ class SerialCommandNode(Node):
             rclpy.shutdown()
 
         # Subscribe to the topic
-        self.sub = self.create_subscription(
-            Command,
-            '/serial/writer',
-            self.handle_command,
-            10
-        )
+        self.sub = self.create_subscription(Command,'/serial/writer',self.handle_command,10)
 
     def handle_command(self, msg):
         combined = [int(d) for d in msg.data]    

@@ -10,7 +10,6 @@ find_package(rclcpp REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
 rosidl_generate_interfaces(${PROJECT_NAME}
-  "msg/Actuators.msg"
   "msg/Camera.msg"
   "msg/Command.msg"
   "msg/Pose.msg"

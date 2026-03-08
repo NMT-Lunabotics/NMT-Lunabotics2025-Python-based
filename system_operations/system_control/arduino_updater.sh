@@ -2,8 +2,8 @@
 set -e
 
 # config
-#SKETCH_PATH="$HOME/NMT-Lunabotics2025-Python-based/system_operations/system_control/system_control.ino"
-SKETCH_PATH="$HOME/NMT-Lunabotics2025-Python-based/system_operations/component_tests/system_control_led/system_control_led.ino"
+SKETCH_PATH="$HOME/NMT-Lunabotics2025-Python-based/system_operations/system_control/system_control.ino"
+#SKETCH_PATH="$HOME/NMT-Lunabotics2025-Python-based/system_operations/component_tests/system_control_led/system_control_led.ino"
 IMAGE_NAME="luna/python-arduino-upload:latest"
 CONTAINER_NAME="temp_arduino_containor"
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
