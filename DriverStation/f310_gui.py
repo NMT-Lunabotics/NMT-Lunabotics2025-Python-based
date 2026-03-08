@@ -1217,8 +1217,8 @@ class ControlStationGUI:
 
 def main() -> None:
     global UDP_DESTINATION, COMMAND_DESTINATION, TELEMETRY_LISTEN
-
-    if not os.path.exists(password_file):
+    system = platform.system()
+    if not os.path.exists(password_file) and system != "Windows":
         password=ask_password()
         if not password: return
         with open(password_file, "w") as f: f.write(password)
