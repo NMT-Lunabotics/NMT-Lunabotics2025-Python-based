@@ -63,8 +63,8 @@ else:  # pragma: no cover - non-Windows platforms never import inputs
 
 # --- Controller/UDP configuration test---192.168.0.207----------------------------------------------
 
-TARGET_CONTROLLER_NAME = "Logitech Logitech Cordless RumblePad 2"#"Logitech Gamepad F310"
-UDP_DESTINATION: Tuple[str, int] = ("255.255.255.255", 11000)
+TARGET_CONTROLLER_NAME = "Logitech Gamepad F310" #Logitech Logitech Cordless RumblePad 2
+UDP_DESTINATION: Tuple[str, int] = ("0.0.0.0", 11000)
 SEND_RATE_HZ = 40.0
 IDLE_RATE_HZ = 40.0  # kee p the outbound stream at a constant 50 Hz
 DEADZONE = 0.10
@@ -72,7 +72,7 @@ HOLD_BUTTON_INDEX = 4  # LB acts as deadman switch by default
 MAX_DISPLAY_AXES = 6
 MAX_DISPLAY_BUTTONS = 12
 TELEMETRY_LISTEN: Tuple[str, int] = ("0.0.0.0", 10000)
-COMMAND_DESTINATION: Tuple[str, int] = ("255.255.255.255", 10001)
+COMMAND_DESTINATION: Tuple[str, int] = ("0.0.0.0", 10001)
 CAMERA_REFRESH_HZ = 6.0
 CAMERA_DEFAULT_URL: Optional[str] = "http://127.0.0.1:8081/frame"
 KEEPALIVE_INTERVAL = 0.5  # seconds between forced resend of identical packet
