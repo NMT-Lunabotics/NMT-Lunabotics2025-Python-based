@@ -53,6 +53,8 @@ else
     git remote add origin git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git 2>/dev/null || true
 
     git fetch origin $BRANCH
+    git reset --hard origin/$BRANCH
+    git clean -fdx
     git checkout -B $BRANCH origin/$BRANCH
     git sparse-checkout init --no-cone
     ALL_FILES=$(git ls-tree -r --name-only origin/$BRANCH)
@@ -68,6 +70,4 @@ else
         fi
     done <<< "$ALL_FILES"
     git sparse-checkout set "${INCLUDE[@]}"
-    git reset --hard origin/$BRANCH
-    git clean -fdx
 fi
