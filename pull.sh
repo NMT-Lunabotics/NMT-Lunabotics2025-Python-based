@@ -6,6 +6,7 @@ LOCAL_USERNAME=${2}
 
 TRIPWIRE_FILE=".tripwire"
 REPO="NMT-Lunabotics2025-Python-based"
+BRANCH="simulated-nav2"
 
 EXCLUDE_FROM_PULL=(
     ".venv/"
@@ -51,9 +52,10 @@ else
     git config --global user.name "benjamin-p15"
     git remote add origin git@github.com:NMT-Lunabotics/NMT-Lunabotics2025-Python-based.git 2>/dev/null || true
 
-    git fetch origin
+    git fetch origin $BRANCH
+    git checkout -B $BRANCH origin/$BRANCH
     git sparse-checkout init --no-cone
-    ALL_FILES=$(git ls-tree -r --name-only @{upstream})
+    ALL_FILES=$(git ls-tree -r --name-only origin/$BRANCH)
     INCLUDE=()
     while IFS= read -r f; do
         f="${f#./}"
@@ -66,6 +68,6 @@ else
         fi
     done <<< "$ALL_FILES"
     git sparse-checkout set "${INCLUDE[@]}"
-    git reset --hard @{upstream}
+    git reset --hard origin/$BRANCH
     git clean -fdx
 fi
