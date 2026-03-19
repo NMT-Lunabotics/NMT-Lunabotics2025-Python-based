@@ -1,0 +1,32 @@
+{
+    "dumping": [
+      {"command": "A", "values": [-1, -1, -1, -1, 5, 0], "duration": 1.0},
+      {"command": "M", "values": [16, 16], "duration": 1.5},
+      {"command": "A", "values": [-1, -1, -1, -1, -5, 5], "duration": 1.0},
+      {"command": "M", "values": [0, 0], "duration": 0.5},
+      {"command": "A", "values": [-1, -1, -1, -1, 0, -5], "duration": 0.3},
+      {"command": "M", "values": [-14, -14], "duration": 2.0},
+      {"command": "M", "values": [0, 0], "duration": 2.0}
+    ],
+  
+    "excavation": [
+      {"command": "A", "values": [-1, -1, -1, -1, 0, 10], "duration": 0.2},
+      {"command": "M", "values": [10, 10], "duration": 4.0},
+      {"command": "A", "values": [-1, -1, -1, -1, 0, -10], "duration": 0.2},
+      {"command": "M", "values": [-10, -10], "duration": 3.0},
+      {"command": "M", "values": [0, 0], "duration": 0.1},
+      {"duration": 1.0}
+    ],
+  
+    "lateral_traverse": [
+      {"command": "A", "values": [-1, -1, -1, -1, 0, 0], "duration": 0.2},
+      {"command": "M", "values": [8, -8], "duration": 1.5},
+      {"command": "M", "values": [-8, 8], "duration": 1.5},
+      {"command": "M", "values": [2, 2], "duration": 3.0},
+      {"command": "M", "values": [0, 0], "duration": 1.0}
+    ],
+
+    "apriltag_localize": [
+      {"command": "M", "values": [8, -8], "duration": 1.5, "condition": "apriltag"}
+    ]
+  }

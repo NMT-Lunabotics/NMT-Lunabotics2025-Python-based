@@ -1,0 +1,13 @@
+------------------------------------------------------------
+Wiring
+------------------------------------------------------------
+GND: arduino GND
+VDD: arduino 5v or 3.3v
+SCL: arduino SCL pin
+SDA: arduino SDA
+
+------------------------------------------------------------
+SCL addresses
+------------------------------------------------------------
+Printed on back of board, example (0X78, 0X7A), the first is the primary address and the second is a backup address.
+Arduino uses 7-bit addresses so these will need to be convered over (0x3C, 0x3D)

@@ -9,8 +9,14 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 
-install(DIRECTORY launch
-  DESTINATION share/${PROJECT_NAME}/
+install(PROGRAMS
+automated_operations/automated_operations_node.py
+  DESTINATION lib/${PROJECT_NAME}
+)
+
+install(DIRECTORY 
+  config/
+  DESTINATION share/${PROJECT_NAME}/config
 )
 
 ament_export_dependencies(rosidl_default_runtime)

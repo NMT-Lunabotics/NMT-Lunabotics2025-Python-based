@@ -10,6 +10,10 @@ bool MD04_drivers = false;
 
 #define MEDIAN_SIZE 8 // Median filter window size for potentionmeter smoothing
 
+
+//------------------------------------------------------------
+//                       Other classes
+//------------------------------------------------------------
 class PID {
 private:
   float error;
@@ -128,8 +132,11 @@ public:
   }
 };
 
-//////// Actuator Class ////////
+//------------------------------------------------------------
+//                Actuator controllor class
+//------------------------------------------------------------
 class Actuator {
+  // Class which talks to the basic actuator drivers
   PWM_Driver pwm_driver;
   float stroke;
   float pot_min;
@@ -213,8 +220,11 @@ public:
   }
 };
 
-///////// Motor Class ////////
+//------------------------------------------------------------
+//                 Motor controller classes
+//------------------------------------------------------------
 class Motor {
+  // Class which talkers to the (MMP SA-715A) motor driver
   OutPin dac1, dac2, enable;
   int motor_max_vel;
   bool reverse;
@@ -284,34 +294,8 @@ public:
   }
 };
 
-
-  
-  
-
-    /*void motor_ctrl(int signed_speed) {
-        // Convert motor speeds (in rpm) to PWM values (0-255)
-        // Constrain speeds to max velocity first
-        if (signed_speed == 0) {
-            stop();
-            return;
-        }
-        enable.write(1);
-
-        signed_speed = constrain(signed_speed, -motor_max_vel, motor_max_vel);
-        // Map the absolute speed values to PWM range
-        int motor_speed = map(abs(signed_speed), 0, motor_max_vel, 0, 255);
-        if (signed_speed > 0) {
-            dac1.write_pwm_raw(motor_speed);
-            dac2.write_pwm_raw(0);
-        } else {
-            dac1.write_pwm_raw(0);
-            dac2.write_pwm_raw(motor_speed);
-        }
-    }*/
-
-
-
 class SimpleMotor {
+  // Class that talkers to the basic arduino motors
   int pwmPin;
   int dirPin1;
   int dirPin2;
@@ -354,6 +338,7 @@ public:
 };
 
 class SimpleServo {
+  // Class that talks to a simple servo motor
   private:
       uint8_t pin;
       int minPulse;   // microseconds for 0 degrees
@@ -399,58 +384,64 @@ class SimpleServo {
       }
   };
 
-///////// MPU6050 IMU Class /////////
+//------------------------------------------------------------
+//                     IMU talker class
+//------------------------------------------------------------
 class MPU6050 {
-public:
-    MPU6050(uint8_t address = 0x68) : _address(address) {}
-    void initialize() {
-        Wire.begin();
-        // Wake up MPU6050
-        writeRegister(0x6B, 0x00); // PWR_MGMT_1 = 0 (wake up)
-    }
-    bool testConnection() {
-        uint8_t whoAmI = readRegister(0x75);
-        return (whoAmI == 0x68);
-    }
-    // Read raw gyro values (deg/s)
-    void getRotation(int16_t *gx, int16_t *gy, int16_t *gz) {
-        *gx = readRegister16(0x43);
-        *gy = readRegister16(0x45);
-        *gz = readRegister16(0x47);
-    }
-    // Read raw accelerometer values
-    void getAcceleration(int16_t *ax, int16_t *ay, int16_t *az) {
-        *ax = readRegister16(0x3B);
-        *ay = readRegister16(0x3D);
-        *az = readRegister16(0x3F);
-    }
-private:
-    uint8_t _address;
-    void writeRegister(uint8_t reg, uint8_t value) {
-        Wire.beginTransmission(_address);
-        Wire.write(reg);
-        Wire.write(value);
-        Wire.endTransmission(true);
-    }
-    uint8_t readRegister(uint8_t reg) {
-        Wire.beginTransmission(_address);
-        Wire.write(reg);
-        Wire.endTransmission(false);
-        Wire.requestFrom(_address, (uint8_t)1);
-        return Wire.read();
-    }
-    int16_t readRegister16(uint8_t reg) {
-        Wire.beginTransmission(_address);
-        Wire.write(reg);
-        Wire.endTransmission(false);
-        Wire.requestFrom(_address, (uint8_t)2);
-        int16_t val = (Wire.read() << 8) | Wire.read();
-        return val;
-    }
+  // Class which reads daya from cheap (MPU6050) IMU sensor
+  public:
+      MPU6050(uint8_t address = 0x68) : _address(address) {}
+      void initialize() {
+          Wire.begin();
+          // Wake up MPU6050
+          writeRegister(0x6B, 0x00); // PWR_MGMT_1 = 0 (wake up)
+      }
+      bool testConnection() {
+          uint8_t whoAmI = readRegister(0x75);
+          return (whoAmI == 0x68);
+      }
+      // Read raw gyro values (deg/s)
+      void getRotation(int16_t *gx, int16_t *gy, int16_t *gz) {
+          *gx = readRegister16(0x43);
+          *gy = readRegister16(0x45);
+          *gz = readRegister16(0x47);
+      }
+      // Read raw accelerometer values
+      void getAcceleration(int16_t *ax, int16_t *ay, int16_t *az) {
+          *ax = readRegister16(0x3B);
+          *ay = readRegister16(0x3D);
+          *az = readRegister16(0x3F);
+      }
+  private:
+      uint8_t _address;
+      void writeRegister(uint8_t reg, uint8_t value) {
+          Wire.beginTransmission(_address);
+          Wire.write(reg);
+          Wire.write(value);
+          Wire.endTransmission(true);
+      }
+      uint8_t readRegister(uint8_t reg) {
+          Wire.beginTransmission(_address);
+          Wire.write(reg);
+          Wire.endTransmission(false);
+          Wire.requestFrom(_address, (uint8_t)1);
+          return Wire.read();
+      }
+      int16_t readRegister16(uint8_t reg) {
+          Wire.beginTransmission(_address);
+          Wire.write(reg);
+          Wire.endTransmission(false);
+          Wire.requestFrom(_address, (uint8_t)2);
+          int16_t val = (Wire.read() << 8) | Wire.read();
+          return val;
+      }
 };
 
-///////// FSIA6B IBUS Class /////////
+//------------------------------------------------------------
+//                  Controller talker class
+//------------------------------------------------------------
 class IBusReader {
+  // Class which handles and remaps the (FSIA6B IBUS) controller commands info usable format for controlling robot
   public:
       IBusReader(HardwareSerial &serial) : serial(serial) {}
       void begin(unsigned long baud = 115200) { 
@@ -542,4 +533,452 @@ class IBusReader {
       int16_t outMin[4] =         {-30, -30, -30, -30};     // Mapped min range
       int16_t outMax[4] =         {30, 30, 30, 30};         // Mapped max range
 };
-#endif
+
+//------------------------------------------------------------
+//  Data screen and messages controller class (2.42OLED-IIC)
+//------------------------------------------------------------
+
+const uint8_t font8x8[][6] PROGMEM = { // 8x8 font stored in memery for screen
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 0  (null)
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 1
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 2
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 3
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 4
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 5
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 6
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 7
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 8
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 9
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 10
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 11
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 12
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 13
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 14
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 15
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 16
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 17
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 18
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 19
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 20
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 21
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 22
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 23
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 24
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 25
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 26
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 27
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 28
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 29
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 30
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 31
+  {0x00,0x00,0x00,0x00,0x00,0x00}, // 32  space
+  {0x00,0x00,0x5C,0x5C,0x00,0x00}, // 33  !
+  {0x00,0x0E,0x00,0x0E,0x00,0x00}, // 34  "
+  {0x28,0x7C,0x28,0x7C,0x28,0x00}, // 35  #
+  {0x00,0x24,0x2A,0x7F,0x2A,0x12}, // 36  $
+  {0x00,0x46,0x26,0x10,0xC8,0xC4}, // 37  %
+  {0x00,0x34,0x4A,0x54,0x20,0x50}, // 38  &
+  {0x00,0x00,0x0E,0x00,0x00,0x00}, // 39  '
+  {0x00,0x3C,0x42,0x00,0x00,0x00}, // 40  (
+  {0x00,0x42,0x3C,0x00,0x00,0x00}, // 41  )
+  {0x10,0x54,0x38,0x54,0x10,0x00}, // 42  *
+  {0x10,0x10,0x7C,0x10,0x10,0x00}, // 43  +
+  {0x00,0xC0,0x40,0x00,0x00,0x00}, // 44  ,
+  {0x10,0x10,0x10,0x10,0x00,0x00}, // 45  -
+  {0x00,0x40,0xC0,0x00,0x00,0x00}, // 46  .
+  {0x40,0x20,0x10,0x08,0x04,0x00}, // 47  /
+  {0x3C,0x42,0x42,0x42,0x3C,0x00}, // 48  0
+  {0x00,0x44,0x7E,0x40,0x00,0x00}, // 49  1
+  {0x64,0x52,0x52,0x52,0x4C,0x00}, // 50  2
+  {0x24,0x42,0x42,0x4A,0x34,0x00}, // 51  3
+  {0x30,0x28,0x24,0x7E,0x20,0x00}, // 52  4
+  {0x2E,0x4A,0x4A,0x4A,0x32,0x00}, // 53  5
+  {0x3C,0x4A,0x4A,0x4A,0x30,0x00}, // 54  6
+  {0x02,0x02,0x62,0x12,0x0E,0x00}, // 55  7
+  {0x34,0x4A,0x4A,0x4A,0x34,0x00}, // 56  8
+  {0x0C,0x52,0x52,0x52,0x3C,0x00}, // 57  9
+  {0x00,0x44,0xC0,0x00,0x00,0x00}, // 58  :
+  {0x00,0xC4,0x40,0x00,0x00,0x00}, // 59  ;
+  {0x10,0x28,0x44,0x00,0x00,0x00}, // 60  <
+  {0x28,0x28,0x28,0x28,0x00,0x00}, // 61  =
+  {0x44,0x28,0x10,0x00,0x00,0x00}, // 62  >
+  {0x04,0x02,0x52,0x0A,0x04,0x00}, // 63  ?
+  {0x3C,0x42,0x5A,0x56,0x2C,0x00}, // 64  @
+  {0x7C,0x12,0x12,0x12,0x7C,0x00}, // 65  A
+  {0x7E,0x4A,0x4A,0x4A,0x34,0x00}, // 66  B
+  {0x3C,0x42,0x42,0x42,0x24,0x00}, // 67  C
+  {0x7E,0x42,0x42,0x42,0x3C,0x00}, // 68  D
+  {0x7E,0x4A,0x4A,0x4A,0x42,0x00}, // 69  E
+  {0x7E,0x0A,0x0A,0x0A,0x02,0x00}, // 70  F
+  {0x3C,0x42,0x52,0x52,0x34,0x00}, // 71  G
+  {0x7E,0x08,0x08,0x08,0x7E,0x00}, // 72  H
+  {0x00,0x42,0x7E,0x42,0x00,0x00}, // 73  I
+  {0x20,0x42,0x3E,0x02,0x00,0x00}, // 74  J
+  {0x7E,0x18,0x24,0x42,0x00,0x00}, // 75  K
+  {0x7E,0x40,0x40,0x40,0x00,0x00}, // 76  L
+  {0x7E,0x0C,0x30,0x0C,0x7E,0x00}, // 77  M
+  {0x7E,0x0C,0x30,0x40,0x7E,0x00}, // 78  N
+  {0x3C,0x42,0x42,0x42,0x3C,0x00}, // 79  O
+  {0x7E,0x12,0x12,0x12,0x0C,0x00}, // 80  P
+  {0x3C,0x42,0x52,0x22,0x5C,0x00}, // 81  Q
+  {0x7E,0x12,0x12,0x32,0x4C,0x00}, // 82  R
+  {0x24,0x4A,0x4A,0x52,0x24,0x00}, // 83  S
+  {0x02,0x02,0x7E,0x02,0x02,0x00}, // 84  T
+  {0x3E,0x40,0x40,0x40,0x3E,0x00}, // 85  U
+  {0x1E,0x60,0x40,0x60,0x1E,0x00}, // 86  V
+  {0x3E,0x40,0x38,0x40,0x3E,0x00}, // 87  W
+  {0x42,0x24,0x18,0x24,0x42,0x00}, // 88  X
+  {0x06,0x08,0x70,0x08,0x06,0x00}, // 89  Y
+  {0x42,0x62,0x52,0x4A,0x46,0x00}, // 90  Z
+  {0x7E,0x42,0x42,0x00,0x00,0x00}, // 91  [
+  {0x04,0x08,0x10,0x20,0x40,0x00}, // 92  backslash
+  {0x42,0x42,0x7E,0x00,0x00,0x00}, // 93  ]
+  {0x08,0x04,0x7E,0x04,0x08,0x00}, // 94  ^
+  {0x80,0x80,0x80,0x80,0x80,0x00}, // 95  _
+  {0x00,0x02,0x04,0x08,0x00,0x00}, // 96  `
+  {0x20,0x54,0x54,0x54,0x78,0x00}, // 97  a
+  {0x7E,0x48,0x48,0x48,0x30,0x00}, // 98  b
+  {0x38,0x44,0x44,0x44,0x20,0x00}, // 99  c
+  {0x30,0x48,0x48,0x48,0x7E,0x00}, // 100 d
+  {0x38,0x54,0x54,0x54,0x58,0x00}, // 101 e
+  {0x00,0x48,0x7C,0x4A,0x02,0x00}, // 102 f
+  {0x98,0xA4,0xA4,0xA4,0x7C,0x00}, // 103 g
+  {0x7E,0x08,0x08,0x08,0x70,0x00}, // 104 h
+  {0x00,0x48,0x7A,0x40,0x00,0x00}, // 105 i
+  {0x40,0x80,0x84,0x7A,0x00,0x00}, // 106 j
+  {0x7E,0x10,0x28,0x44,0x00,0x00}, // 107 k
+  {0x00,0x42,0x7E,0x40,0x00,0x00}, // 108 l
+  {0x7C,0x04,0x78,0x04,0x78,0x00}, // 109 m
+  {0x7C,0x04,0x04,0x04,0x78,0x00}, // 110 n
+  {0x38,0x44,0x44,0x44,0x38,0x00}, // 111 o
+  {0xFC,0x24,0x24,0x24,0x18,0x00}, // 112 p
+  {0x18,0x24,0x24,0x24,0xFC,0x00}, // 113 q
+  {0x7C,0x08,0x04,0x04,0x08,0x00}, // 114 r
+  {0x48,0x54,0x54,0x54,0x24,0x00}, // 115 s
+  {0x04,0x3E,0x44,0x40,0x20,0x00}, // 116 t
+  {0x3C,0x40,0x40,0x40,0x3C,0x00}, // 117 u
+  {0x1C,0x20,0x40,0x20,0x1C,0x00}, // 118 v
+  {0x3C,0x40,0x38,0x40,0x3C,0x00}, // 119 w
+  {0x44,0x28,0x10,0x28,0x44,0x00}, // 120 x
+  {0x9C,0xA0,0x60,0x20,0x1C,0x00}, // 121 y
+  {0x44,0x64,0x54,0x4C,0x44,0x00}, // 122 z
+  {0x10,0x6C,0x44,0x00,0x00,0x00}, // 123 {
+  {0x00,0x7E,0x00,0x00,0x00,0x00}, // 124 |
+  {0x44,0x6C,0x10,0x00,0x00,0x00}, // 125 }
+  {0x08,0x04,0x08,0x10,0x08,0x00}, // 126 ~
+  {0x00,0x00,0x00,0x00,0x00,0x00}  // 127 DEL
+
+  /* FONT TEST:
+      oled.println("abcdefghijklm");
+      oled.println("nopqrstuvwxyz");
+      oled.println("ABCDEFGHIJKLM");
+      oled.println("NOPQRSTUVWXYZ");
+      oled.println("0123456789");
+      oled.println(":;!#$%&'()*+,-./");
+      oled.println("<=>?@[]^_`{|}~\"\\");
+  */
+};
+class OLEDIIC_interface {
+  // Class which handles talking to the (2.42OLED-IIC) screen and sending it text using a custom system
+  private:
+      uint8_t screenAddress;
+      uint8_t screenWidth;
+      uint8_t screenHeight;
+      uint8_t screenRow;
+  
+      uint8_t cursorX = 0;
+      uint8_t cursorY = 0;
+      
+      // Send I2C command
+      void sendCommand(uint8_t cmd) {
+          Wire.beginTransmission(screenAddress);
+          Wire.write(0x00);
+          Wire.write(cmd);
+          Wire.endTransmission();
+      }
+  
+      // Add font character to screen
+      void printChar(char character) {
+          // Read index from ASCII table
+          uint8_t charIndex = character; 
+          
+          // Turn out of bound characters into spaces 
+          if (character < 32 || character > 127) charIndex = 32;  
+          
+          // If character space, do special handling, else send font data to screen
+          if(character==32){sendData(0x00);sendData(0x00);sendData(0x00);sendData(0x00);return;}
+          for (uint8_t i = 0; i < 6; i++) {
+              uint8_t data = pgm_read_byte(&font8x8[charIndex][i]);
+              sendData(data);
+          }
+      }
+  
+  public:
+      // Screen address and size variables
+      OLEDIIC_interface(uint8_t address, uint8_t width, uint8_t height): screenAddress(address), screenWidth(width), screenHeight(height), screenRow(height / 8){}
+  
+      // OLED initialization sequence 
+      void begin() {
+          Wire.begin();
+  
+          // Start display off
+          sendCommand(0xAE);     
+  
+          // Setup clock divide ratio, with a refreash rate of ~100Hz
+          sendCommand(0xD5);     
+          sendCommand(0x80);     
+          
+          // Set number of screen lines, 64
+          sendCommand(0xA8);     
+          sendCommand(0x3F);     
+          
+          // Set display offset, none
+          sendCommand(0xD3);     
+          sendCommand(0x00);     
+          
+          // Set start line to 0
+          sendCommand(0x40); 
+          
+          // Enable capacitor to ensure screen has sificent voltage
+          sendCommand(0x8D);     
+          sendCommand(0x14);     
+          
+          // Set memory addressing mode
+          sendCommand(0x20);    
+          sendCommand(0x00);  
+          
+          // Set screen orientation 
+          sendCommand(0xA1);     
+          sendCommand(0xC8);  
+          
+          // Set default com pin hardware mappings
+          sendCommand(0xDA);     
+          sendCommand(0x12);     
+          
+          // Set the contrast to the default
+          sendCommand(0x81);    
+          sendCommand(0xCF);     
+          
+          // Pixle charge time, defult, affects brightness and stability
+          sendCommand(0xD9);     
+          sendCommand(0xF1);    
+          
+          // Set idial voltage to prevent ghosting, VCOMH deselect level (0.77xVCC)
+          sendCommand(0xDB);     
+          sendCommand(0x40);     
+          
+          // Set default RAM usage for graphics
+          sendCommand(0xA4);    
+          sendCommand(0xA6);    
+          
+          // Set screen scroll mode
+          sendCommand(0x2F);
+          
+          // Turn on and clear display
+          sendCommand(0xAF);     
+          clear(false);
+      }
+  
+      // Send data to screen
+      void sendData(uint8_t data) {
+          Wire.beginTransmission(screenAddress);
+          Wire.write(0x40);  // Data mode
+          Wire.write(data);
+          Wire.endTransmission();
+      }
+  
+      // Set screen to black
+      void clear(bool useWhiteSpace) {
+          // Fill entire screen with zeros
+          if(useWhiteSpace){
+            uint8_t posX = cursorX;
+            while (posX < screenWidth) {
+              sendData(0x00);    
+              posX+=1;    
+            }
+          }
+          else{
+            for (uint8_t posY = 0; posY < screenRow; posY++) {
+                setCursor(posY, 0);
+                for (uint8_t posX = 0; posX < screenWidth; posX++) {
+                  sendData(0x00);
+                }
+            }
+        }
+      }
+  
+      // Set cursor position on screen
+      void setCursor(uint8_t posY, uint8_t posX) {
+          cursorY = posY;
+          cursorX = posX;
+          
+          sendCommand(0xB0 + posY);                       
+          sendCommand(0x00 + (posX & 0x0F));            
+          sendCommand(0x10 + ((posX >> 4) & 0x0F));   
+      }
+  
+      // Handle regular print strings
+      void print(const char* str) {
+          while (*str) {
+              printChar(*str);
+              str++;
+          }
+      }
+  
+      // Handle println strings
+      void println(const char* str) {
+          print(str);
+          cursorY++;
+          cursorX = 0;
+          if (cursorY < screenRow) setCursor(cursorY, 0);
+      }
+  
+      // Draw single pixle 
+      void drawPixel(uint8_t posY, uint8_t posX, uint8_t pattern) {
+          setCursor(posY, posX);
+          sendData(pattern);
+      }
+  };
+
+class MessageStore {
+  // Class which handles how the diffrent types of infomation is displayed onto the screen
+  private:
+      OLEDIIC_interface &screen;
+      static const uint16_t MAX_MESSAGES = 12;
+      static const uint16_t MESSAGE_SIZE = 128;
+      char messages[MAX_MESSAGES][MESSAGE_SIZE];
+
+      int currentPage=0;
+      bool cyclePage=true;
+      uint8_t id_index[6];
+      unsigned long last_message_time = 0;
+      unsigned long timeout_cycle_time = -1;
+      int8_t cycle_priod=5;
+      int cycle_time=5000;
+      int wait_time=0;
+      // Sizes of each message type, TODO
+      struct PageSize {
+        uint8_t start;
+        uint8_t end;
+      };
+      PageSize ranges[6] = {
+        {1, 1},    // FAULT
+        {2, 2},    // CWARNING
+        {3, 3},    // WARNING
+        {4, 7},    // COMMS
+        {8, 8},    // STATUS
+        {9, 12}    // DATA
+      };
+      const int NUM_PAGES = sizeof(ranges)/sizeof(ranges[0]);
+  
+  public:
+      MessageStore(OLEDIIC_interface &screenClass): screen(screenClass) {}
+      //void addMessage(uint8_t id, char* msg) {
+
+      //}
+  
+      // Sets message to id in data base
+      void setMessage(uint8_t id, char* msg) { 
+        strncpy(messages[id], msg, MESSAGE_SIZE - 1);
+        messages[id][MESSAGE_SIZE - 1] = '\0';
+       }
+
+      // Gets value of message from database
+      char* getMessage(uint8_t id) { return messages[id]; }
+      
+      // Deletes a message id from database
+      void deleteMessage(uint8_t id) { messages[id][0] = '\0'; }
+
+      // Checks of a type of message is empty for message cycling
+      bool rangeEmpty(uint8_t start, uint8_t end) {
+          for (uint8_t i = start; i <= end; i++) {
+              if (messages[i] != nullptr) return false;
+          }
+          return true;
+      }
+
+      int getNextValidPage() {
+        int page = currentPage;
+        for (int i = 0; i < NUM_PAGES; i++) {
+            page+=1;
+            if(page>=NUM_PAGES) page=0;
+            if (!rangeEmpty(ranges[page].start, ranges[page].end)) return page;
+        }
+        return currentPage;
+    }
+
+      void systemMessageUpdate(unsigned long current_time) {
+        if(cyclePage==false || (current_time-last_message_time<cycle_time+wait_time)) return;
+        last_message_time=current_time;
+        wait_time=0;
+
+        currentPage=getNextValidPage();
+        //char str[12];             
+        //sprintf(str, "%d", currentPage);
+
+        screen.setCursor(0, 0);
+        screen.println("test");
+
+        //screen.clear(false);
+        //screen.setCursor(0, 0);
+        //screen.print(messages[ranges[currentPage].start]);
+        //screen.print(" | ");
+        //screen.print(str);
+      }
+  
+      void addMessageToArduino(int messageId, int operation, uint8_t* message) {
+        switch (operation) {
+          case 0:
+            for (int i = 0; i < 6; i++) {
+              if (messageId >= ranges[i].start && messageId <= ranges[i].end) {
+                messageId = ranges[i].start;
+                break;
+              }
+            }
+            setMessage(messageId, message);
+            //screen.setCursor(0, 0);
+            //screen.print(message);
+            //screen.print(" | ");
+            //char id[4];                         
+            //sprintf(id, "%d", messageId);  
+            //screen.print(id);
+            //screen.print(messages[messageId]);
+            //screen.clear(true);
+            break;
+          case 1:
+            cyclePage=true;
+            break;
+          case 2:
+            cyclePage=false;
+            break;
+          case 3:
+            last_message_time=millis()-cycle_time-wait_time;
+            break;
+          case 4:
+            setMessage(messageId, message);
+            break;
+          case 5:
+            deleteMessage(messageId);
+            break;
+          case 6:
+            wait_time=10*1000;
+            screen.setCursor(0, 0);
+            screen.print(message);
+            screen.clear(true);
+            break;
+          case 7:
+            wait_time=60*1000;
+            screen.setCursor(0, 0);
+            screen.print(message);
+            screen.clear(true);
+            break;
+          case 8:
+            cyclePage=false;
+            screen.setCursor(0, 0);
+            screen.print(message);
+            screen.clear(true);
+            break;
+        }
+      }
+  };
+  #endif
