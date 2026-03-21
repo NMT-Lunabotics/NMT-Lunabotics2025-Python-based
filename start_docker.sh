@@ -291,24 +291,30 @@ start_container() {
 if [ "$INTERACTIVE_HOST" = true ]; then
     echo -e "\e[36m[STARTUP]\e[0m Running ros system on host..."
 
-    # Source ROS
     [ -f /opt/ros/humble/setup.bash ] && source /opt/ros/humble/setup.bash
-    [ -f $ROS_DIR/install/setup.bash ] && source $ROS_DIR/install/setup.bash
+    ROS_DIR_ABS="$WORKING_DIR_HOST/$ROS_DIR"
 
-    # Run command 
+    # Source or build local workspace
+    if [ -f "$ROS_DIR_ABS/install/setup.bash" ]; then
+        source "$ROS_DIR_ABS/install/setup.bash"
+    else
+        cd "$ROS_DIR_ABS"
+        colcon build --symlink-install
+        source "$ROS_DIR_ABS/install/setup.bash"
+        cd "$WORKING_DIR_HOST"  # return to host working directory
+    fi
+
     if [ -n "$COMMAND_STRING" ]; then
         echo -e "\e[36m[STARTUP]\e[0m Executing command..."
         eval "$COMMAND_STRING"
         exit 0
     fi
 
-    # Attempt arduino update cycle
     if [ "$ARDUINO_UPDATER_IMAGE" = true ] || [ "$BUILD_IMAGE" = true ]; then
         echo -e "\e[36m[STARTUP]\e[0m Updating arduino code..."
         "$ARDUINO_IMAGE_UPDATER"
     fi
 
-    # Launch logic (same as container section)
     if [ "$RUN_TELEOP_LAUNCH" == true ]; then
         ros2 launch controller_input teleop_launch.py
     elif [ "$RUN_USB_CAMERA_NODE" == true ]; then
@@ -336,7 +342,7 @@ CONTAINER_ID=$(start_container $ROS_IMAGE_NAME)
 echo -e "\e[36m[STARTUP]\e[0m Starting ros container..."
 
 # If containor is being build rebuild all packages at same time
-if [ "$BUILD_IMAGE" = true ] && [ "$ARDUINO_UPDATER_IMAGE" = false ]; then
+if [ "$BUILD_IMAGE" = true ] && [ "$ARDUINO_UPDATER_IMAGE" = false ] && [ "$INTERACTIVE_HOST" = false ]; then
     run_cmd docker exec -u 0 -it $CONTAINER_ID bash -c \
     "cd $ROS_DIR && \
     rm -rf build/ install/ log/ && \

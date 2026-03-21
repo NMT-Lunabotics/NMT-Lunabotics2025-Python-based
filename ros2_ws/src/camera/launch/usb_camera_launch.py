@@ -4,7 +4,8 @@ from launch.event_handlers import OnProcessExit
 from launch.events import Shutdown
 from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
-import yaml
+from ament_index_python.packages import get_package_share_directory
+import yaml, os
 
 def launch_setup(context):
     """Launches a topic for each camera specified in cameras.yaml, debug/system use. And starts camera stream with feed switching for userinterface use"""
@@ -14,7 +15,7 @@ def launch_setup(context):
     nodes = []
     shutdown_handlers = []
     for cam in config['cameras']:
-        # v4l2 camera node publishes raw feed
+        # v4l2 camera node publishes raw feed ros2 run v4l2_camera v4l2_camera_node --ros-args -p video_device:=/dev/video2 -p image_size:=640x480
         camera_node = Node(
             package='v4l2_camera',
             executable='v4l2_camera_node',
@@ -23,9 +24,10 @@ def launch_setup(context):
             output='screen',
             parameters=[{
                 'video_device': cam['video_device'],
-                'image_width': cam['width'],
-                'image_height': cam['height'],
-                'frame_rate': cam['frame_rate'],
+                'image_size': [cam['width'],cam['height']],
+                #'image_width': int(cam['width']),
+                #'image_height': int(cam['height']),
+                'frame_rate': int(cam['frame_rate']),
             }],
             additional_env={'ROS_DOMAIN_ID': '11'}
         )
@@ -68,4 +70,8 @@ def launch_setup(context):
     return nodes + shutdown_handlers
 
 def generate_launch_description():
-    return LaunchDescription([DeclareLaunchArgument('camera_config'),OpaqueFunction(function=launch_setup)])
+    default_camera_yaml = os.path.join(get_package_share_directory('camera'),'config','cameras.yaml')
+    return LaunchDescription([
+        DeclareLaunchArgument('camera_config',default_value=default_camera_yaml, description='Path to cameras.yaml configuration file'),
+        OpaqueFunction(function=launch_setup)
+    ])

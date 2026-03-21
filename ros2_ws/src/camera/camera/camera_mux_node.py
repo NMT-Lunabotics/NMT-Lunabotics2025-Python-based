@@ -2,7 +2,7 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Image
-from controller_input.msg import Camera
+from robot_interfaces.msg import Camera
 
 class CameraMux(Node):
     def __init__(self):

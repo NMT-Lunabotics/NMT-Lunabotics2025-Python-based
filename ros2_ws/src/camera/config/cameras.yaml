@@ -1,7 +1,7 @@
 # For testing purposes, real system cameras are started in system_start package
 cameras:
   - name: camera0
-    video_device: /dev/video0
-    frame_rate: 60
-    width: 424
-    height: 240
+    video_device: /dev/video2
+    width: 640
+    height: 480
+    frame_rate: 30

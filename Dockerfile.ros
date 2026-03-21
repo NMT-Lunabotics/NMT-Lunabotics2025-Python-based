@@ -74,7 +74,8 @@ RUN apt-get update && apt-get install -y \
     #ros-humble-usb-cam \
     ros-humble-v4l2-camera \
     ros-humble-compressed-image-transport \
-    ros-humble-image-view \
+    #ros-humble-image-view \
+    ros-humble-image-tools \
     #pkg-config \
     #libusb-1.0-0-dev \
     #ros-humble-realsense2-camera \
