@@ -69,7 +69,7 @@ fi
 
 # Upload sketch with timeout
 set +e
-CONTAINER_ID=$(docker run -d \
+CONTAINER_ID=$(docker run --rm \
   --name "$CONTAINER_NAME" \
   --device="$PORT:$PORT" \
   -v "$TEMP_DIR":/workspace \
