@@ -20,8 +20,8 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(camera_launch_file),
         launch_arguments={'camera_config': camera_config_file}.items()
     )
-    apriltag_node=Node(package='camera',executable='camera_apriltag_node.py',name='camera_apriltag_node',additional_env={'ROS_DOMAIN_ID': '10'})
-    serial_talker_node=Node(package='serial_commands',executable='serial_talker_node.py',name='serial_talker_node',additional_env={'ROS_DOMAIN_ID': '10'})
+    apriltag_node=Node(package='camera',executable='camera_apriltag_node.py',name='camera_apriltag_node')
+    serial_talker_node=Node(package='serial_commands',executable='serial_talker_node.py',name='serial_talker_node')
 
     # Launch all specifyied launch files and nodes
     return LaunchDescription([camera_launch,apriltag_node,serial_talker_node])

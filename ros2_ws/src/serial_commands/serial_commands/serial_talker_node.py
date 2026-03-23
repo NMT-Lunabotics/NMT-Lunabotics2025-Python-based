@@ -134,7 +134,7 @@ class SerialTalkerNode(Node):
         velocity=data[0]
         angular_velocity=data[1]
 
-        self.get_logger().info(velocity)
+        #self.get_logger().info(velocity)
 
         # Apply diffrential driving and send motor command
         left_motor=velocity-(angular_velocity*self.wheel_base/2)
