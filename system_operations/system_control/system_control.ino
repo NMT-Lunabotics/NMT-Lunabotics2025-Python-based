@@ -17,6 +17,9 @@
 #define SERIAL_COMM_TIMEOUT_FAULT    1
 #define COMPONENT_TIMEOUT_FAULTS     1
 
+// DO NOT TOUCH, THIS DISABLES ALL ACTUATOR SAFETY CHECKS!!!!
+#define ACTUATOR_SAFETY              1 
+
 // Debug mode flags
 #define DEBUG_MODE                   0
 #define SENSOR_OUTPUT                0  // 1: IMU, 2: IBUS, 3: IBUS raw
@@ -402,31 +405,33 @@ void loop() {
     #endif
     // Correct dual actuator misalignment
     #if ARM_ACTUATORS_ENABLED
-    float lr_err = abs(aL_pos - aR_pos);
-    if (lr_err >= act_fix_err && lr_err < act_max_err) {
-      stop_all();
-      float prev_err = lr_err;
-      while (lr_err >= 0.5 * act_fix_err) {
-        #if BUCKET_ACTUATOR_ENABLED
-          act_bucket.stop();
-        #endif
-        aL_pos = act_left.update_pos();
-        aR_pos = act_right.update_pos();
-        float factor = (aL_pos - aR_pos) * vel_gain;
+      float lr_err = abs(aL_pos - aR_pos);
+      #if ACTUATOR_SAFETY
+        if (lr_err >= act_fix_err && lr_err < act_max_err) {
+          stop_all();
+          float prev_err = lr_err;
+          while (lr_err >= 0.5 * act_fix_err) {
+            #if BUCKET_ACTUATOR_ENABLED
+              act_bucket.stop();
+            #endif
+            aL_pos = act_left.update_pos();
+            aR_pos = act_right.update_pos();
+            float factor = (aL_pos - aR_pos) * vel_gain;
 
-        act_left.vel_ctrl(aL_speed - factor);
-        act_right.vel_ctrl(aR_speed + factor);
-        delay(5);
+            act_left.vel_ctrl(aL_speed - factor);
+            act_right.vel_ctrl(aR_speed + factor);
+            delay(5);
 
-        prev_err = lr_err;
-        lr_err = abs(aL_pos - aR_pos);
-        if (lr_err > prev_err) systemFault(true,"Actuator diverging fix failed.","", NONE, NONE, NONE);
-        else systemFault(false,"","Actuator arms diverging, Fixing actuators...", BLINK, NONE, NONE);
-      }
-      act_left.stop();
-      act_right.stop();
-      ledy_pin.write(0);
-    } //else if (lr_err >= act_max_err) systemFault(true,"Actuator relative error too large: " + String(aL_pos) + " " + String(aR_pos),"", NONE, NONE, NONE);
+            prev_err = lr_err;
+            lr_err = abs(aL_pos - aR_pos);
+            if (lr_err > prev_err) systemFault(true,"Actuator diverging fix failed.","", NONE, NONE, NONE);
+            else systemFault(false,"","Actuator arms diverging, Fixing actuators...", BLINK, NONE, NONE);
+          }
+          act_left.stop();
+          act_right.stop();
+          ledy_pin.write(0);
+        } //else if (lr_err >= act_max_err) systemFault(true,"Actuator relative error too large: " + String(aL_pos) + " " + String(aR_pos),"", NONE, NONE, NONE);
+      #endif
   #endif
     // Run motors and actuators
     if (!emergency_stop) {
