@@ -108,6 +108,7 @@ class SerialTalkerNode(Node):
     
     # Handles the sent command taking into account if a command is blocking
     def handle_command(self, command, data, blocking_id):
+        self.get_logger().info(f"Sending command {command} with data {data}")
         # Blocking and command sender logic
         if command in self.blocking:
             if blocking_id == -1:
