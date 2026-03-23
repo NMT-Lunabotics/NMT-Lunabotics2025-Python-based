@@ -294,14 +294,16 @@ if [ "$INTERACTIVE_HOST" = true ]; then
     [ -f /opt/ros/humble/setup.bash ] && source /opt/ros/humble/setup.bash
     ROS_DIR_ABS="$WORKING_DIR_HOST/$ROS_DIR"
 
-    # Source or build local workspace
     if [ -f "$ROS_DIR_ABS/install/setup.bash" ]; then
         source "$ROS_DIR_ABS/install/setup.bash"
-    else
+    fi
+
+    if [ "$BUILD_IMAGE" = true ]; then
         cd "$ROS_DIR_ABS"
+        rm -rf build/ install/ log/
         colcon build --symlink-install
         source "$ROS_DIR_ABS/install/setup.bash"
-        cd "$WORKING_DIR_HOST"  # return to host working directory
+        cd "$WORKING_DIR_HOST" 
     fi
 
     if [ -n "$COMMAND_STRING" ]; then
@@ -316,7 +318,10 @@ if [ "$INTERACTIVE_HOST" = true ]; then
     fi
 
     if [ "$RUN_TELEOP_LAUNCH" == true ]; then
-        ros2 launch controller_input teleop_launch.py
+        #export ROS_DOMAIN_ID=0
+        #ros2 run domain_bridge domain_bridge /home/benjamin/NMT-Lunabotics2025-Python-based/ros2_ws/src/controller_input/config/camera_bridge.yaml & 
+        
+        ros2 launch controller_input teleop_launch.py 
     elif [ "$RUN_USB_CAMERA_NODE" == true ]; then
         ros2 launch camera usb_camera_launch.py
     elif [ "$RUN_VIEW_CAMERA_LAUNCH" == true ]; then

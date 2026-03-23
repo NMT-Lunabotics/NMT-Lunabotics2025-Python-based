@@ -10,10 +10,16 @@ import sys
 # Run on local system copy and then if robot and local domain id matches they can connect
 
 # Axes, Buttons
+#Xbox_controller_map = {
+#    "LEFT_JOY_X": 0, "LEFT_JOY_Y": 1, "RIGHT_JOY_X": 2, "RIGHT_JOY_Y": 3, "LEFT_TRIGGER": 4, "RIGHT_TRIGGER": 5, "HORIZONTAL_DPAD": 6, "VERTICAL_DPAD": 7,
+#    "BUTTON_A": 0, "BUTTON_B": 1, "BUTTON_X": 2, "BUTTON_Y": 3, "LEFT_BUMPER": 4, "RIGHT_BUMPER": 5, "BACK": 6, "START": 7, "MODE": 8, "LEFT_STICK_BUTTON": 9, "RIGHT_STICK_BUTTON": 10, "GUIDE": 11,
+#}
+
 Xbox_controller_map = {
-    "LEFT_JOY_X": 0, "LEFT_JOY_Y": 1, "RIGHT_JOY_X": 2, "RIGHT_JOY_Y": 3, "LEFT_TRIGGER": 4, "RIGHT_TRIGGER": 5, "HORIZONTAL_DPAD": 6, "VERTICAL_DPAD": 7,
-    "BUTTON_A": 0, "BUTTON_B": 1, "BUTTON_X": 2, "BUTTON_Y": 3, "LEFT_BUMPER": 4, "RIGHT_BUMPER": 5, "BACK": 6, "START": 7, "MODE": 8, "LEFT_STICK_BUTTON": 9, "RIGHT_STICK_BUTTON": 10, "GUIDE": 11,
+    "LEFT_JOY_X": 0, "LEFT_JOY_Y": 1, "RIGHT_JOY_X": 2, "RIGHT_JOY_Y": 3, "LEFT_TRIGGER": 5, "RIGHT_TRIGGER": 4, "HORIZONTAL_DPAD": 6, "VERTICAL_DPAD": 7,
+    "BUTTON_A": 0, "BUTTON_B": 1, "BUTTON_X": 3, "BUTTON_Y": 4, "LEFT_BUMPER": 6, "RIGHT_BUMPER": 7, "BACK": 10, "START": 11, "GUIDE": 15, "LEFT_STICK_BUTTON": 13, "RIGHT_STICK_BUTTON": 14,
 }
+
 
 Logictech_controller_map = {
     "LEFT_JOY_X": 0, "LEFT_JOY_Y": 1, "RIGHT_JOY_X": 3, "RIGHT_JOY_Y": 4, "LEFT_TRIGGER": 2, "RIGHT_TRIGGER": 5, "HORIZONTAL_DPAD": 6, "VERTICAL_DPAD": 7,
@@ -88,11 +94,12 @@ class ControllerNode(Node):
 
     # Handle joystick logic
     def joy_callback(self, msg: Joy):
+        global default_camera_view, second_camera_view, Schematic
         self.time = self.get_clock().now()
         
-        global default_camera_view, second_camera_view, Schematic
         # Connection code that helps handle timeouts
         self.last_msg_time = self.get_clock().now()
+
         if not self.connected:
             controller=""
             # Switch to correct button layout
@@ -125,6 +132,8 @@ class ControllerNode(Node):
         elif(bucket_act_vel > 0): bucket_act_vel=self.map_value(bucket_act_vel,deadzone,1.0,0.0,1.0)
         else: bucket_act_vel=self.map_value(bucket_act_vel,-1.0,-deadzone,-1.0,0.0)
 
+        self.get_logger().info(f"{self.get_input_values(msg, 'ARM')}")
+
         # If unarmed or controller is disconnected send a speed of 0
         if(self.get_input_values(msg, "ARM") >= 0 or not self.connected): 
             vel=0.0
@@ -134,15 +143,16 @@ class ControllerNode(Node):
             
         # Motor velocity data
         motor.command="M"
-        motor.data=[vel,ang_vel]
-        motor.blocking_id=None
+        #print(vel)
+        motor.data=[float(vel),float(ang_vel)]
+        motor.blocking_id=-1
         self.cmd_vel_msg=motor
 
         # Publish actuator data
         actuator_msg = Command()
         actuator_msg.command="A"
-        actuator_msg.data=[-1, -1, -1, -1, arm_act_vel, bucket_act_vel]
-        actuator_msg.blocking_id=None
+        actuator_msg.data=[float(-1), float(-1), float(-1), float(-1), float(arm_act_vel), float(bucket_act_vel)]
+        actuator_msg.blocking_id=-1
         self.actuator_msg=actuator_msg
 
         # Publish camera data
@@ -189,15 +199,15 @@ class ControllerNode(Node):
                 # Motor velocity
                 motor=Command()
                 motor.command="M"
-                motor.data=[0.0,0.0]
-                motor.blocking_id=None
+                motor.data=[float(0),float(0)]
+                motor.blocking_id=-1
                 self.robot_command_publisher.publish(motor)
                 self.connected = False
                 # Actuator velocity
                 actuator=Command()
                 actuator.command="A" 
-                actuator.data=[-1,-1,-1,-1,0.0,0.0]
-                actuator.blocking_id=None
+                actuator.data=[float(-1),float(-1),float(-1),float(-1),float(0),float(0)]
+                actuator.blocking_id=-1
                 self.robot_command_publisher.publish(actuator)
     
     # Map values to match range

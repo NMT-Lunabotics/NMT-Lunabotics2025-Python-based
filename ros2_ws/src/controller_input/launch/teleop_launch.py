@@ -2,6 +2,7 @@ from launch import LaunchDescription
 from launch_ros.actions import Node
 from launch.substitutions import LaunchConfiguration
 from launch.actions import DeclareLaunchArgument
+from launch.actions import SetEnvironmentVariable
 
 def generate_launch_description():
     """Starts controller_input_node for converting button inputs into activation topics"""
@@ -9,6 +10,7 @@ def generate_launch_description():
 
     device_id = LaunchConfiguration('device_id')
     return LaunchDescription([
+        #SetEnvironmentVariable('ROS_DOMAIN_ID', '10'),
         device_id_arg,
         # Start the joystick node
         Node(
@@ -23,7 +25,6 @@ def generate_launch_description():
                 'autorepeat_rate': 10.0,  # Set the publish rate in Hz
                 'coalesce_interval_ms': 100,
             }],
-            additional_env={'ROS_DOMAIN_ID': '10'}
         ),
 
         # Start the controller_input node
@@ -36,6 +37,5 @@ def generate_launch_description():
                 'require_enable_button': True,
                 'inverted_reverse': False
             }],
-            additional_env={'ROS_DOMAIN_ID': '10'}
         )
     ])

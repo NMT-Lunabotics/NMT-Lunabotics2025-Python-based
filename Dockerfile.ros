@@ -36,6 +36,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-robot-state-publisher \
     ros-humble-joy \
     ros-humble-rviz2 \
+    ros-humble-domain-bridge \
 && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user (luna) with access to full container
@@ -74,6 +75,7 @@ RUN apt-get update && apt-get install -y \
     #ros-humble-usb-cam \
     ros-humble-v4l2-camera \
     ros-humble-compressed-image-transport \
+    ros-humble-image-transport-plugins \
     #ros-humble-image-view \
     ros-humble-image-tools \
     #pkg-config \

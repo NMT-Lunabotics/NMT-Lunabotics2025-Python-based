@@ -4,4 +4,4 @@ cameras:
     video_device: /dev/video2
     width: 640
     height: 480
-    frame_rate: 30
+    frame_rate: 5

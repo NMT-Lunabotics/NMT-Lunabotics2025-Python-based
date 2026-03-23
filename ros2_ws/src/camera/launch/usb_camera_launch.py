@@ -5,6 +5,7 @@ from launch.events import Shutdown
 from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from ament_index_python.packages import get_package_share_directory
+from launch.actions import SetEnvironmentVariable
 import yaml, os
 
 def launch_setup(context):
@@ -15,7 +16,7 @@ def launch_setup(context):
     nodes = []
     shutdown_handlers = []
     for cam in config['cameras']:
-        # v4l2 camera node publishes raw feed ros2 run v4l2_camera v4l2_camera_node --ros-args -p video_device:=/dev/video2 -p image_size:=640x480
+        # v4l2 camera node publishes raw video data
         camera_node = Node(
             package='v4l2_camera',
             executable='v4l2_camera_node',
@@ -25,25 +26,28 @@ def launch_setup(context):
             parameters=[{
                 'video_device': cam['video_device'],
                 'image_size': [cam['width'],cam['height']],
-                #'image_width': int(cam['width']),
-                #'image_height': int(cam['height']),
-                'frame_rate': int(cam['frame_rate']),
-            }],
-            additional_env={'ROS_DOMAIN_ID': '11'}
+                'framerate': int(cam['frame_rate']),
+                'image_encoding': 'rgb8'
+            }]
         )
 
-        # Republish node creates compressed version of raw feed
+        # Republish node ensures compressed video feed exists
         republish_node = Node(
             package='image_transport',
             executable='republish',
-            namespace=cam['name'],
-            name='republish_compressed',
-            arguments=['raw', 'compressed'],
-            remappings=[
-                ('in', 'image_raw'),                   # from camera node
-                ('out', 'image_raw/compressed')        # compressed topic
+            name=f'{cam["name"]}_compressed',
+            arguments=[
+                'raw', 'compressed',
+                '--ros-args',
+                '--remap', f'in:=/{cam["name"]}/image_raw',
+                '--remap', f'out/compressed:=/{cam["name"]}/compressed'
             ],
-            additional_env={'ROS_DOMAIN_ID': '11'}
+            #arguments=['raw', 'compressed'],
+            #remappings=[
+            #    ('in', f'/{cam["name"]}/image_raw'),
+            #    ('out/compressed', f'/{cam["name"]}/compressed')  
+            #],
+            parameters=[{'jpeg_quality': 0}]
         )
         
         # Allow shutdown of nodes when terminal closes
@@ -59,18 +63,22 @@ def launch_setup(context):
         nodes.extend([camera_node, republish_node])
 
     # launch camera muiliplexer
+    mux_fps = float(config['cameras'][0]['frame_rate'])
     nodes.append(
         Node(
             package='camera',
             executable='camera_mux_node.py',
             name='camera_mux_node',
-            additional_env={'ROS_DOMAIN_ID': '11'}
+            parameters=[{
+                'output_fps': mux_fps
+            }]
         )
     )
     return nodes + shutdown_handlers
 
 def generate_launch_description():
-    default_camera_yaml = os.path.join(get_package_share_directory('camera'),'config','cameras.yaml')
+    default_camera_yaml = os.path.join(get_package_share_directory('camera'),'config','pc_cameras.yaml')
+    #default_camera_yaml = os.path.join(get_package_share_directory('camera'),'config','cameras.yaml')
     return LaunchDescription([
         DeclareLaunchArgument('camera_config',default_value=default_camera_yaml, description='Path to cameras.yaml configuration file'),
         OpaqueFunction(function=launch_setup)

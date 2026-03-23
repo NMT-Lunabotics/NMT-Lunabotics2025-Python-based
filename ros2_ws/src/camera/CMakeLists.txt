@@ -16,6 +16,7 @@ install(DIRECTORY launch config
 
 install(PROGRAMS
   camera/camera_apriltag_node.py
+  camera/camera_view_node.py
   camera/camera_mux_node.py
   camera/map_view_node.py
   camera/simple_camera_stream_node.py
