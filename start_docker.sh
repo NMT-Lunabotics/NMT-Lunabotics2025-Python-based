@@ -301,7 +301,7 @@ if [ "$INTERACTIVE_HOST" = true ]; then
     if [ "$BUILD_IMAGE" = true ]; then
         cd "$ROS_DIR_ABS"
         rm -rf build/ install/ log/
-        colcon build --symlink-install
+        colcon build --packages-select automated_operations camera controller_input robot_interfaces serial_commands system_monitor system_start
         source "$ROS_DIR_ABS/install/setup.bash"
         cd "$WORKING_DIR_HOST" 
     fi

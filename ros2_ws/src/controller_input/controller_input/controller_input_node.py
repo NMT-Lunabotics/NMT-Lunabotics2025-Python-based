@@ -132,8 +132,6 @@ class ControllerNode(Node):
         elif(bucket_act_vel > 0): bucket_act_vel=self.map_value(bucket_act_vel,deadzone,1.0,0.0,1.0)
         else: bucket_act_vel=self.map_value(bucket_act_vel,-1.0,-deadzone,-1.0,0.0)
 
-        self.get_logger().info(f"{self.get_input_values(msg, 'ARM')}")
-
         # If unarmed or controller is disconnected send a speed of 0
         if(self.get_input_values(msg, "ARM") >= 0 or not self.connected): 
             vel=0.0
@@ -143,7 +141,6 @@ class ControllerNode(Node):
             
         # Motor velocity data
         motor.command="M"
-        #print(vel)
         motor.data=[float(vel),float(ang_vel)]
         motor.blocking_id=-1
         self.cmd_vel_msg=motor
