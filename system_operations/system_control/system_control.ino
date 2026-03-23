@@ -7,17 +7,18 @@
 #if MAIN_ROBOT==1
 
 // List of components flags to enable/disable for testing
-#define ERROR_LEDS_ENABLED           0 //1
+#define ERROR_LEDS_ENABLED           1 //1
 #define MOTORS_ENABLED               0 //1
 #define BUCKET_ACTUATOR_ENABLED      0 //1
-#define ARM_ACTUATORS_ENABLED        0 //1
+#define ARM_ACTUATORS_ENABLED        1 //1
 #define SERVO_MOTOR_ENABLED          0
 #define IMU_SENSOR_ENABLED           0
 #define IBUS_RECIVER_ENABLED         0 //1
+#define SCREEN_ENABLED               0 //1
 
 // List of faults to disable
-#define SERIAL_COMM_TIMEOUT_FAULT    0 //1
-#define COMPONENT_TIMEOUT_FAULTS     0 //1
+#define SERIAL_COMM_TIMEOUT_FAULT    1 //1
+#define COMPONENT_TIMEOUT_FAULTS     1 //1
 
 // Debug mode flags
 #define DEBUG_MODE                   0
@@ -287,8 +288,10 @@ float vel_gain = 2.5;
 #endif
 
 // Initalize I2C class
-OLEDIIC_interface screen1(0x3C, 128, 64);
-MessageStore messages(screen1);
+#if SCREEN_ENABLED
+  OLEDIIC_interface screen1(0x3C, 128, 64);
+  MessageStore messages(screen1);
+#endif
 
 // void processMessage(byte* data, int length);
 void stop_all();
@@ -595,11 +598,11 @@ void loop() {
   if (current_time - last_reset_int_time >= 1000 / reset_int_rate) {
     last_reset_int_time = current_time;
     #if ARM_ACTUATORS_ENABLED
-    act_left.resetPIDIntegral();
-    act_right.resetPIDIntegral();
+      act_left.resetPIDIntegral();
+      act_right.resetPIDIntegral();
     #endif
     #if BUCKET_ACTUATOR_ENABLED
-    act_bucket.resetPIDIntegral();
+      act_bucket.resetPIDIntegral();
     #endif
   }
   #endif
@@ -620,7 +623,9 @@ void loop() {
     Serial.println(IMU_yaw,6);
   #endif
 }
+#if SCREEN_ENABLED
   messages.systemMessageUpdate(current_time);
+#endif
 }
 
 // Read serial communication from autonomy computer and set system variables to output.
@@ -755,7 +760,9 @@ void processMessage(byte *data, int length) {
         
         // Get data payload and have messages calss handle all farther message handling
         uint8_t* payload = &data[3]; 
-        messages.addMessageToArduino(id, operation, payload);
+        #if SCREEN_ENABLED
+          messages.addMessageToArduino(id, operation, payload);
+        #endif
         break;
       }
     default:
