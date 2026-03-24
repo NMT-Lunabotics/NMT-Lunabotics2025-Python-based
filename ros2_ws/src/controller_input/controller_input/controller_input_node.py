@@ -31,15 +31,19 @@ deadzone=0.4                        # Deadzone of actuator joystick
 Schematic=Xbox_controller_map       # Defines what controler schematic to use
 
 # Button mappings
-Buttons = {
-    "MOTOR_X": {"type": "axis", "input": Schematic["RIGHT_JOY_X"]},                 # Turn left/right
-    "MOTOR_Y": {"type": "axis", "input": Schematic["RIGHT_JOY_Y"]},                 # Drive forword/backwords
-    "ACTUATOR_X": {"type": "axis", "input": Schematic["LEFT_JOY_X"]},               # Move bucket up/down
-    "ACTUATOR_Y": {"type": "axis", "input": Schematic["LEFT_JOY_Y"]},               # Move main actuator up/down  
-    "ARM": {"type": "axis", "input": Schematic["LEFT_TRIGGER"]},                    # Arming button
-    "CAMERA_TOGGLE": {"type": "button", "input": Schematic["RIGHT_STICK_BUTTON"]},  # Toggle between camera views
-    "CAMERA_SWITCH": {"type": "button", "input": Schematic["START"]},               # Switch between camera views
-}
+def set_buttons_for_schematic():
+    global Buttons, Schematic
+    Buttons = {
+        "MOTOR_X": {"type": "axis", "input": Schematic["RIGHT_JOY_X"]},                 # Turn left/right
+        "MOTOR_Y": {"type": "axis", "input": Schematic["RIGHT_JOY_Y"]},                 # Drive forword/backwords
+        "ACTUATOR_X": {"type": "axis", "input": Schematic["LEFT_JOY_X"]},               # Move bucket up/down
+        "ACTUATOR_Y": {"type": "axis", "input": Schematic["LEFT_JOY_Y"]},               # Move main actuator up/down  
+        "ARM": {"type": "axis", "input": Schematic["LEFT_TRIGGER"]},                    # Arming button
+        "CAMERA_TOGGLE": {"type": "button", "input": Schematic["RIGHT_STICK_BUTTON"]},  # Toggle between camera views
+        "CAMERA_SWITCH": {"type": "button", "input": Schematic["START"]},  
+    }
+Buttons={}
+set_buttons_for_schematic()
 
 # Button combos: 
 # RIGHT_BUMPER+[BUTTON_A,BUTTON_B,BUTTON_X,BUTTON_Y] triggers automation
@@ -92,6 +96,18 @@ class ControllerNode(Node):
         self.robot_command_publisher = self.create_publisher(Command, '/robot_commands', 5)
         self.camera_state_publisher = self.create_publisher(Camera, '/camera/toggle_view', 5)
 
+    def set_buttons_for_schematic(self):
+        global Buttons, Schematic
+        Buttons = {
+            "MOTOR_X": {"type": "axis", "input": Schematic["RIGHT_JOY_X"]},
+            "MOTOR_Y": {"type": "axis", "input": Schematic["RIGHT_JOY_Y"]},
+            "ACTUATOR_X": {"type": "axis", "input": Schematic["LEFT_JOY_X"]},
+            "ACTUATOR_Y": {"type": "axis", "input": Schematic["LEFT_JOY_Y"]},
+            "ARM": {"type": "axis", "input": Schematic["LEFT_TRIGGER"]},
+            "CAMERA_TOGGLE": {"type": "button", "input": Schematic["RIGHT_STICK_BUTTON"]},
+            "CAMERA_SWITCH": {"type": "button", "input": Schematic["START"]},
+        }
+
     # Handle joystick logic
     def joy_callback(self, msg: Joy):
         global default_camera_view, second_camera_view, Schematic
@@ -99,6 +115,8 @@ class ControllerNode(Node):
         
         # Connection code that helps handle timeouts
         self.last_msg_time = self.get_clock().now()
+
+        #self.get_logger().info(f"Buttons: {msg.buttons}, Axes: {msg.axes}")
 
         if not self.connected:
             controller=""
@@ -113,6 +131,7 @@ class ControllerNode(Node):
                     elif "xbox" in lower: 
                         Schematic=Xbox_controller_map 
                         controller="Xbox "
+            set_buttons_for_schematic()
             self.get_logger().info(f"{controller}controller connected.")
             self.connected = True
 
@@ -179,8 +198,13 @@ class ControllerNode(Node):
     # Get data dynamiclly from joystick using input type
     def get_input_values(self, msg, input):
         button = Buttons[input]
-        if(button["type"]=="axis"): return msg.axes[button["input"]]
-        else: return msg.buttons[button["input"]]
+        #self.get_logger().info(f"{button}")
+        if button["type"] == "axis":
+            if button["input"] < len(msg.axes): return msg.axes[button["input"]]
+            else: return 0.0
+        else:  
+            if button["input"] < len(msg.buttons): return msg.buttons[button["input"]]
+            else: return 0
 
     # Constantly check to make sure controller is connected
     def check_connection(self):
