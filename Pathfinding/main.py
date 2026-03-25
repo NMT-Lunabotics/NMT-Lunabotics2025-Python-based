@@ -1,4 +1,6 @@
-from SLAM_Simulation import env, sensors, pathfinding
+import env
+import sensors
+import pathfinding
 import pygame
 
 environment = env.buildEnvironment((864, 1536))

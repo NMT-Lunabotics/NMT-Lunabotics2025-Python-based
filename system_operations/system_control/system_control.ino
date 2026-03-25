@@ -38,18 +38,15 @@
 
 //--------------- Setup used classes ---------------
 #if IMU_SENSOR_ENABLED
-#if MAIN_ROBOT==1
-#define IMU_MANUAL_SCALER 1
-#else
-#define IMU_MANUAL_SCALER 0.6
-#endif
-MPU6050 IMU; 
+  #if MAIN_ROBOT==1
+    #define IMU_MANUAL_SCALER 1
+  #else
+    #define IMU_MANUAL_SCALER 0.6
+  #endif
+    MPU6050 IMU; 
 #endif
 #if IBUS_RECIVER_ENABLED
-IBusReader ibus(Serial1);
-#endif
-#if SERVO_MOTOR_ENABLED
-  SimpleServo servo(11);
+  IBusReader ibus(Serial1);
 #endif
 
 //--------------- Actuators ---------------
@@ -135,18 +132,16 @@ int mLR_arc_radius = 0;
 float robot_width = 7.276186; //m
 
 #if MAIN_ROBOT==1
-#define mL_speed_scale 1
-#define mR_speed_scale 1
+  #define mL_speed_scale 1
+  #define mR_speed_scale 1
 #else
-#define mL_speed_scale 1
-#define mR_speed_scale 1
+  #define mL_speed_scale 1
+  #define mR_speed_scale 1
 #endif
 
-// TODO implement servo logic
-//  #define SERVO_PIN 22
-
-// Servo
-bool servo_state = false;
+#if SERVO_MOTOR_ENABLED
+  #define SERVO_PIN 9
+#endif
 
 //--------------- LEDS ---------------
 
@@ -265,6 +260,10 @@ OutPin ledr_pin(LEDR_PIN);
 OutPin ledy_pin(LEDY_PIN);
 OutPin ledg_pin(LEDG_PIN);
 OutPin ledb_pin(LEDB_PIN);
+#endif
+
+#if SERVO_MOTOR_ENABLED
+  SimpleServo servo(SERVO_PIN);
 #endif
 
 // void processMessage(byte* data, int length);
@@ -663,12 +662,10 @@ void processMessage(byte *data, int length) {
     case 'S':    
       { 
         #if SERVO_MOTOR_ENABLED
-        // (S, servo motor) Recvived servo latch state
-        //servo_state = data[1];  
-        servo.write((int8_t)data[1]);
+        servo.write(data[1]);
         #if DEBUG_MODE
           Serial.print("Servo State: ");
-          Serial.println(servo_state);
+          Serial.println(data[1]);
         #endif
         #endif
         break;

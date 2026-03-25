@@ -1,0 +1,29 @@
+Getting the realsense camera working sucks.
+
+Make sure a usb3 cable and port is being used. A special driver is required, I reccamend deleting the old stuff and reintalling it and switching drivers.
+
+sudo apt remove 'librealsense*' -y
+sudo apt autoremove -y
+
+sudo apt update
+sudo apt install git cmake build-essential libssl-dev libusb-1.0-0-dev pkg-config \
+libgtk-3-dev libglfw3-dev libgl1-mesa-dev libglu1-mesa-dev -y
+
+cd ~
+git clone https://github.com/IntelRealSense/librealsense.git
+cd librealsense
+
+./scripts/patch-realsense-ubuntu-lts.sh
+
+rm -rf build
+mkdir build
+cd build
+
+cmake ../ -DBUILD_EXAMPLES=true -DFORCE_RSUSB_BACKEND=true
+
+make -j$(nproc)
+sudo make install
+
+sudo cp ../config/99-realsense-libusb.rules /etc/udev/rules.d/
+sudo udevadm control --reload-rules
+sudo udevadm trigger

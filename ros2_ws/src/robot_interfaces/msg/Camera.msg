@@ -1,0 +1,1 @@
+int8 camera_view     # Selected camera view

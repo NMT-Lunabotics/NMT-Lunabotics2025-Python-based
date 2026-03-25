@@ -1,0 +1,6 @@
+# For testing purposes
+serial:
+  port: ""
+  serial_device: "/dev/ttyACM0"
+  baud_rate: 115200
+  timeout: 0.1

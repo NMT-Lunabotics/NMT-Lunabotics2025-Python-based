@@ -27,6 +27,8 @@ import socket
 import struct
 import threading
 import time
+import subprocess
+import platform
 import urllib.request
 from array import array
 from dataclasses import dataclass
@@ -43,6 +45,8 @@ else:
 try:
     import tkinter as tk
     from tkinter import ttk
+    import tkinter.font as tkfont
+    from tkinter import simpledialog
 except ImportError as exc:  # pragma: no cover - tkinter unavailable on some envs
     raise SystemExit(f"tkinter is required for this GUI: {exc}")
 
@@ -59,7 +63,7 @@ else:  # pragma: no cover - non-Windows platforms never import inputs
 
 # --- Controller/UDP configuration test---192.168.0.207----------------------------------------------
 
-TARGET_CONTROLLER_NAME = "Logitech Gamepad F310"
+TARGET_CONTROLLER_NAME = "Logitech Gamepad F310" #Logitech Logitech Cordless RumblePad 2
 UDP_DESTINATION: Tuple[str, int] = ("0.0.0.0", 11000)
 SEND_RATE_HZ = 40.0
 IDLE_RATE_HZ = 40.0  # kee p the outbound stream at a constant 50 Hz
@@ -72,10 +76,13 @@ COMMAND_DESTINATION: Tuple[str, int] = ("0.0.0.0", 10001)
 CAMERA_REFRESH_HZ = 6.0
 CAMERA_DEFAULT_URL: Optional[str] = "http://127.0.0.1:8081/frame"
 KEEPALIVE_INTERVAL = 0.5  # seconds between forced resend of identical packet
-DISCOVERY_PORT = 11010
-DISCOVERY_MAGIC = b"F310_DISCOVERY_V1"
+DISCOVERY_PORT = 10000
+DISCOVERY_MAGIC = b"B-NMT26"
 DISCOVERY_ATTEMPTS = 5
 DISCOVERY_TIMEOUT = 0.6
+AUTO_IP_CONNECT=False
+SAVED_IPS = ["192.168.0.207", "129.138.171.148"]
+password_file = os.path.join("DriverStation", "userpassword")
 
 # --- UI colors -------------------------------------------------------------------
 
@@ -570,102 +577,134 @@ class TelemetryListener:
             return None
         return str(value)
 
+
+def ask_password():
+    root = tk.Tk()
+    root.withdraw()
+    pw = simpledialog.askstring("User password","Please enter PC password.\nThis will be saved inside DriverStation.")
+    root.destroy()
+    
+    if pw is None:
+        print("Password entry canceled by user!")
+        return None
+    return pw
+
 def discover_robot(
     attempts: int = DISCOVERY_ATTEMPTS, timeout: float = DISCOVERY_TIMEOUT
 ) -> Optional[Tuple[str, int, int, int]]:
-    """Broadcast a discovery packet and wait for f310_comp to respond."""
-    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-    try:
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
-        sock.settimeout(timeout)
-        for _ in range(max(1, attempts)):
-            try:
-                sock.sendto(DISCOVERY_MAGIC, ("255.255.255.255", DISCOVERY_PORT))
-                data, addr = sock.recvfrom(256)
-            except socket.timeout:
-                continue
-            except OSError:
-                break
-            try:
-                payload = json.loads(data.decode("utf-8"))
-            except (json.JSONDecodeError, UnicodeDecodeError):
-                continue
-            if not isinstance(payload, dict):
-                continue
-            if payload.get("role") != "f310_comp":
-                continue
-            host = addr[0]
-            udp_port = int(payload.get("udp_port", UDP_DESTINATION[1]))
-            cmd_port = int(payload.get("command_port", COMMAND_DESTINATION[1]))
-            telemetry_port = int(payload.get("telemetry_port", TELEMETRY_LISTEN[1]))
-            return host, udp_port, cmd_port, telemetry_port
-    finally:
-        sock.close()
-    return None
+    """Discover robot via UDP heartbeat (Windows) or Bash script (Unix)."""
+    robot_ip = None
+    system = platform.system()
 
-def _search_for_robot(duration: float = 5.0) -> Optional[Tuple[str, int, int, int]]:
-    attempts = max(1, int(duration / DISCOVERY_TIMEOUT))
-    return discover_robot(attempts=attempts, timeout=DISCOVERY_TIMEOUT)
+    if system == "Windows":
+        BUFFER_SIZE = 1024
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.bind(("", DISCOVERY_PORT))
+        sock.settimeout(timeout)
+        try:
+            for _ in range(max(1, attempts)):
+                try:
+                    data, addr = sock.recvfrom(BUFFER_SIZE)
+                except socket.timeout:
+                    continue
+                message = data.decode(errors="ignore")
+                if message.startswith("NMT26:"):
+                    robot_ip = addr[0]
+                    break
+        finally:
+            sock.close()
+    else:
+        if os.path.exists(password_file):
+            script = "DriverStation/find_robot_ip.sh"
+            if not os.access(script, os.X_OK): return
+
+            with open(password_file, "r") as f: password = f.read().strip()
+            try: result = subprocess.run(["sudo", "-S", script],input=password + "\n",capture_output=True,text=True,timeout=3)
+            except subprocess.TimeoutExpired: return None
+            if result.returncode == 0 and result.stdout.strip() != "NOT_FOUND":robot_ip = result.stdout.strip()
+        else:
+            print("Sudo password missing, exiting!")
+            return
+            
+    if robot_ip:
+        return robot_ip, UDP_DESTINATION[1], COMMAND_DESTINATION[1], TELEMETRY_LISTEN[1]
+
+    return None
 
 def prompt_for_robot_selection(timeout: float = 5.0) -> Optional[Tuple[str, int, int, int]]:
     """Show a blocking window that searches for the robot, allowing manual entry."""
+    global SAVED_IPS
     result: Dict[str, Optional[Tuple[str, int, int, int]]] = {"value": None}
 
     root = tk.Tk()
     root.title("Robot Discovery")
-    root.geometry("400x220")
+    root.geometry("400x250")
     root.configure(background=WINDOW_BG)
 
-    status_var = tk.StringVar(value="Searching for robot (up to 5 seconds)...")
+    status_font = tkfont.Font(family="Arial", size=10, weight="bold")
+    status_var = tk.StringVar(value="Select robot IP address.")
     ip_var = tk.StringVar()
     searching = {"active": False}
+    attempt=0
 
     frame = ttk.Frame(root, padding=12, style="Panel.TFrame")
     frame.pack(fill="both", expand=True)
-    ttk.Label(frame, textvariable=status_var, style="Muted.TLabel", wraplength=360).pack(
-        anchor="w", fill="x"
-    )
+    ttk.Label(frame, textvariable=status_var, style="Muted.TLabel", wraplength=400,font=status_font).pack(anchor="w", fill="x")
 
-    entry_label = ttk.Label(frame, text="Manual IP address (optional):", style="Subheading.TLabel")
+    # Play loading ip animation while searching for ip address
+    loading_font = tkfont.Font(family="Arial", size=8, weight="normal")
+    anim_var = tk.StringVar(value=f"Attempt(0), Searching for robot IP address")
+
+    entry_label = ttk.Label(frame, text="IP address:", style="Subheading.TLabel")
     entry_label.pack(anchor="w", pady=(12, 4))
     entry = ttk.Entry(frame, textvariable=ip_var, style="Console.TEntry")
     entry.pack(fill="x")
 
     buttons = ttk.Frame(frame, style="Panel.TFrame")
-    buttons.pack(fill="x", pady=(16, 0))
+    stop_event = threading.Event()
+
+    def on_dropdown_select(event):
+        value = dropdown_var.get()
+        if value.startswith("---"):
+            dropdown_var.set("")
+        else:
+            ip_var.set(value)
 
     def finish(value: Optional[Tuple[str, int, int, int]]) -> None:
         result["value"] = value
+        searching["active"] = False
         root.destroy()
 
-    def handle_search_complete(found: Optional[Tuple[str, int, int, int]]) -> None:
-        searching["active"] = False
-        if found:
-            status_var.set(f"Found robot at {found[0]}. Launching GUI...")
-            root.after(500, lambda: finish(found))
-            return
-        status_var.set("Robot not found. Enter an IP or search again for 5 seconds.")
-        search_btn.config(state="normal")
-        manual_btn.config(state="normal")
-
     def run_search() -> None:
-        if searching["active"]:
-            return
+        nonlocal attempt
+        if searching["active"]: return
         searching["active"] = True
-        status_var.set("Searching for robot (up to 5 seconds)...")
-        search_btn.config(state="disabled")
-        manual_btn.config(state="disabled")
 
         def worker() -> None:
-            found = _search_for_robot(timeout)
-            root.after(0, lambda: handle_search_complete(found))
+            nonlocal attempt
+            while searching["active"] and not stop_event.is_set():
+                attempt += 1
+                anim_var.set(f"Attempt({attempt}), Searching for robot IP address")
+                found = discover_robot(attempts=1, timeout=DISCOVERY_TIMEOUT)
+                if found:
+                    searching["active"] = False
+                    anim_var.set(f"Robot IP found!")
+                    if AUTO_IP_CONNECT: root.after(500, lambda: finish(found))
+                    else:
+                        result["value"] = found
+                        root.after(0, update_dropdown)
+                    return
 
+                for _ in range(5):
+                    if stop_event.is_set() or not searching["active"]:return
+                    time.sleep(0.1)
+        
         threading.Thread(target=worker, daemon=True).start()
 
     def use_manual_ip() -> None:
         raw_ip = ip_var.get().strip()
         if not raw_ip:
-            status_var.set("Enter an IP address before selecting manual connect.")
+            status_var.set("Please select IP address first.")
             return
         try:
             ipaddress.ip_address(raw_ip)
@@ -674,35 +713,61 @@ def prompt_for_robot_selection(timeout: float = 5.0) -> Optional[Tuple[str, int,
             return
         finish((raw_ip, UDP_DESTINATION[1], COMMAND_DESTINATION[1], TELEMETRY_LISTEN[1]))
 
-    search_btn = ttk.Button(
-        buttons,
-        text="Search Again (5s)",
-        command=run_search,
-        style="Accent.TButton",
-    )
-    search_btn.pack(side="left", expand=True, fill="x")
+    def update_button_state(*_):
+        value = ip_var.get().strip()
+        manual_btn.config(state="normal" if value else "disabled")
 
-    manual_btn = ttk.Button(
-        buttons,
-        text="Use Manual IP",
-        command=use_manual_ip,
-        style="Accent.TButton",
-    )
-    manual_btn.pack(side="left", expand=True, fill="x", padx=(8, 0))
+    # Show text animation to indicate that system is looking for ip heartbeat
+    def animate_search():
+        if not searching["active"] or stop_event.is_set():
+            return
+        text = anim_var.get()
+        if text.endswith("..."):
+            anim_var.set(f"Attempt({attempt}), Searching for robot ip address")
+        else:
+            anim_var.set(text + ".")
+        root.after(500, animate_search)
+        
+    # Update dropdown if ip is found from heartbeat
+    def update_dropdown():
+        if result["value"]: found_ip = result["value"][0]
+        else:found_ip = ""
 
-    quit_btn = ttk.Button(
-        frame,
-        text="Cancel",
-        command=lambda: finish(None),
-        style="Accent.TButton",
-    )
-    quit_btn.pack(fill="x", pady=(12, 0))
+        values = ["----- IP Searcher -----"]
+        if found_ip: values.append(found_ip)
+        values += ["----- Saved IPs -----"] + SAVED_IPS
+        ip_dropdown["values"] = values
+
+        if found_ip and not ip_var.get().strip(): ip_var.set(found_ip)
+        if found_ip: dropdown_var.set(found_ip)
+
+    # Drop down
+    dropdown_label = ttk.Label(frame, text="Select:")
+    dropdown_label.pack(anchor="w", pady=(12, 4))
+
+    dropdown_var = tk.StringVar()
+    ip_dropdown = ttk.Combobox(frame, textvariable=dropdown_var, state="readonly")
+    ip_dropdown.pack(fill="x")
+    update_dropdown()
+    ip_dropdown.bind("<<ComboboxSelected>>", on_dropdown_select)
+    ttk.Label(frame, textvariable=anim_var, style="Muted.TLabel", font=loading_font).pack(anchor="w")
+
+    # Use ip button
+    manual_btn = ttk.Button(buttons,text="Use IP",command=use_manual_ip,style="Accent.TButton")
+    manual_btn.pack(side="left", expand=True, fill="x", padx=(4, 4))
+    buttons.pack(fill="x", pady=(12, 0))
+
+    # Ip hook that only allows "use ip" button if ip field is filled out
+    ip_var.trace_add("write", update_button_state)
+    update_button_state()
 
     root.protocol("WM_DELETE_WINDOW", lambda: finish(None))
     run_search()
+    root.after(500, animate_search)
     entry.focus_set()
     root.mainloop()
     return result["value"]
+
 
 
 # --- GUI -------------------------------------------------------------------------
@@ -1152,10 +1217,18 @@ class ControlStationGUI:
 
 def main() -> None:
     global UDP_DESTINATION, COMMAND_DESTINATION, TELEMETRY_LISTEN
+    system = platform.system()
+    if not os.path.exists(password_file) and system != "Windows":
+        password=ask_password()
+        if not password: return
+        with open(password_file, "w") as f: f.write(password)
+        os.chmod(password_file, 0o600)
+
+
     discovery = prompt_for_robot_selection()
     if discovery:
         host, udp_port, command_port, telemetry_port = discovery
-        print(f"Discovered robot at {host} (udp={udp_port}, cmd={command_port})")
+        #print(f"Discovered robot at {host} (udp={udp_port}, cmd={command_port})")
         UDP_DESTINATION = (host, udp_port)
         COMMAND_DESTINATION = (host, command_port)
         TELEMETRY_LISTEN = ("0.0.0.0", telemetry_port)

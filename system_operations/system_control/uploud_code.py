@@ -13,12 +13,20 @@ serial = serialCommands()
 arduino.compile_and_upload()
 
 
+# NOTE serial feedback is blocking, you will not recive serial error messages
+#feedback = serial.read_command_feedback()
+#if feedback:
+#    for packet in feedback: 
+#        print(packet)
+
+
 while True:
-    #feedback = serial.read_command_feedback()
-    #if feedback:
-    #    for packet in feedback: 
-    #        print(packet)
+    serial.send_command("S", [180])
+    time.sleep(0.5)
+    serial.send_command("S", [0])
+    time.sleep(0.5)
 
 
-    value = serial.read_serial()
-    if value: print(value)
+
+    #value = serial.read_serial()
+    #if value: print(value)

@@ -1,3 +1,49 @@
+------------------------------------------------------------
+Disable current network and through ssh connect to new one
+------------------------------------------------------------
+sudo nmcli device disconnect wlan0
+sudo nmcli device wifi connect "Team-14" password "123456789"
+
+------------------------------------------------------------
+List network connections
+------------------------------------------------------------
+nmcli connection show
+
+
+
+
+
+
+------------------------------------------------------------
+Jetson static ip's for switching
+------------------------------------------------------------
+sudo nmcli connection modify Team-14 ipv4.addresses 192.168.0.10/24
+sudo nmcli connection modify Team-14 ipv4.gateway 192.168.0.1
+sudo nmcli connection modify Team-14 ipv4.method manual
+sudo nmcli connection modify Team-14 +ipv4.addresses 192.168.0.20/24
+sudo nmcli connection up Team-14
+
+
+
+sudo ip addr flush dev wlan0
+sudo ip addr add 192.168.0.10/24 dev wlan0
+sudo ip addr add 192.168.0.20/24 dev wlan0
+sudo ip route add default via 192.168.0.1
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 The primary jetson username is: luna and it's password is: 123456789, and ip adress is 192.168.0.207
 
 
