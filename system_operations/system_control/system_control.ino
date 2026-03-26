@@ -6,12 +6,12 @@
 
 // List of components flags to enable/disable for testing
 #define ERROR_LEDS_ENABLED           1
-#define MOTORS_ENABLED               1
-#define BUCKET_ACTUATOR_ENABLED      1
-#define ARM_ACTUATORS_ENABLED        1
-#define SERVO_MOTOR_ENABLED          0
+#define MOTORS_ENABLED               0
+#define BUCKET_ACTUATOR_ENABLED      0
+#define ARM_ACTUATORS_ENABLED        0
+#define SERVO_MOTOR_ENABLED          1
 #define IMU_SENSOR_ENABLED           0
-#define IBUS_RECIVER_ENABLED         1
+#define IBUS_RECIVER_ENABLED         0
 
 // List of faults to disable
 #define SERIAL_COMM_TIMEOUT_FAULT    1

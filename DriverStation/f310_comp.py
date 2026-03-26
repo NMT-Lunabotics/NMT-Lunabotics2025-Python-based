@@ -35,6 +35,11 @@ DECEL_LIMIT_PER_SEC = 60.0
 DECEL_NEAR_ZERO_THRESHOLD = 5.0
 DECEL_NEAR_ZERO_PER_SEC = 90.0
 ARM_MISS_TOLERANCE = 3
+HEADSET_LISTEN_ADDR: Tuple[str, int] = ("0.0.0.0", 12002)  # matches Unity default; adjust only if Unity IP/port changes
+HEADSET_STALE_SEC = 0.5
+HEADSET_YAW_RANGE_DEG = (-90.0, 90.0)
+SERVO_RANGE = (0, 180)
+SERVO_CENTER = 90
 
 AUTO_PROGRAMS = {
     "excavation": get_excavation_sequence,
@@ -119,6 +124,19 @@ def decode_packet(packet: bytes) -> Optional[Tuple[Tuple[int, ...], Tuple[int, .
     return axes, buttons, armed
 
 
+def _clamp_servo(angle: int) -> int:
+    lo, hi = SERVO_RANGE
+    return max(lo, min(hi, angle))
+
+
+def _yaw_to_servo(yaw_deg: float) -> int:
+    lo, hi = HEADSET_YAW_RANGE_DEG
+    yaw_clamped = max(lo, min(hi, yaw_deg))
+    proportion = (yaw_clamped - lo) / (hi - lo) if hi != lo else 0.5
+    angle = int(round(SERVO_RANGE[0] + proportion * (SERVO_RANGE[1] - SERVO_RANGE[0])))
+    return _clamp_servo(angle)
+
+
 def _open_link(shared: dict, stop_event: threading.Event) -> Optional[serialCommands]:
     while not stop_event.is_set():
         try:
@@ -182,6 +200,68 @@ def _receiver(sock: socket.socket, shared: dict, stop_event: threading.Event) ->
 
         if cancel_auto:
             _stop_auto(shared, "autonomous cancelled (armed)")
+
+
+def _parse_headset_payload(data: bytes) -> Tuple[Optional[float], Optional[int]]:
+    """Accepts JSON dicts with yaw/yaw_deg/heading or a bare number string/int."""
+    text = data.decode(errors="ignore").strip()
+    if not text:
+        return None, None
+    try:
+        parsed = json.loads(text)
+    except json.JSONDecodeError:
+        parsed = None
+    if isinstance(parsed, dict):
+        if "servo" in parsed:
+            try:
+                return None, int(parsed["servo"])
+            except (TypeError, ValueError):
+                pass
+        for key in ("yaw", "yaw_deg", "heading"):
+            if key in parsed:
+                try:
+                    return float(parsed[key]), None
+                except (TypeError, ValueError):
+                    break
+    elif isinstance(parsed, (int, float)):
+        return None, int(parsed)
+    try:
+        # If it's a number string, treat it as a servo command (Unity currently sends a mapped angle)
+        return None, int(float(text))
+    except ValueError:
+        return None, None
+
+
+def _headset_listener(shared: dict, stop_event: threading.Event) -> None:
+    """Listen for yaw updates from the headset and convert to servo angles."""
+    try:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.bind(HEADSET_LISTEN_ADDR)
+        sock.settimeout(0.3)
+    except OSError as exc:
+        with shared["lock"]:
+            shared["vr_status"] = f"vr disabled: {exc}"
+        return
+
+    with sock:
+        while not stop_event.is_set():
+            try:
+                data, _ = sock.recvfrom(256)
+            except socket.timeout:
+                continue
+            except OSError:
+                break
+
+            yaw, servo_direct = _parse_headset_payload(data)
+            if yaw is None and servo_direct is None:
+                continue
+            angle = _clamp_servo(servo_direct) if servo_direct is not None else _yaw_to_servo(yaw)
+            now = time.monotonic()
+            with shared["lock"]:
+                shared["vr_yaw_deg"] = yaw
+                shared["servo_angle"] = angle
+                shared["vr_last_update"] = now
+                shared["vr_status"] = "receiving"
 
 def _discovery_responder(stop_event: threading.Event) -> None:
     """Respond to UDP broadcast discovery packets so the GUI can learn our IP."""
@@ -344,6 +424,7 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
     period = 1.0 / SEND_RATE_HZ
     next_send = time.monotonic()
     link: Optional[serialCommands] = None
+    last_servo_sent: Optional[int] = None
     try:
         while not stop_event.is_set():
             now = time.monotonic()
@@ -360,6 +441,10 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
 
             _maybe_start_auto(shared, now)
             auto_outputs = _update_auto_state(shared, now)
+            with shared["lock"]:
+                vr_angle = int(shared.get("servo_angle", SERVO_CENTER))
+                vr_last = float(shared.get("vr_last_update", 0.0))
+                vr_status = str(shared.get("vr_status", "idle"))
 
             if auto_outputs is None:
                 with shared["lock"]:
@@ -429,9 +514,24 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
                     if limiter:
                         limiter.reset(0.0, 0.0)
 
+            vr_fresh = (now - vr_last) <= HEADSET_STALE_SEC
+            servo_to_send: Optional[int] = _clamp_servo(int(vr_angle)) if vr_fresh else None
+            vr_status_out = vr_status
+            if not vr_status_out.startswith("vr disabled"):
+                vr_status_out = "receiving" if vr_fresh else "stale"
+            with shared["lock"]:
+                shared["vr_connected"] = vr_fresh
+                shared["vr_status"] = vr_status_out
+                if servo_to_send is not None:
+                    shared["servo_cmd"] = servo_to_send
+
             try: 
                 link.send_command("M", send_m)
                 link.send_command("A", send_a)
+                if servo_to_send is not None:
+                    if last_servo_sent != servo_to_send:
+                        link.send_command("S", [servo_to_send])
+                        last_servo_sent = servo_to_send
                 lines = link.read_serial()
             except Exception as exc:
                 with shared["lock"]:
@@ -442,6 +542,7 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
                 except Exception:
                     pass
                 link = None
+                last_servo_sent = None
                 next_send = time.monotonic() + period
                 continue
 
@@ -486,6 +587,10 @@ def _render_display(shared: dict) -> str:
         auto_m_values = list(shared.get("auto_m_values", []))
         auto_a_values = list(shared.get("auto_a_values", []))
         auto_program = str(shared.get("auto_program", ""))
+        vr_status = str(shared.get("vr_status", "idle"))
+        vr_connected = bool(shared.get("vr_connected", False))
+        vr_yaw = shared.get("vr_yaw_deg")
+        servo_cmd = shared.get("servo_cmd", None)
 
     axes_str = " ".join(f"{val:4d}" for val in axes)
     if not buttons:
@@ -532,6 +637,12 @@ def _render_display(shared: dict) -> str:
         )
     if serial_rx_display:
         lines.append(f"Serial RX: {serial_rx_display}")
+    vr_line = f"Headset: {vr_status} ({'link' if vr_connected else 'no-link'})"
+    if vr_yaw is not None:
+        vr_line += f" yaw={vr_yaw:.1f}deg"
+    if servo_cmd is not None:
+        vr_line += f" servo={servo_cmd}"
+    lines.append(vr_line)
     return "\n".join(lines)
 
 
@@ -571,6 +682,12 @@ def main() -> None:
         "auto_m_values": [0, 0],
         "auto_a_values": [0, 0, 0, 0, 0, 0],
         "auto_program": "",
+        "vr_status": "idle",
+        "vr_connected": False,
+        "vr_last_update": 0.0,
+        "vr_yaw_deg": None,
+        "servo_angle": SERVO_CENTER,
+        "servo_cmd": None,
         "lock": threading.Lock(),
         "drive_limiter": AccelLimiter(
             ACCEL_LIMIT_PER_SEC,
@@ -584,6 +701,10 @@ def main() -> None:
         target=_discovery_responder, args=(stop_event,), daemon=True
     )
 
+    headset_thread = threading.Thread(
+        target=_headset_listener, args=(shared, stop_event), daemon=True
+    )
+
     rx_thread = threading.Thread(
         target=_receiver, args=(sock, shared, stop_event), daemon=True
     )
@@ -591,6 +712,7 @@ def main() -> None:
         target=_sender, args=(shared, stop_event), daemon=True
     )
     discovery_thread.start()
+    headset_thread.start()
     rx_thread.start()
     tx_thread.start()
 
@@ -613,6 +735,7 @@ def main() -> None:
         rx_thread.join(timeout=1.0)
         tx_thread.join(timeout=1.0)
         discovery_thread.join(timeout=1.0)
+        headset_thread.join(timeout=1.0)
         sock.close()
         display = _render_display(shared)
         sys.stdout.write("\033[H" + display + "\n\033[0J\n")
