@@ -10,6 +10,8 @@ import struct
 import sys
 import threading
 import time
+from dataclasses import dataclass
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from typing import List, Optional, Tuple
 
@@ -24,11 +26,26 @@ from DriverStation.autonomous.excavation import get_sequence as get_excavation_s
 from DriverStation.autonomous.dump import get_sequence as get_dump_sequence
 from DriverStation.autonomous.transverse import get_sequence as get_transverse_sequence
 
+try:
+    import cv2  # type: ignore
+except Exception:
+    cv2 = None  # type: ignore[assignment]
+
 SYNC = 0xA6
 LISTEN_ADDR: Tuple[str, int] = ("0.0.0.0", 11000)
 SEND_RATE_HZ = 40.0
 DISCOVERY_PORT = 11010
 DISCOVERY_MAGIC = b"F310_DISCOVERY_V1"
+TELEMETRY_PORT = 10000
+TELEMETRY_RATE_HZ = 2.0
+CAMERA_HTTP_PORT = 8081
+CAMERA_DEVICE_INDEX = -1
+CAMERA_WIDTH = 960
+CAMERA_HEIGHT = 540
+CAMERA_FPS = 24.0
+CAMERA_JPEG_QUALITY = 70
+CAMERA_LOW_LATENCY = True
+CAMERA_DEVICE_SCAN_LIMIT = 8
 MAX_DRIVE_OUTPUT = 127         #127 is max speed for motor controller do not change
 ACCEL_LIMIT_PER_SEC = 50.0
 DECEL_LIMIT_PER_SEC = 60.0
@@ -40,6 +57,12 @@ HEADSET_STALE_SEC = 0.5
 HEADSET_YAW_RANGE_DEG = (-90.0, 90.0)
 SERVO_RANGE = (0, 180)
 SERVO_CENTER = 90
+SERVO_RESEND_INTERVAL = 0.5
+DPAD_X_AXIS_INDEX = 6
+DPAD_Y_AXIS_INDEX = 7
+DPAD_UP_BUTTON_INDEX = 13
+DPAD_ACTIVE_THRESHOLD = 32
+DPAD_SERVO_SPEED_DEG_PER_SEC = 120.0
 
 AUTO_PROGRAMS = {
     "excavation": get_excavation_sequence,
@@ -52,6 +75,16 @@ AUTO_BUTTONS = {
     1: "dump",
     2: "transverse",
 }
+
+
+@dataclass
+class VideoSettings:
+    width: int
+    height: int
+    fps: float
+    quality: int
+    device_index: int
+    low_latency: bool
 
 
 def clamp_i8(value: int) -> int:
@@ -110,16 +143,16 @@ class AccelLimiter:
 
 
 def decode_packet(packet: bytes) -> Optional[Tuple[Tuple[int, ...], Tuple[int, ...], bool]]:
-    if len(packet) < 12 or packet[0] != SYNC:
+    if len(packet) < 14 or packet[0] != SYNC:
         return None
     checksum = 0
     for byte in packet[:-1]:
         checksum ^= byte
     if checksum != packet[-1]:
         return None
-    axes = struct.unpack("bbbbbb", packet[3:9])
-    buttons_mask = packet[9] | (packet[10] << 8)
-    buttons = tuple((buttons_mask >> bit) & 0x01 for bit in range(12))
+    axes = struct.unpack("bbbbbbbb", packet[3:11])
+    buttons_mask = packet[11] | (packet[12] << 8)
+    buttons = tuple((buttons_mask >> bit) & 0x01 for bit in range(16))
     armed = bool(packet[2] & 0x01)
     return axes, buttons, armed
 
@@ -137,6 +170,248 @@ def _yaw_to_servo(yaw_deg: float) -> int:
     return _clamp_servo(angle)
 
 
+class DriverStationTracker:
+    def __init__(self) -> None:
+        self._lock = threading.Lock()
+        self._addr: Optional[str] = None
+
+    def update(self, ip: str) -> None:
+        if not ip:
+            return
+        with self._lock:
+            self._addr = ip
+
+    def current(self) -> Optional[str]:
+        with self._lock:
+            return self._addr
+
+
+class VideoCaptureWorker:
+    def __init__(self, settings: VideoSettings) -> None:
+        if cv2 is None:
+            raise SystemExit("OpenCV (cv2) is required to capture video; pip install opencv-python")
+        self._settings = settings
+        self._frame_lock = threading.Lock()
+        self._latest_frame: Optional[bytes] = None
+        self._actual_fps = 0.0
+        self._stop_event = threading.Event()
+        self._thread = threading.Thread(target=self._run, name="VideoCapture", daemon=True)
+
+    def start(self) -> None:
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        self._thread.join(timeout=2.0)
+
+    def latest_frame(self) -> Optional[bytes]:
+        with self._frame_lock:
+            return None if self._latest_frame is None else bytes(self._latest_frame)
+
+    def actual_fps(self) -> float:
+        with self._frame_lock:
+            return self._actual_fps
+
+    @property
+    def settings(self) -> VideoSettings:
+        return self._settings
+
+    @staticmethod
+    def _backend_candidates() -> List[int]:
+        assert cv2 is not None
+        if sys.platform.startswith("win"):
+            return [cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_ANY]
+        return [cv2.CAP_ANY]
+
+    @staticmethod
+    def _device_label(index: int, backend: int) -> str:
+        backend_name = "default"
+        if cv2 is not None:
+            if backend == getattr(cv2, "CAP_DSHOW", -9999):
+                backend_name = "dshow"
+            elif backend == getattr(cv2, "CAP_MSMF", -9999):
+                backend_name = "msmf"
+            elif backend == getattr(cv2, "CAP_ANY", -9999):
+                backend_name = "any"
+        return f"index {index} ({backend_name})"
+
+    def _open_capture(self) -> Tuple[Optional[object], Optional[str]]:
+        assert cv2 is not None
+        preferred_indices = [self._settings.device_index] if self._settings.device_index >= 0 else []
+        scanned_indices = [idx for idx in range(CAMERA_DEVICE_SCAN_LIMIT) if idx not in preferred_indices]
+        candidates = preferred_indices + scanned_indices
+
+        for index in candidates:
+            for backend in self._backend_candidates():
+                cap = cv2.VideoCapture(index, backend)
+                if not cap.isOpened():
+                    cap.release()
+                    continue
+                ok, frame = cap.read()
+                if ok and frame is not None:
+                    label = self._device_label(index, backend)
+                    self._settings.device_index = index
+                    return cap, label
+                cap.release()
+        return None, None
+
+    def _run(self) -> None:
+        assert cv2 is not None
+        cap, selected_label = self._open_capture()
+        if cap is None:
+            print(
+                f"[camera] Unable to open any camera device. Tried preferred index "
+                f"{self._settings.device_index if self._settings.device_index >= 0 else 'auto'} "
+                f"and scanned indices 0-{CAMERA_DEVICE_SCAN_LIMIT - 1}.",
+                file=sys.stderr,
+            )
+            return
+        print(f"[camera] Using {selected_label}")
+        cap.set(cv2.CAP_PROP_FRAME_WIDTH, float(self._settings.width))
+        cap.set(cv2.CAP_PROP_FRAME_HEIGHT, float(self._settings.height))
+        if self._settings.fps > 0:
+            cap.set(cv2.CAP_PROP_FPS, float(self._settings.fps))
+        try:
+            cap.set(cv2.CAP_PROP_BUFFERSIZE, 1)
+        except Exception:
+            pass
+        encode_quality = int(max(1, min(100, self._settings.quality)))
+        encode_params = [int(cv2.IMWRITE_JPEG_QUALITY), encode_quality]
+        interval = 0.0 if self._settings.low_latency else 1.0 / max(self._settings.fps, 0.1)
+        last_frame_time = time.monotonic()
+        try:
+            while not self._stop_event.is_set():
+                ret, frame = cap.read()
+                now = time.monotonic()
+                if ret:
+                    ok, buffer = cv2.imencode(".jpg", frame, encode_params)
+                    if ok:
+                        with self._frame_lock:
+                            self._latest_frame = buffer.tobytes()
+                            delta = max(1e-6, now - last_frame_time)
+                            instant = 1.0 / delta
+                            self._actual_fps = instant if self._actual_fps == 0.0 else (0.8 * self._actual_fps + 0.2 * instant)
+                        last_frame_time = now
+                else:
+                    time.sleep(0.05)
+                loop_elapsed = time.monotonic() - now
+                if interval > 0.0:
+                    remaining = interval - loop_elapsed
+                    if remaining > 0:
+                        self._stop_event.wait(remaining)
+                else:
+                    self._stop_event.wait(0.001)
+        finally:
+            cap.release()
+
+
+class CameraRequestHandler(BaseHTTPRequestHandler):
+    def do_GET(self) -> None:
+        if self.path not in ("/", "/frame"):
+            self.send_error(404, "Not Found")
+            return
+        frame = getattr(self.server, "video_source").latest_frame()  # type: ignore[attr-defined]
+        if frame is None:
+            self.send_error(503, "Camera frame unavailable")
+            return
+        self.send_response(200)
+        self.send_header("Content-Type", "image/jpeg")
+        self.send_header("Content-Length", str(len(frame)))
+        self.end_headers()
+        self.wfile.write(frame)
+
+    def log_message(self, fmt: str, *args: object) -> None:
+        pass
+
+
+class CameraHTTPServer(ThreadingHTTPServer):
+    allow_reuse_address = True
+
+    def __init__(self, address: Tuple[str, int], video_source: VideoCaptureWorker) -> None:
+        self.video_source = video_source
+        super().__init__(address, CameraRequestHandler)
+        self.daemon_threads = True
+
+
+class TelemetryBroadcaster:
+    def __init__(self, tracker: DriverStationTracker, interval: float = 0.5) -> None:
+        self._tracker = tracker
+        self._interval = max(0.2, interval)
+        self._stop_event = threading.Event()
+        self._thread = threading.Thread(target=self._run, name="TelemetryBroadcaster", daemon=True)
+
+    def start(self) -> None:
+        self._thread.start()
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        self._thread.join(timeout=1.0)
+
+    def _run(self) -> None:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        sock.settimeout(0.5)
+        with sock:
+            while not self._stop_event.is_set():
+                target = self._tracker.current()
+                payload = self._build_payload(target)
+                if target and payload:
+                    try:
+                        sock.sendto(payload, (target, TELEMETRY_PORT))
+                    except OSError:
+                        pass
+                self._stop_event.wait(self._interval)
+
+    @staticmethod
+    def _guess_advertised_host(driver_station_ip: Optional[str]) -> Optional[str]:
+        if not driver_station_ip:
+            return None
+        probe: Optional[socket.socket] = None
+        try:
+            probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+            probe.connect((driver_station_ip, 9))
+            return probe.getsockname()[0]
+        except OSError:
+            return None
+        finally:
+            try:
+                if probe is not None:
+                    probe.close()
+            except Exception:
+                pass
+
+    def _build_payload(self, driver_station_ip: Optional[str]) -> Optional[bytes]:
+        camera_host = self._guess_advertised_host(driver_station_ip)
+        camera_url = None
+        if camera_host:
+            camera_url = f"http://{camera_host}:{CAMERA_HTTP_PORT}/frame"
+        payload = {
+            "camera_url": camera_url,
+            "source": "f310_comp",
+            "telemetry_port": TELEMETRY_PORT,
+        }
+        return json.dumps(payload).encode("utf-8")
+
+
+def auto_local_ip() -> str:
+    probe: Optional[socket.socket] = None
+    try:
+        probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        probe.connect(("8.8.8.8", 80))
+        host = probe.getsockname()[0]
+    except OSError:
+        try:
+            host = socket.gethostbyname(socket.gethostname())
+        except OSError:
+            host = "127.0.0.1"
+    finally:
+        try:
+            if probe is not None:
+                probe.close()
+        except Exception:
+            pass
+    return host
+
+
 def _open_link(shared: dict, stop_event: threading.Event) -> Optional[serialCommands]:
     while not stop_event.is_set():
         try:
@@ -152,15 +427,21 @@ def _open_link(shared: dict, stop_event: threading.Event) -> Optional[serialComm
     return None
 
 
-def _receiver(sock: socket.socket, shared: dict, stop_event: threading.Event) -> None:
+def _receiver(
+    sock: socket.socket,
+    tracker: DriverStationTracker,
+    shared: dict,
+    stop_event: threading.Event,
+) -> None:
     sock.settimeout(0.2)
     while not stop_event.is_set():
         try:
-            data, _ = sock.recvfrom(64)
+            data, addr = sock.recvfrom(64)
         except socket.timeout:
             continue
         except OSError:
             break
+        tracker.update(addr[0])
         decoded = decode_packet(data)
         if decoded is None:
             continue
@@ -263,7 +544,7 @@ def _headset_listener(shared: dict, stop_event: threading.Event) -> None:
                 shared["vr_last_update"] = now
                 shared["vr_status"] = "receiving"
 
-def _discovery_responder(stop_event: threading.Event) -> None:
+def _discovery_responder(tracker: DriverStationTracker, stop_event: threading.Event) -> None:
     """Respond to UDP broadcast discovery packets so the GUI can learn our IP."""
     try:
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -279,7 +560,7 @@ def _discovery_responder(stop_event: threading.Event) -> None:
             "role": "f310_comp",
             "udp_port": LISTEN_ADDR[1],
             "command_port": 10001,
-            "telemetry_port": 10000,
+            "telemetry_port": TELEMETRY_PORT,
         }
     ).encode("utf-8")
 
@@ -293,6 +574,7 @@ def _discovery_responder(stop_event: threading.Event) -> None:
                 break
             if data.strip() != DISCOVERY_MAGIC:
                 continue
+            tracker.update(addr[0])
             try:
                 sock.sendto(reply, addr)
             except OSError:
@@ -425,6 +707,8 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
     next_send = time.monotonic()
     link: Optional[serialCommands] = None
     last_servo_sent: Optional[int] = None
+    last_servo_send_time = 0.0
+    last_dpad_up_pressed = False
     try:
         while not stop_event.is_set():
             now = time.monotonic()
@@ -442,9 +726,14 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
             _maybe_start_auto(shared, now)
             auto_outputs = _update_auto_state(shared, now)
             with shared["lock"]:
+                axes_snapshot = shared.get("axes", (0, 0, 0, 0, 0, 0, 0, 0))
+                buttons_snapshot = shared.get("buttons", tuple())
                 vr_angle = int(shared.get("servo_angle", SERVO_CENTER))
                 vr_last = float(shared.get("vr_last_update", 0.0))
                 vr_status = str(shared.get("vr_status", "idle"))
+            dpad_x_raw = int(axes_snapshot[DPAD_X_AXIS_INDEX]) if len(axes_snapshot) > DPAD_X_AXIS_INDEX else 0
+            dpad_y_raw = int(axes_snapshot[DPAD_Y_AXIS_INDEX]) if len(axes_snapshot) > DPAD_Y_AXIS_INDEX else 0
+            dpad_up_button_pressed = bool(buttons_snapshot[DPAD_UP_BUTTON_INDEX]) if len(buttons_snapshot) > DPAD_UP_BUTTON_INDEX else False
 
             if auto_outputs is None:
                 with shared["lock"]:
@@ -514,6 +803,29 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
                     if limiter:
                         limiter.reset(0.0, 0.0)
 
+            # Servo/headset traffic is intentionally independent from F310 arming
+            # and UDP freshness so camera pan can keep running on its own.
+            dpad_up_pressed = dpad_up_button_pressed or (dpad_y_raw <= -DPAD_ACTIVE_THRESHOLD)
+            if dpad_up_pressed and not last_dpad_up_pressed:
+                vr_angle = SERVO_CENTER
+                vr_last = now
+                vr_status = "manual center"
+                with shared["lock"]:
+                    shared["servo_angle"] = vr_angle
+                    shared["vr_last_update"] = now
+                    shared["vr_status"] = vr_status
+                    shared["vr_yaw_deg"] = None
+            if abs(dpad_x_raw) >= DPAD_ACTIVE_THRESHOLD:
+                delta = (dpad_x_raw / 127.0) * DPAD_SERVO_SPEED_DEG_PER_SEC * period
+                vr_angle = _clamp_servo(int(round(vr_angle + delta)))
+                vr_last = now
+                vr_status = "manual dpad"
+                with shared["lock"]:
+                    shared["servo_angle"] = vr_angle
+                    shared["vr_last_update"] = now
+                    shared["vr_status"] = vr_status
+                    shared["vr_yaw_deg"] = None
+            last_dpad_up_pressed = dpad_up_pressed
             vr_fresh = (now - vr_last) <= HEADSET_STALE_SEC
             servo_to_send: Optional[int] = _clamp_servo(int(vr_angle)) if vr_fresh else None
             vr_status_out = vr_status
@@ -529,9 +841,13 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
                 link.send_command("M", send_m)
                 link.send_command("A", send_a)
                 if servo_to_send is not None:
-                    if last_servo_sent != servo_to_send:
+                    if (
+                        last_servo_sent != servo_to_send
+                        or (now - last_servo_send_time) >= SERVO_RESEND_INTERVAL
+                    ):
                         link.send_command("S", [servo_to_send])
                         last_servo_sent = servo_to_send
+                        last_servo_send_time = now
                 lines = link.read_serial()
             except Exception as exc:
                 with shared["lock"]:
@@ -543,6 +859,7 @@ def _sender(shared: dict, stop_event: threading.Event) -> None:
                     pass
                 link = None
                 last_servo_sent = None
+                last_servo_send_time = 0.0
                 next_send = time.monotonic() + period
                 continue
 
@@ -649,6 +966,19 @@ def _render_display(shared: dict) -> str:
 def main() -> None:
     sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
     sock.bind(LISTEN_ADDR)
+    ds_tracker = DriverStationTracker()
+    video_settings = VideoSettings(
+        width=CAMERA_WIDTH,
+        height=CAMERA_HEIGHT,
+        fps=CAMERA_FPS,
+        quality=CAMERA_JPEG_QUALITY,
+        device_index=CAMERA_DEVICE_INDEX,
+        low_latency=CAMERA_LOW_LATENCY,
+    )
+    capture = VideoCaptureWorker(video_settings)
+    bind_host = auto_local_ip()
+    http_server = CameraHTTPServer((bind_host, CAMERA_HTTP_PORT), capture)
+    http_thread = threading.Thread(target=http_server.serve_forever, name="CameraHTTP", daemon=True)
 
     shared = {
         "axes": (0, 0, 0, 0, 0, 0),
@@ -698,20 +1028,29 @@ def main() -> None:
     }
     stop_event = threading.Event()
     discovery_thread = threading.Thread(
-        target=_discovery_responder, args=(stop_event,), daemon=True
+        target=_discovery_responder, args=(ds_tracker, stop_event), daemon=True
     )
+    telemetry = TelemetryBroadcaster(ds_tracker, interval=1.0 / TELEMETRY_RATE_HZ)
 
     headset_thread = threading.Thread(
         target=_headset_listener, args=(shared, stop_event), daemon=True
     )
 
     rx_thread = threading.Thread(
-        target=_receiver, args=(sock, shared, stop_event), daemon=True
+        target=_receiver, args=(sock, ds_tracker, shared, stop_event), daemon=True
     )
     tx_thread = threading.Thread(
         target=_sender, args=(shared, stop_event), daemon=True
     )
+    capture.start()
+    http_thread.start()
+    print(
+        f"[video] Serving JPEG snapshots on {bind_host}:{CAMERA_HTTP_PORT}/frame "
+        f"(device {video_settings.device_index if video_settings.device_index >= 0 else 'auto'}, "
+        f"{video_settings.width}x{video_settings.height}@{video_settings.fps}fps, q={video_settings.quality})"
+    )
     discovery_thread.start()
+    telemetry.start()
     headset_thread.start()
     rx_thread.start()
     tx_thread.start()
@@ -735,7 +1074,11 @@ def main() -> None:
         rx_thread.join(timeout=1.0)
         tx_thread.join(timeout=1.0)
         discovery_thread.join(timeout=1.0)
+        telemetry.stop()
         headset_thread.join(timeout=1.0)
+        http_server.shutdown()
+        http_thread.join(timeout=2.0)
+        capture.stop()
         sock.close()
         display = _render_display(shared)
         sys.stdout.write("\033[H" + display + "\n\033[0J\n")

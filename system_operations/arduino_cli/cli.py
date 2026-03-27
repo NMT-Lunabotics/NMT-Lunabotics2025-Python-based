@@ -1,8 +1,10 @@
+import os
 import subprocess
 import time
 import serial
 import serial.tools.list_ports
 import re
+import shutil
 from pathlib import Path
 
 # arduinoConsole class/toolset which makes it easy to compile and upload sketches to your arduino without the regular arduino IDE software.
@@ -15,6 +17,7 @@ class arduinoConsole:
         self.baudrate = baudrate
         self.ser = None
         self.errors = errors
+        self.cli_path = self.find_arduino_cli()
         if board == None:
             try:
                 self.board = self.detect_board()
@@ -35,14 +38,51 @@ class arduinoConsole:
             if "Arduino" in port.description or port.vid is not None:
                 return port.device
 
+    def find_arduino_cli(self) -> str:
+        """Locate arduino-cli from PATH, env override, or common Windows install folders."""
+        env_path = os.environ.get("ARDUINO_CLI_PATH")
+        if env_path and Path(env_path).is_file():
+            return str(Path(env_path))
+
+        cli_name = "arduino-cli.exe" if os.name == "nt" else "arduino-cli"
+        path_cli = shutil.which(cli_name) or shutil.which("arduino-cli")
+        if path_cli:
+            return path_cli
+
+        home = Path.home()
+        candidates = [
+            home / "Downloads" / "arduino-cli_1.4.1_Windows_64bit" / "arduino-cli.exe",
+            home / "Downloads" / "arduino-cli.exe",
+            home / "AppData" / "Local" / "Arduino15" / "arduino-cli.exe",
+            home / "AppData" / "Local" / "Programs" / "Arduino CLI" / "arduino-cli.exe",
+            Path("C:/Program Files/Arduino CLI/arduino-cli.exe"),
+            Path("C:/Program Files/Arduino/arduino-cli.exe"),
+        ]
+        for candidate in candidates:
+            if candidate.is_file():
+                return str(candidate)
+
+        raise FileNotFoundError(
+            "arduino-cli not found. Install it, add it to PATH, or set ARDUINO_CLI_PATH."
+        )
+
     def compile_and_upload(self)->None:
         """Compile and upload the sketch to connected arduino"""
-        verbose = "--verbose" if self.errors else ""
+        verbose = ["--verbose"] if self.errors else []
         if self.board == "arduino:renesas_uno:unor4wifi": self.switch_to_nuc_architecture()
         try: 
-            subprocess.run(f'arduino-cli compile --fqbn {self.board} {verbose} "{self.sketch_path}"', shell=True, check=True)
+            subprocess.run(
+                [self.cli_path, "compile", "--fqbn", self.board, *verbose, str(self.sketch_path)],
+                check=True,
+            )
             time.sleep(2)
-            subprocess.run(f'arduino-cli upload -p {self.port} --fqbn {self.board} {verbose} "{self.sketch_path}"', shell=True, check=True)
+            subprocess.run(
+                [self.cli_path, "upload", "-p", str(self.port), "--fqbn", self.board, *verbose, str(self.sketch_path)],
+                check=True,
+            )
+        except FileNotFoundError as e:
+            print(f"Error: {e}")
+            exit(1)
         except subprocess.CalledProcessError as e:
             print(f"Error: {e}")
             exit(1)

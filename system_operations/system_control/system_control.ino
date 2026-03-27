@@ -5,8 +5,8 @@
 #if MAIN_ROBOT==1
 
 // List of components flags to enable/disable for testing
-#define ERROR_LEDS_ENABLED           1
-#define MOTORS_ENABLED               0
+#define ERROR_LEDS_ENABLED           0
+#define MOTORS_ENABLED               1
 #define BUCKET_ACTUATOR_ENABLED      0
 #define ARM_ACTUATORS_ENABLED        0
 #define SERVO_MOTOR_ENABLED          1

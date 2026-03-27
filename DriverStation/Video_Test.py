@@ -16,7 +16,7 @@ from typing import Callable, Optional
 DISCOVERY_MAGIC = b"F310_DISCOVERY_V1"
 
 # Default configuration allows running the script without additional parameters.
-DEFAULT_DEVICE_INDEX = 0
+DEFAULT_DEVICE_INDEX = -1
 DEFAULT_WIDTH = 960
 DEFAULT_HEIGHT = 540
 DEFAULT_FPS = 24.0
@@ -29,6 +29,7 @@ DEFAULT_DRIVER_STATION_IP: Optional[str] = None
 DEFAULT_ADVERTISE_HOST: Optional[str] = None
 DEFAULT_BIND_HOST: Optional[str] = None
 DEFAULT_LOW_LATENCY = True
+DEFAULT_DEVICE_SCAN_LIMIT = 8
 
 try:
     import cv2  # type: ignore
@@ -92,12 +93,58 @@ class VideoCaptureWorker:
     def settings(self) -> VideoSettings:
         return self._settings
 
+    @staticmethod
+    def _backend_candidates() -> list[int]:
+        assert cv2 is not None
+        if sys.platform.startswith("win"):
+            return [cv2.CAP_DSHOW, cv2.CAP_MSMF, cv2.CAP_ANY]
+        return [cv2.CAP_ANY]
+
+    @staticmethod
+    def _device_label(index: int, backend: int) -> str:
+        backend_name = "default"
+        if cv2 is not None:
+            if backend == getattr(cv2, "CAP_DSHOW", -9999):
+                backend_name = "dshow"
+            elif backend == getattr(cv2, "CAP_MSMF", -9999):
+                backend_name = "msmf"
+            elif backend == getattr(cv2, "CAP_ANY", -9999):
+                backend_name = "any"
+        return f"index {index} ({backend_name})"
+
+    def _open_capture(self) -> tuple[Optional[object], Optional[str]]:
+        assert cv2 is not None
+
+        preferred_indices = [self._settings.device_index] if self._settings.device_index >= 0 else []
+        scanned_indices = [idx for idx in range(DEFAULT_DEVICE_SCAN_LIMIT) if idx not in preferred_indices]
+        candidates = preferred_indices + scanned_indices
+
+        for index in candidates:
+            for backend in self._backend_candidates():
+                cap = cv2.VideoCapture(index, backend)
+                if not cap.isOpened():
+                    cap.release()
+                    continue
+                ok, frame = cap.read()
+                if ok and frame is not None:
+                    label = self._device_label(index, backend)
+                    self._settings.device_index = index
+                    return cap, label
+                cap.release()
+        return None, None
+
     def _run(self) -> None:
         assert cv2 is not None
-        cap = cv2.VideoCapture(self._settings.device_index)
-        if not cap.isOpened():
-            print(f"[camera] Unable to open device index {self._settings.device_index}", file=sys.stderr)
+        cap, selected_label = self._open_capture()
+        if cap is None:
+            print(
+                f"[camera] Unable to open any camera device. "
+                f"Tried preferred index {self._settings.device_index if self._settings.device_index >= 0 else 'auto'} "
+                f"and scanned indices 0-{DEFAULT_DEVICE_SCAN_LIMIT - 1}.",
+                file=sys.stderr,
+            )
             return
+        print(f"[camera] Using {selected_label}", file=sys.stderr)
         cap.set(cv2.CAP_PROP_FRAME_WIDTH, float(self._settings.width))
         cap.set(cv2.CAP_PROP_FRAME_HEIGHT, float(self._settings.height))
         if self._settings.fps > 0:
@@ -374,7 +421,7 @@ class VideoStreamerApp:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Stream a USB webcam over HTTP and advertise it to the F310 GUI.")
-    parser.add_argument("--device", type=int, default=DEFAULT_DEVICE_INDEX, help=f"Camera index (default: {DEFAULT_DEVICE_INDEX})")
+    parser.add_argument("--device", type=int, default=DEFAULT_DEVICE_INDEX, help="Camera index; use -1 to auto-detect (default: auto-detect)")
     parser.add_argument("--width", type=int, default=DEFAULT_WIDTH, help=f"Capture width in pixels (default: {DEFAULT_WIDTH})")
     parser.add_argument("--height", type=int, default=DEFAULT_HEIGHT, help=f"Capture height in pixels (default: {DEFAULT_HEIGHT})")
     parser.add_argument("--fps", type=float, default=DEFAULT_FPS, help=f"Target capture frame rate (default: {DEFAULT_FPS})")
