@@ -1,1 +1,2 @@
-int8 sequence
+string name
+float64 timestamp

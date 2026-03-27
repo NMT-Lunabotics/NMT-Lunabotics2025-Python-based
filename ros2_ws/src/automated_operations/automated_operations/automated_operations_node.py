@@ -3,6 +3,7 @@ import rclpy
 from rclpy.node import Node
 from robot_interfaces.msg import Command, Sequence
 from ament_index_python.packages import get_package_share_directory
+from rclpy.qos import QoSProfile, ReliabilityPolicy
 import json
 import time
 import os
@@ -13,26 +14,24 @@ CONFIG_FILE = os.path.join(get_package_share_directory('automated_operations'),'
 class AutomationPublisher(Node):
     def __init__(self):
         super().__init__('automated_operations_node')
-        self.robot_pub = self.create_publisher(Command, '/robot_commands', 10)
+        self.robot_pub = self.create_publisher(Command, '/robot_commands', QoSProfile(depth=10))
         self.is_busy = False
         self.blocking_id = 1
+        self.last_execute=time.time()
 
         # Load json file, and index the sequences
         with open(CONFIG_FILE, 'r') as f: self.sequences = json.load(f)
-        self.index_to_sequence = list(self.sequences.keys())
 
         # Subscriber to trigger automation
-        self.create_subscription(Sequence, '/automation_trigger',self.trigger_callback,10)
+        self.create_subscription(Sequence, '/automation_trigger',self.trigger_callback,QoSProfile(depth=0,reliability=ReliabilityPolicy.BEST_EFFORT))
 
     def trigger_callback(self, msg):
         # Safty checks
-        if self.is_busy or msg.sequence is None: return
-
-        index = msg.sequence
-        if index < 0 or index >= len(self.index_to_sequence): return
+        if self.is_busy or not msg.name or msg.timestamp <= self.last_execute: return
 
         # Load sequence data
-        sequence_name = self.index_to_sequence[index]
+        sequence_name = msg.name
+        if sequence_name not in self.sequences: return
         sequence = self.sequences[sequence_name]
 
         # Run sequence
@@ -41,25 +40,34 @@ class AutomationPublisher(Node):
         self.is_busy = False
 
     def run_sequence(self, sequence):
-        for step in sequence:
+        self.last_execute=time.time()
+        for i, step in enumerate(sequence):
             # Data for step of function
-            cmd_type = step.get("command")
-            values = step.get("values", [])
+            commands_dict = step.get("commands", {})
             duration = step.get("duration", 0.1)
 
-            # Make new command message
-            msg = None
-            if cmd_type is not None:
-                msg = Command()
-                msg.blocking_id = self.blocking_id
-                msg.command = cmd_type
-                msg.data = [int(v) for v in values]
+            # Make new command messages
+            msgs_to_send = {}
+            for cmd_type, values in commands_dict.items():
+                if cmd_type is not None:
+                    msg = Command()
+                    msg.blocking_id = self.blocking_id  # default blocking_id
+                    msg.command = cmd_type
+                    msg.data = [float(v) for v in values]
+                    msgs_to_send[cmd_type] = msg
 
-            # Send command repeatedly for the duration
+            # Send commands repeatedly for the duration
             start_time = time.monotonic()
+            last_step = (i == len(sequence) - 1)
+            sent_last_step_blocking = False
+
             while time.monotonic() - start_time < duration:
-                if msg is not None: self.robot_pub.publish(msg)
-                time.sleep(0.05) 
+                for cmd_type, msg in msgs_to_send.items():
+                    if last_step and not sent_last_step_blocking: msg.blocking_id = -1
+                    self.robot_pub.publish(msg)
+
+                if last_step and not sent_last_step_blocking: sent_last_step_blocking = True  
+                time.sleep(0.05)
 
 def main():
     rclpy.init()

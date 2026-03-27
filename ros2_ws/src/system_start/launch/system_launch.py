@@ -22,6 +22,7 @@ def generate_launch_description():
     )
     apriltag_node=Node(package='camera',executable='camera_apriltag_node.py',name='camera_apriltag_node')
     serial_talker_node=Node(package='serial_commands',executable='serial_talker_node.py',name='serial_talker_node')
+    automated_operations=Node(package='automated_operations',executable='automated_operations_node.py',name='automated_operations_node')
 
     # Launch all specifyied launch files and nodes
-    return LaunchDescription([camera_launch,apriltag_node,serial_talker_node])
+    return LaunchDescription([camera_launch,apriltag_node,serial_talker_node,automated_operations])

@@ -35,6 +35,7 @@ RUN_TELEOP_LAUNCH=false                                     # Start controller f
 RUN_USB_CAMERA_NODE=false                                   # Launch system cameras
 RUN_VIEW_CAMERA_LAUNCH=false                                # View camera stream (local)
 RUN_SERIAL_LAUNCH=false                                     # Launch serial writter 
+LOCAL_LAUNCH_FILE=false;
 
 # Settings for containor mount point, TODO depricate --> replaced by local pull system
 MOUNT_USERNAME=false
@@ -63,7 +64,7 @@ usage() {
     echo "This script is used to start and manage Docker and run the whole system. You can start the script by just using $0, adding other parameters that change how the container is run and what starts up on its own."
     
     echo "Actions (pick ONE):"
-    echo "  --start (-s)                           Start all processes on the robot"
+    echo "  --start (-s) [l|local]            Start all processes on the robot"
     echo "  --teleop (-t)                          Run joystick control"
     echo "  --usb-cam (-u)                         Launch camera devices"
     echo "  --video-stream (-v)                    View camera video stream"
@@ -87,7 +88,7 @@ usage() {
 # Parse input flags
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
-        -s|--start) RUN_SYSTEM_CONTROL_LAUNCH=true; shift ;;                                                                                                                                         # Launches whole system 
+        -s|--start) RUN_SYSTEM_CONTROL_LAUNCH=true; [[ -n "$2" && ( "$2" == "local" || "$2" == "l" ) ]] && LOCAL_LAUNCH_FILE=true && shift 2 || shift 1 ;;                                           # Launches whole system 
         -t|--teleop) RUN_TELEOP_LAUNCH=true; shift ;;                                                                                                                                                # Launches ros joystick (local)
         -u|--usb-cam) RUN_USB_CAMERA_NODE=true; shift ;;                                                                                                                                             # Launches all system cameras
         -ser|--serial) RUN_SERIAL_LAUNCH=true; shift ;;                                                                                                                                              # Launches serial talker
@@ -327,7 +328,11 @@ if [ "$INTERACTIVE_HOST" = true ]; then
     elif [ "$RUN_VIEW_CAMERA_LAUNCH" == true ]; then
         ros2 launch camera view_camera_launch.py
     elif [ "$RUN_SYSTEM_CONTROL_LAUNCH" == true ]; then
-        ros2 launch system_start system_launch.py
+        if [ "$LOCAL_LAUNCH_FILE" == true ]; then
+            ros2 launch system_start system_user_interface_launch.py
+        else 
+            ros2 launch system_start system_launch.py
+        fi
     elif [ "$RUN_SERIAL_LAUNCH" == true ]; then
         ros2 launch serial_commands serial_launch.py
     else
@@ -395,7 +400,11 @@ elif [ "$RUN_VIEW_CAMERA_LAUNCH" == true ]; then
 # Start all system operations
 elif [ "$RUN_SYSTEM_CONTROL_LAUNCH" = true ]; then
     echo -e "\e[36m[STARTUP]\e[0m All robot operations started..."
-    docker exec -it -u root --env-file $ENV_FILE $CONTAINER_ID /entry_point.sh ros2 launch system_start system_launch.py
+    if [ "$LOCAL_LAUNCH_FILE" == true ]; then
+        docker exec -it -u root --env-file $ENV_FILE $CONTAINER_ID /entry_point.sh ros2 launch system_start system_user_interface_launch.py
+    else 
+        docker exec -it -u root --env-file $ENV_FILE $CONTAINER_ID /entry_point.sh ros2 launch system_start system_launch.py
+    fi
 # Start serial communications
 elif [ "$RUN_SERIAL_LAUNCH" = true ]; then
     echo -e "\e[36m[STARTUP]\e[0m Serial communications started..."

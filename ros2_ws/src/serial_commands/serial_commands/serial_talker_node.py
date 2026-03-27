@@ -98,16 +98,17 @@ class SerialTalkerNode(Node):
     def cmd_callback(self, msg):
         self.handle_special_cmd(msg.command, msg.data, msg.blocking_id)
     def cmd_vel_callback(self, msg):
-        self.send_vel_command([msg.linear.x,msg.angular.z],None)
+        self.send_vel_command([msg.linear.x,msg.angular.z],None,False)
 
     # Handle speical cmd cases, right now only the 'M' and 'A' speical cases exist
     def handle_special_cmd(self, command, data, blocking_id):
-        if command == "M": self.send_vel_command(data, blocking_id)
+        if command == "M": self.send_vel_command(data, blocking_id,True)
         elif command == "A": self.send_act_command(data, blocking_id)
         else: self.handle_command(command, data, blocking_id)
     
     # Handles the sent command taking into account if a command is blocking
     def handle_command(self, command, data, blocking_id):
+        if not command: return
         #self.get_logger().info(f"Sending command {command} with data {data}")
         # Blocking and command sender logic
         if command in self.blocking:
@@ -115,38 +116,57 @@ class SerialTalkerNode(Node):
                 del self.blocking[command]
                 del self.blocking_timer[command]
             elif blocking_id == self.blocking[command]:
-                self.blocking_timer[command]=time.monotonic()
+                self.blocking_timer[command] = time.monotonic()
                 combined = [int(d) for d in data]    
                 self.serial.send_command(command, combined)
-            elif time.monotonic()-self.blocking_timer[command]>=self.blocking_timeout:
+            elif time.monotonic() - self.blocking_timer[command] >= self.blocking_timeout:
                 del self.blocking[command]
                 del self.blocking_timer[command]
         else:
-            if blocking_id != -1 and blocking_id != None: 
-                self.blocking[command]=blocking_id
-                self.blocking_timer[command]=time.monotonic()
+            # Only add blocking if blocking_id is set and not 0
+            if blocking_id not in (-1, None, 0): 
+                self.blocking[command] = blocking_id
+                self.blocking_timer[command] = time.monotonic()
 
             combined = [int(d) for d in data]    
             self.serial.send_command(command, combined)
 
     # Apply diffrential driving to 'M' command
-    def send_vel_command(self, data, blocking_id):
-        # Save sent data or cmd_vel data as variables
-        velocity=data[0]
-        angular_velocity=data[1]
+    def send_vel_command(self, data, blocking_id, bothMotors):
+        if bothMotors:
+            left_input = data[0]
+            right_input = data[1]
 
-        #self.get_logger().info(velocity)
+            # Apply differential steering: compute linear and angular components
+            linear = (right_input + left_input) / 2
+            angular = (right_input - left_input) / self.wheel_base
 
-        # Apply diffrential driving and send motor command
-        left_motor=velocity-(angular_velocity*self.wheel_base/2)
-        right_motor=velocity+(angular_velocity*self.wheel_base/2)
+            # Compute motor outputs using differential drive
+            left_motor = linear - (angular * self.wheel_base / 2)
+            right_motor = linear + (angular * self.wheel_base / 2)
 
-        max_val = max(abs(left_motor), abs(right_motor), 1.0)
+            # Scale to actual motor range
+            max_val = max(abs(left_motor), abs(right_motor), 1)  # avoid div by zero
+            left_motor = int((left_motor / max_val) * self.motor_vel_scale)
+            right_motor = int((right_motor / max_val) * self.motor_vel_scale)
 
-        left_motor = int((left_motor/max_val)*self.motor_vel_scale)
-        right_motor = int((right_motor/max_val)*self.motor_vel_scale)
+            # Send to motors
+            self.handle_command('M', [left_motor, right_motor], blocking_id)
 
-        self.handle_command('M', [left_motor, right_motor], blocking_id)
+        else:
+            velocity=data[0]
+            angular_velocity=data[1]
+
+            # Scale motor command
+            left_motor=velocity-(angular_velocity*self.wheel_base/2)
+            right_motor=velocity+(angular_velocity*self.wheel_base/2)
+
+            max_val = max(abs(left_motor), abs(right_motor), 1.0)
+
+            left_motor = int((left_motor/max_val)*self.motor_vel_scale)
+            right_motor = int((right_motor/max_val)*self.motor_vel_scale)
+
+            self.handle_command('M', [left_motor, right_motor], blocking_id)
 
     # Apply scaling to 'A' command
     def send_act_command(self, data, blocking_id):

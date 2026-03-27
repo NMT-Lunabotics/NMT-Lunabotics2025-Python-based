@@ -2,57 +2,45 @@
 import rclpy
 from rclpy.node import Node
 from sensor_msgs.msg import Joy
-from robot_interfaces.msg import Camera, Command
+from robot_interfaces.msg import Camera, Command, Sequence
 import subprocess
 import time
 import sys
-
-# Run on local system copy and then if robot and local domain id matches they can connect
-
-# Axes, Buttons
-#Xbox_controller_map = {
-#    "LEFT_JOY_X": 0, "LEFT_JOY_Y": 1, "RIGHT_JOY_X": 2, "RIGHT_JOY_Y": 3, "LEFT_TRIGGER": 4, "RIGHT_TRIGGER": 5, "HORIZONTAL_DPAD": 6, "VERTICAL_DPAD": 7,
-#    "BUTTON_A": 0, "BUTTON_B": 1, "BUTTON_X": 2, "BUTTON_Y": 3, "LEFT_BUMPER": 4, "RIGHT_BUMPER": 5, "BACK": 6, "START": 7, "MODE": 8, "LEFT_STICK_BUTTON": 9, "RIGHT_STICK_BUTTON": 10, "GUIDE": 11,
-#}
 
 Xbox_controller_map = {
     "LEFT_JOY_X": 0, "LEFT_JOY_Y": 1, "RIGHT_JOY_X": 2, "RIGHT_JOY_Y": 3, "LEFT_TRIGGER": 5, "RIGHT_TRIGGER": 4, "HORIZONTAL_DPAD": 6, "VERTICAL_DPAD": 7,
     "BUTTON_A": 0, "BUTTON_B": 1, "BUTTON_X": 3, "BUTTON_Y": 4, "LEFT_BUMPER": 6, "RIGHT_BUMPER": 7, "BACK": 10, "START": 11, "GUIDE": 15, "LEFT_STICK_BUTTON": 13, "RIGHT_STICK_BUTTON": 14,
 }
 
-
 Logictech_controller_map = {
-    "LEFT_JOY_X": 0, "LEFT_JOY_Y": 1, "RIGHT_JOY_X": 3, "RIGHT_JOY_Y": 4, "LEFT_TRIGGER": 2, "RIGHT_TRIGGER": 5, "HORIZONTAL_DPAD": 6, "VERTICAL_DPAD": 7,
-    "BUTTON_A": 0, "BUTTON_B": 1, "BUTTON_X": 2, "BUTTON_Y": 3, "LEFT_BUMPER": 4, "RIGHT_BUMPER": 5, "BACK": 6, "START": 7, "LEFT_STICK_BUTTON": 9, "RIGHT_STICK_BUTTON": 10,
+    "LEFT_JOY_X": 0, "LEFT_JOY_Y": 1, "RIGHT_JOY_X": 3, "RIGHT_JOY_Y": 4, "HORIZONTAL_DPAD": 5, "VERTICAL_DPAD": 6,
+    "BUTTON_X": 0, "BUTTON_A": 1, "BUTTON_B": 2, "BUTTON_Y": 3, "LEFT_BUMPER": 4, "RIGHT_BUMPER": 5, "LEFT_TRIGGER": 6, "RIGHT_TRIGGER": 7, "BACK": 8, "START": 9, "LEFT_STICK_BUTTON": 10, "RIGHT_STICK_BUTTON": 11,
 }
 
 # Settings
 deadzone=0.4                        # Deadzone of actuator joystick
-Schematic=Xbox_controller_map       # Defines what controler schematic to use
+Schematic=Xbox_controller_map       # Defines what default controler schematic to use
 
 # Button mappings
 def set_buttons_for_schematic():
     global Buttons, Schematic
     Buttons = {
-        "MOTOR_X": {"type": "axis", "input": Schematic["RIGHT_JOY_X"]},                 # Turn left/right
-        "MOTOR_Y": {"type": "axis", "input": Schematic["RIGHT_JOY_Y"]},                 # Drive forword/backwords
-        "ACTUATOR_X": {"type": "axis", "input": Schematic["LEFT_JOY_X"]},               # Move bucket up/down
-        "ACTUATOR_Y": {"type": "axis", "input": Schematic["LEFT_JOY_Y"]},               # Move main actuator up/down  
-        "ARM": {"type": "axis", "input": Schematic["LEFT_TRIGGER"]},                    # Arming button
-        "CAMERA_TOGGLE": {"type": "button", "input": Schematic["RIGHT_STICK_BUTTON"]},  # Toggle between camera views
-        "CAMERA_SWITCH": {"type": "button", "input": Schematic["START"]},  
+        "MOTOR_X": {"type": "axis", "input": Schematic["RIGHT_JOY_X"]},                     # Turn left/right
+        "MOTOR_Y": {"type": "axis", "input": Schematic["RIGHT_JOY_Y"]},                     # Drive forword/backwords
+        "ACTUATOR_X": {"type": "axis", "input": Schematic["LEFT_JOY_X"]},                   # Move bucket actuator up/down
+        "ACTUATOR_Y": {"type": "axis", "input": Schematic["LEFT_JOY_Y"]},                   # Move arm actuators up/down  
+        "ARM": {"type": "button", "input": Schematic["LEFT_TRIGGER"]},                        # Arming button
+        "CAMERA_TOGGLE": {"type": "button", "input": Schematic["RIGHT_STICK_BUTTON"]},      # Toggle between camera views
+        "CAMERA_SWITCH": {"type": "button", "input": Schematic["START"]},                   # Switch between cameras
+        "AUTOMATED": {"type": "button", "input": Schematic["BACK"]},                        # Trigger automation 
+
+        "A_BUTTON": {"type": "button", "input": Schematic["BUTTON_A"]},                     # Button A used for diffrent things
+        "B_BUTTON": {"type": "button", "input": Schematic["BUTTON_B"]},                     # Button B used for diffrent things
+        "X_BUTTON": {"type": "button", "input": Schematic["BUTTON_X"]},                     # Button X used for diffrent things
+        "Y_BUTTON": {"type": "button", "input": Schematic["BUTTON_Y"]},                     # Button Y used for diffrent things
     }
 Buttons={}
 set_buttons_for_schematic()
-
-# Button combos: 
-# RIGHT_BUMPER+[BUTTON_A,BUTTON_B,BUTTON_X,BUTTON_Y] triggers automation
-# LEFT_BUMPER+(LEFT_STICK_BUTTON and RIGHT_STICK_BUTTON) gets robot out of error mode
-# LEFT_BUMPER+(BUTTON_Y) shows ip address on screen
-# LEFT_BUMPER+(BUTTON_X) Shows last error arduino if any
-
-# GOOD IDEA?
-# Save current slam map button. A way to start/stop slam mapping?
 
 # Variables used
 timeout=1
@@ -72,7 +60,6 @@ class ControllerNode(Node):
         # Initalize used message types
         self.cmd_vel_msg = Command()
         self.actuator_msg = Command()
-        
         self.camera_msg = Camera()
         self.camera_msg.camera_view = default_camera_view
 
@@ -95,18 +82,7 @@ class ControllerNode(Node):
         # Create publishers for robot commands
         self.robot_command_publisher = self.create_publisher(Command, '/robot_commands', 5)
         self.camera_state_publisher = self.create_publisher(Camera, '/camera/toggle_view', 5)
-
-    def set_buttons_for_schematic(self):
-        global Buttons, Schematic
-        Buttons = {
-            "MOTOR_X": {"type": "axis", "input": Schematic["RIGHT_JOY_X"]},
-            "MOTOR_Y": {"type": "axis", "input": Schematic["RIGHT_JOY_Y"]},
-            "ACTUATOR_X": {"type": "axis", "input": Schematic["LEFT_JOY_X"]},
-            "ACTUATOR_Y": {"type": "axis", "input": Schematic["LEFT_JOY_Y"]},
-            "ARM": {"type": "axis", "input": Schematic["LEFT_TRIGGER"]},
-            "CAMERA_TOGGLE": {"type": "button", "input": Schematic["RIGHT_STICK_BUTTON"]},
-            "CAMERA_SWITCH": {"type": "button", "input": Schematic["START"]},
-        }
+        self.automation_publisher = self.create_publisher(Sequence, '/automation_trigger', 1)
 
     # Handle joystick logic
     def joy_callback(self, msg: Joy):
@@ -151,24 +127,29 @@ class ControllerNode(Node):
         elif(bucket_act_vel > 0): bucket_act_vel=self.map_value(bucket_act_vel,deadzone,1.0,0.0,1.0)
         else: bucket_act_vel=self.map_value(bucket_act_vel,-1.0,-deadzone,-1.0,0.0)
 
-        # If unarmed or controller is disconnected send a speed of 0
-        if(self.get_input_values(msg, "ARM") >= 0 or not self.connected): 
+        # If unarmed or controller is disconnected send a speed of 0, 
+        if(self.get_input_values(msg, "ARM") == 0 or self.connected == False): 
             vel=0.0
             ang_vel=0.0
             arm_act_vel=0.0
             bucket_act_vel=0.0
+        elif self.get_input_values(msg, "AUTOMATED") == 1:
+            if self.get_input_values(msg, 'X_BUTTON') == 1: self.trigger_sequence("test")
+            elif self.get_input_values(msg, 'A_BUTTON') == 1: self.trigger_sequence("test2")
+            elif self.get_input_values(msg, 'B_BUTTON') == 1: self.trigger_sequence("test3")
+            elif self.get_input_values(msg, 'Y_BUTTON') == 1: self.trigger_sequence("test")
             
         # Motor velocity data
         motor.command="M"
         motor.data=[float(vel),float(ang_vel)]
-        motor.blocking_id=-1
+        motor.blocking_id=0
         self.cmd_vel_msg=motor
 
         # Publish actuator data
         actuator_msg = Command()
         actuator_msg.command="A"
         actuator_msg.data=[float(-1), float(-1), float(-1), float(-1), float(arm_act_vel), float(bucket_act_vel)]
-        actuator_msg.blocking_id=-1
+        actuator_msg.blocking_id=0
         self.actuator_msg=actuator_msg
 
         # Publish camera data
@@ -185,6 +166,12 @@ class ControllerNode(Node):
             second_camera_view=default
             self.last_camera_state_change=self.time
         self.camera_msg=camera_msg
+
+    def trigger_sequence(self, name):
+        msg = Sequence()
+        msg.name = name
+        msg.timestamp = time.time()
+        self.automation_publisher.publish(msg)
     
     def publish_cmd_vel(self):
         self.robot_command_publisher.publish(self.cmd_vel_msg)
@@ -221,14 +208,14 @@ class ControllerNode(Node):
                 motor=Command()
                 motor.command="M"
                 motor.data=[float(0),float(0)]
-                motor.blocking_id=-1
+                motor.blocking_id=0
                 self.robot_command_publisher.publish(motor)
                 self.connected = False
                 # Actuator velocity
                 actuator=Command()
                 actuator.command="A" 
                 actuator.data=[float(-1),float(-1),float(-1),float(-1),float(0),float(0)]
-                actuator.blocking_id=-1
+                actuator.blocking_id=0
                 self.robot_command_publisher.publish(actuator)
     
     # Map values to match range
