@@ -5,8 +5,8 @@
 #if MAIN_ROBOT==1
 
 // List of components flags to enable/disable for testing
-#define ERROR_LEDS_ENABLED           0
-#define MOTORS_ENABLED               1
+#define ERROR_LEDS_ENABLED           1
+#define MOTORS_ENABLED               0
 #define BUCKET_ACTUATOR_ENABLED      0
 #define ARM_ACTUATORS_ENABLED        0
 #define SERVO_MOTOR_ENABLED          1
@@ -23,8 +23,8 @@
 
 #else
 //--------------- NUC TEST ROBOT SETTINGS ---------------
-#define ERROR_LEDS_ENABLED           0
-#define MOTORS_ENABLED               1
+#define ERROR_LEDS_ENABLED           1
+#define MOTORS_ENABLED               0
 #define BUCKET_ACTUATOR_ENABLED      0
 #define ARM_ACTUATORS_ENABLED        0
 #define SERVO_MOTOR_ENABLED          1
@@ -140,7 +140,7 @@ float robot_width = 7.276186; //m
 #endif
 
 #if SERVO_MOTOR_ENABLED
-  #define SERVO_PIN 9
+  #define SERVO_PIN 22
 #endif
 
 //--------------- LEDS ---------------
@@ -662,7 +662,9 @@ void processMessage(byte *data, int length) {
     case 'S':    
       { 
         #if SERVO_MOTOR_ENABLED
-        servo.write(data[1]);
+        // Invert direction to match physical orientation
+        int angle = constrain((int)data[1], 0, 180);
+        servo.write(180 - angle);
         #if DEBUG_MODE
           Serial.print("Servo State: ");
           Serial.println(data[1]);
