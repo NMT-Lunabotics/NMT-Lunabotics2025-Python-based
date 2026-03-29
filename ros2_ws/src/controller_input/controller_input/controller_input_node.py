@@ -1,46 +1,12 @@
 #!/usr/bin/env python3
-import rclpy
+import time, sys, yaml, subprocess, rclpy, glob
 from rclpy.node import Node
 from sensor_msgs.msg import Joy
 from robot_interfaces.msg import Camera, Command, Sequence
-import subprocess
-import time
-import sys
-
-Xbox_controller_map = {
-    "LEFT_JOY_X": 0, "LEFT_JOY_Y": 1, "RIGHT_JOY_X": 2, "RIGHT_JOY_Y": 3, "LEFT_TRIGGER": 5, "RIGHT_TRIGGER": 4, "HORIZONTAL_DPAD": 6, "VERTICAL_DPAD": 7,
-    "BUTTON_A": 0, "BUTTON_B": 1, "BUTTON_X": 3, "BUTTON_Y": 4, "LEFT_BUMPER": 6, "RIGHT_BUMPER": 7, "BACK": 10, "START": 11, "GUIDE": 15, "LEFT_STICK_BUTTON": 13, "RIGHT_STICK_BUTTON": 14,
-}
-
-Logictech_controller_map = {
-    "LEFT_JOY_X": 0, "LEFT_JOY_Y": 1, "RIGHT_JOY_X": 3, "RIGHT_JOY_Y": 4, "HORIZONTAL_DPAD": 5, "VERTICAL_DPAD": 6,
-    "BUTTON_X": 0, "BUTTON_A": 1, "BUTTON_B": 2, "BUTTON_Y": 3, "LEFT_BUMPER": 4, "RIGHT_BUMPER": 5, "LEFT_TRIGGER": 6, "RIGHT_TRIGGER": 7, "BACK": 8, "START": 9, "LEFT_STICK_BUTTON": 10, "RIGHT_STICK_BUTTON": 11,
-}
+from geometry_msgs.msg import Twist
 
 # Settings
-deadzone=0.4                        # Deadzone of actuator joystick
-Schematic=Xbox_controller_map       # Defines what default controler schematic to use
-
-# Button mappings
-def set_buttons_for_schematic():
-    global Buttons, Schematic
-    Buttons = {
-        "MOTOR_X": {"type": "axis", "input": Schematic["RIGHT_JOY_X"]},                     # Turn left/right
-        "MOTOR_Y": {"type": "axis", "input": Schematic["RIGHT_JOY_Y"]},                     # Drive forword/backwords
-        "ACTUATOR_X": {"type": "axis", "input": Schematic["LEFT_JOY_X"]},                   # Move bucket actuator up/down
-        "ACTUATOR_Y": {"type": "axis", "input": Schematic["LEFT_JOY_Y"]},                   # Move arm actuators up/down  
-        "ARM": {"type": "button", "input": Schematic["LEFT_TRIGGER"]},                        # Arming button
-        "CAMERA_TOGGLE": {"type": "button", "input": Schematic["RIGHT_STICK_BUTTON"]},      # Toggle between camera views
-        "CAMERA_SWITCH": {"type": "button", "input": Schematic["START"]},                   # Switch between cameras
-        "AUTOMATED": {"type": "button", "input": Schematic["BACK"]},                        # Trigger automation 
-
-        "A_BUTTON": {"type": "button", "input": Schematic["BUTTON_A"]},                     # Button A used for diffrent things
-        "B_BUTTON": {"type": "button", "input": Schematic["BUTTON_B"]},                     # Button B used for diffrent things
-        "X_BUTTON": {"type": "button", "input": Schematic["BUTTON_X"]},                     # Button X used for diffrent things
-        "Y_BUTTON": {"type": "button", "input": Schematic["BUTTON_Y"]},                     # Button Y used for diffrent things
-    }
-Buttons={}
-set_buttons_for_schematic()
+deadzone=0.4  # Deadzone of actuator joystick
 
 # Variables used
 timeout=1
@@ -56,16 +22,43 @@ class ControllerNode(Node):
         self.time=self.get_clock().now()
         self.last_camera_state_change=self.time
         self.last_msg_time = self.time
+        self.controller_schematic=[]
+        self.active_controller={}
+        self.controller_name="None"
+        self.triggered_automation=None
+        self.automation_timeout=15
+
+        self.name_remapping = {
+            "MOTOR_X": "RIGHT_JOY_X",                     # Turn left/right
+            "MOTOR_Y": "RIGHT_JOY_Y",                     # Drive forword/backwords
+            "ACTUATOR_X": "LEFT_JOY_X",                   # Move bucket actuator up/down
+            "ACTUATOR_Y": "LEFT_JOY_Y",                   # Move arm actuators up/down  
+            "ARM": "LEFT_TRIGGER",                        # Arming button
+            "CAMERA_TOGGLE": "RIGHT_STICK_BUTTON",        # Toggle between camera views
+            "CAMERA_SWITCH": "START",                     # Switch between cameras
+            "AUTOMATED": "BACK",                          # Trigger automation 
+
+            "A_BUTTON": "BUTTON_A",                       # Button A used for diffrent things
+            "B_BUTTON": "BUTTON_B",                       # Button B used for diffrent things
+            "X_BUTTON": "BUTTON_X",                       # Button X used for diffrent things
+            "Y_BUTTON": "BUTTON_Y",                       # Button Y used for diffrent things
+        }
 
         # Initalize used message types
-        self.cmd_vel_msg = Command()
+        self.cmd_vel_msg = Twist()
         self.actuator_msg = Command()
         self.camera_msg = Camera()
         self.camera_msg.camera_view = default_camera_view
 
+        # Load the controller schematic
+        self.declare_parameter('controller_schematic', '')
+        controller_schematic_path = self.get_parameter('controller_schematic').get_parameter_value().string_value
+        with open(controller_schematic_path, 'r') as f: self.controller_schematic = yaml.safe_load(f).get('controller_input_node', {}).get('ros__parameters', {}).get('controllers', [])
+        self.controller_schematic=list(self.controller_schematic.values())
+
         # Start the /joy node to talk to controller
         try:
-            self.joy_process = subprocess.Popen(['ros2', 'run', 'joy', 'joy_node'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
+            self.joy_process = subprocess.Popen(['ros2', 'run', 'joy_linux', 'joy_linux_node'],stdout=subprocess.PIPE,stderr=subprocess.PIPE)
             time.sleep(1)
         except Exception as e:
             self.get_logger().error(f"/joy node failed to start: {e}")
@@ -83,36 +76,35 @@ class ControllerNode(Node):
         self.robot_command_publisher = self.create_publisher(Command, '/robot_commands', 5)
         self.camera_state_publisher = self.create_publisher(Camera, '/camera/toggle_view', 5)
         self.automation_publisher = self.create_publisher(Sequence, '/automation_trigger', 1)
+        self.vel_publisher = self.create_publisher(Twist, '/cmd_vel', 5)
+
+        self.devices = glob.glob("/dev/input/by-id/*-event-joystick")
+
+        self.get_logger().info("\033[34mController input node started.\033[0m")
+
+    def select_controller_schematic(self):
+        for device in self.devices:
+            name = device.lower()
+            for schematic_device in self.controller_schematic:
+                if any(key.lower() in name for key in schematic_device["identifying_keys"]):
+                    self.active_controller = schematic_device
+                    self.controller_name=schematic_device["identifying_keys"][0]
+                    return
 
     # Handle joystick logic
     def joy_callback(self, msg: Joy):
-        global default_camera_view, second_camera_view, Schematic
+        global default_camera_view, second_camera_view
         self.time = self.get_clock().now()
         
         # Connection code that helps handle timeouts
         self.last_msg_time = self.get_clock().now()
 
-        #self.get_logger().info(f"Buttons: {msg.buttons}, Axes: {msg.axes}")
-
         if not self.connected:
-            controller=""
-            # Switch to correct button layout
-            out = subprocess.check_output(["cat", "/proc/bus/input/devices"]).decode()
-            for line in out.splitlines():
-                lower = line.lower()
-                if "name=" in lower:
-                    if "logitech" in lower: 
-                        Schematic=Logictech_controller_map 
-                        controller="Logictech "
-                    elif "xbox" in lower: 
-                        Schematic=Xbox_controller_map 
-                        controller="Xbox "
-            set_buttons_for_schematic()
-            self.get_logger().info(f"{controller}controller connected.")
+            self.select_controller_schematic()
+            self.get_logger().info(f"\033[92m{self.controller_name} controller connected.\033[0m")
             self.connected = True
 
         # Send x and y joystick inputs as linear and angular velocity
-        motor=Command()
         ang_vel=self.get_input_values(msg, "MOTOR_X")
         vel=self.get_input_values(msg, "MOTOR_Y")
 
@@ -128,6 +120,12 @@ class ControllerNode(Node):
         else: bucket_act_vel=self.map_value(bucket_act_vel,-1.0,-deadzone,-1.0,0.0)
 
         # If unarmed or controller is disconnected send a speed of 0, 
+        if self.triggered_automation != None and (self.get_input_values(msg, "ARM") == 0 or self.connected == False):
+            if time.time()-self.triggered_automation>=self.automation_timeout: self.triggered_automation=None
+            else:
+                self.trigger_sequence("interrupt")
+                self.triggered_automation=None
+
         if(self.get_input_values(msg, "ARM") == 0 or self.connected == False): 
             vel=0.0
             ang_vel=0.0
@@ -138,11 +136,12 @@ class ControllerNode(Node):
             elif self.get_input_values(msg, 'A_BUTTON') == 1: self.trigger_sequence("test2")
             elif self.get_input_values(msg, 'B_BUTTON') == 1: self.trigger_sequence("test3")
             elif self.get_input_values(msg, 'Y_BUTTON') == 1: self.trigger_sequence("test")
+            self.triggered_automation=time.time()
             
         # Motor velocity data
-        motor.command="M"
-        motor.data=[float(vel),float(ang_vel)]
-        motor.blocking_id=0
+        motor=Twist()
+        motor.linear.x = float(vel) 
+        motor.angular.z = float(ang_vel)
         self.cmd_vel_msg=motor
 
         # Publish actuator data
@@ -174,7 +173,7 @@ class ControllerNode(Node):
         self.automation_publisher.publish(msg)
     
     def publish_cmd_vel(self):
-        self.robot_command_publisher.publish(self.cmd_vel_msg)
+        self.vel_publisher.publish(self.cmd_vel_msg)
 
     def publish_actuators(self):
         self.robot_command_publisher.publish(self.actuator_msg)
@@ -184,14 +183,10 @@ class ControllerNode(Node):
 
     # Get data dynamiclly from joystick using input type
     def get_input_values(self, msg, input):
-        button = Buttons[input]
-        #self.get_logger().info(f"{button}")
-        if button["type"] == "axis":
-            if button["input"] < len(msg.axes): return msg.axes[button["input"]]
-            else: return 0.0
-        else:  
-            if button["input"] < len(msg.buttons): return msg.buttons[button["input"]]
-            else: return 0
+        button=self.name_remapping[input]
+        if button in self.active_controller["axes"]: return msg.axes[self.active_controller["axes"][button]]
+        elif button in self.active_controller["buttons"]: return msg.buttons[self.active_controller["buttons"][button]]
+        else: return 0
 
     # Constantly check to make sure controller is connected
     def check_connection(self):
@@ -202,21 +197,24 @@ class ControllerNode(Node):
         if elapsed > timeout:
             if self.connected:  
                 # Warn when controller disconnects once, and set all velocityies to 0
-                self.get_logger().warn("Controller disconnected!")
+                self.get_logger().warn("\033[93mController disconnected!\033[0m")
 
                 # Motor velocity
-                motor=Command()
-                motor.command="M"
-                motor.data=[float(0),float(0)]
-                motor.blocking_id=0
-                self.robot_command_publisher.publish(motor)
-                self.connected = False
+                motor=Twist()
+                motor.linear.x = float(0)
+                motor.angular.z = float(0)
+                self.cmd_vel_msg=motor
+                self.vel_publisher.publish(motor)
+                
                 # Actuator velocity
                 actuator=Command()
                 actuator.command="A" 
                 actuator.data=[float(-1),float(-1),float(-1),float(-1),float(0),float(0)]
                 actuator.blocking_id=0
+                self.actuator_msg=actuator
                 self.robot_command_publisher.publish(actuator)
+
+                self.connected = False
     
     # Map values to match range
     def map_value(self, x, in_min, in_max, out_min, out_max):

@@ -1,7 +1,13 @@
 # For testing purposes, real system cameras are started in system_start package
 cameras:
   - name: camera0
-    video_device: /dev/video2
-    width: 640
-    height: 480
-    frame_rate: 5
+    video_device: /dev/v4l/by-id/usb-Intel_R__RealSense_TM__Depth_Module_456_Intel_R__RealSense_TM__Depth_Module_456_311743060296-video-index0 #/dev/video4
+    frame_rate: 24
+    width: 80
+    height: 60
+
+  - name: camera1
+    video_device: /dev/v4l/by-id/usb-Intel_R__RealSense_TM__Depth_Module_456_Intel_R__RealSense_TM__Depth_Module_456_327743062653-video-index0 #/dev/video10
+    frame_rate: 24
+    width: 80
+    height: 60

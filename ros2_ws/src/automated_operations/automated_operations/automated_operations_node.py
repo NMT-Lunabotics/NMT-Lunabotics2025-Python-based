@@ -1,12 +1,9 @@
 #!/usr/bin/env python3
-import rclpy
+import rclpy, time, json, os, threading
 from rclpy.node import Node
 from robot_interfaces.msg import Command, Sequence
 from ament_index_python.packages import get_package_share_directory
 from rclpy.qos import QoSProfile, ReliabilityPolicy
-import json
-import time
-import os
 
 # Sequences file path
 CONFIG_FILE = os.path.join(get_package_share_directory('automated_operations'),'config','automation_sequences.json')
@@ -18,6 +15,7 @@ class AutomationPublisher(Node):
         self.is_busy = False
         self.blocking_id = 1
         self.last_execute=time.time()
+        self.interrupt = False
 
         # Load json file, and index the sequences
         with open(CONFIG_FILE, 'r') as f: self.sequences = json.load(f)
@@ -25,9 +23,15 @@ class AutomationPublisher(Node):
         # Subscriber to trigger automation
         self.create_subscription(Sequence, '/automation_trigger',self.trigger_callback,QoSProfile(depth=0,reliability=ReliabilityPolicy.BEST_EFFORT))
 
+        self.get_logger().info("\033[34mAutomated operations node started.\033[0m")
+
     def trigger_callback(self, msg):
         # Safty checks
-        if self.is_busy or not msg.name or msg.timestamp <= self.last_execute: return
+        if msg.name == "interrupt":
+            self.get_logger().error(f"LOGGER FOUND INTERRUPT")
+            self.interrupt = True
+            return
+        if self.is_busy or not msg.name or (msg.timestamp < self.last_execute): return
 
         # Load sequence data
         sequence_name = msg.name
@@ -36,12 +40,13 @@ class AutomationPublisher(Node):
 
         # Run sequence
         self.is_busy = True
+        self.interrupt = False
         self.run_sequence(sequence)
         self.is_busy = False
 
     def run_sequence(self, sequence):
-        self.last_execute=time.time()
         for i, step in enumerate(sequence):
+            if self.interrupt: return
             # Data for step of function
             commands_dict = step.get("commands", {})
             duration = step.get("duration", 0.1)
@@ -62,12 +67,15 @@ class AutomationPublisher(Node):
             sent_last_step_blocking = False
 
             while time.monotonic() - start_time < duration:
+                if self.interrupt: return
                 for cmd_type, msg in msgs_to_send.items():
                     if last_step and not sent_last_step_blocking: msg.blocking_id = -1
                     self.robot_pub.publish(msg)
 
-                if last_step and not sent_last_step_blocking: sent_last_step_blocking = True  
-                time.sleep(0.05)
+                if last_step and not sent_last_step_blocking: 
+                    sent_last_step_blocking = True  
+                    self.last_execute=time.time()
+                rclpy.spin_once(self, timeout_sec=0.05)
 
 def main():
     rclpy.init()

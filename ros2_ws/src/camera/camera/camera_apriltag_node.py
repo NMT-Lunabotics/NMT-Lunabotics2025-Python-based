@@ -179,6 +179,8 @@ class AprialTagPoseNode(Node):
         self.frame_rate = None
         self.frame_shape = None
 
+        self.get_logger().info("\033[34mCamera apriltag node started.\033[0m")
+
     # Template for ros to cv2 image
     def image_callback(self, msg):
         img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')

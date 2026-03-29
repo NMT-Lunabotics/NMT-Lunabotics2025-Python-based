@@ -1,0 +1,5 @@
+controller_input_node:      
+  ros__parameters:           
+    timeout: 1.0
+    deadzone: 0.4
+    device: /dev/input/by-id/*-event-joystick

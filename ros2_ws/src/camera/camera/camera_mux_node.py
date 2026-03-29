@@ -41,6 +41,8 @@ class CameraMux(Node):
         self.create_subscription(Camera, '/camera/toggle_view', self.toggle_stream, 10)
         self.timer = self.create_timer(1.0 / self.output_fps, self.publish_active)
 
+        self.get_logger().info("\033[34mCamera mux node started.\033[0m")
+
     # Switch camera streams
     def toggle_stream(self, msg: Camera):
         if msg.camera_view in self.cameras:

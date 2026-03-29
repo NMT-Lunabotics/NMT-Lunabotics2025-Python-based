@@ -94,15 +94,17 @@ class SerialTalkerNode(Node):
         self.cmd_vel = self.create_subscription(Twist,'/cmd_vel',self.cmd_vel_callback,10)
         self.cmd = self.create_subscription(Command,'/robot_commands',self.cmd_callback,10)
 
+        self.get_logger().info("\033[34mSerial talker node started.\033[0m")
+
     # System callbacks which handle the the cmd_vel and /robot_command topics
     def cmd_callback(self, msg):
         self.handle_special_cmd(msg.command, msg.data, msg.blocking_id)
     def cmd_vel_callback(self, msg):
-        self.send_vel_command([msg.linear.x,msg.angular.z],None,False)
+        self.send_vel_command([msg.linear.x,msg.angular.z],None,vel_source=True)
 
     # Handle speical cmd cases, right now only the 'M' and 'A' speical cases exist
     def handle_special_cmd(self, command, data, blocking_id):
-        if command == "M": self.send_vel_command(data, blocking_id,True)
+        if command == "M": self.send_vel_command(data, blocking_id,vel_source=False)
         elif command == "A": self.send_act_command(data, blocking_id)
         else: self.handle_command(command, data, blocking_id)
     
@@ -132,8 +134,22 @@ class SerialTalkerNode(Node):
             self.serial.send_command(command, combined)
 
     # Apply diffrential driving to 'M' command
-    def send_vel_command(self, data, blocking_id, bothMotors):
-        if bothMotors:
+    def send_vel_command(self, data, blocking_id, vel_source):
+        if vel_source:
+            velocity=data[0]
+            angular_velocity=data[1]
+
+            # Scale motor command
+            left_motor=velocity-(angular_velocity*self.wheel_base/2)
+            right_motor=velocity+(angular_velocity*self.wheel_base/2)
+
+            max_val = max(abs(left_motor), abs(right_motor), 1.0)
+
+            left_motor = int((left_motor/max_val)*self.motor_vel_scale)
+            right_motor = int((right_motor/max_val)*self.motor_vel_scale)
+
+            self.handle_command('M', [left_motor, right_motor], blocking_id)
+        else:
             left_input = data[0]
             right_input = data[1]
 
@@ -151,21 +167,6 @@ class SerialTalkerNode(Node):
             right_motor = int((right_motor / max_val) * self.motor_vel_scale)
 
             # Send to motors
-            self.handle_command('M', [left_motor, right_motor], blocking_id)
-
-        else:
-            velocity=data[0]
-            angular_velocity=data[1]
-
-            # Scale motor command
-            left_motor=velocity-(angular_velocity*self.wheel_base/2)
-            right_motor=velocity+(angular_velocity*self.wheel_base/2)
-
-            max_val = max(abs(left_motor), abs(right_motor), 1.0)
-
-            left_motor = int((left_motor/max_val)*self.motor_vel_scale)
-            right_motor = int((right_motor/max_val)*self.motor_vel_scale)
-
             self.handle_command('M', [left_motor, right_motor], blocking_id)
 
     # Apply scaling to 'A' command
