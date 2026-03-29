@@ -140,7 +140,7 @@ float robot_width = 7.276186; //m
 #endif
 
 #if SERVO_MOTOR_ENABLED
-  #define SERVO_PIN 9
+  #define SERVO_PIN 22
 #endif
 
 //--------------- LEDS ---------------
