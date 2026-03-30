@@ -16,6 +16,9 @@ class AutomationPublisher(Node):
         self.blocking_id = 1
         self.last_execute=time.time()
         self.interrupt = False
+        self.sequence_thread = None
+        self.lock = threading.Lock()
+        self.last_msgs = {}
 
         # Load json file, and index the sequences
         with open(CONFIG_FILE, 'r') as f: self.sequences = json.load(f)
@@ -25,57 +28,83 @@ class AutomationPublisher(Node):
 
         self.get_logger().info("\033[34mAutomated operations node started.\033[0m")
 
+    # Handle callbacks for requestion that a automation be ran
     def trigger_callback(self, msg):
         # Safty checks
         if msg.name == "interrupt":
-            self.get_logger().error(f"LOGGER FOUND INTERRUPT")
-            self.interrupt = True
+            self.get_logger().warn(f"Automated operation interrupted!")
+            self.reset_blocking_ids()
+            with self.lock:
+                self.interrupt = True
+                self.is_busy = False
             return
-        if self.is_busy or not msg.name or (msg.timestamp < self.last_execute): return
+        if not msg.name or (msg.timestamp < self.last_execute): return
 
         # Load sequence data
         sequence_name = msg.name
         if sequence_name not in self.sequences: return
         sequence = self.sequences[sequence_name]
 
-        # Run sequence
-        self.is_busy = True
-        self.interrupt = False
-        self.run_sequence(sequence)
-        self.is_busy = False
+        with self.lock:
+            if self.is_busy: return
+            self.is_busy = True
+            self.interrupt = False
 
+        # Run sequence in isolated thread so that the thread can be interrupted
+        self.sequence_thread = threading.Thread(target=self.run_sequence, args=(sequence,))
+        self.sequence_thread.start()
+
+    # Run automation
     def run_sequence(self, sequence):
         for i, step in enumerate(sequence):
-            if self.interrupt: return
-            # Data for step of function
+            if self.interrupt: break
+
+            # Step function data
             commands_dict = step.get("commands", {})
             duration = step.get("duration", 0.1)
 
-            # Make new command messages
+            # Setup new message data which is what will be ran during execution 
             msgs_to_send = {}
             for cmd_type, values in commands_dict.items():
                 if cmd_type is not None:
                     msg = Command()
-                    msg.blocking_id = self.blocking_id  # default blocking_id
+                    msg.blocking_id = self.blocking_id 
                     msg.command = cmd_type
                     msg.data = [float(v) for v in values]
                     msgs_to_send[cmd_type] = msg
 
-            # Send commands repeatedly for the duration
+            self.last_msgs = msgs_to_send
+
+            # Until function runs to compleation repeatly send commands over serial using inital time logic
             start_time = time.monotonic()
             last_step = (i == len(sequence) - 1)
             sent_last_step_blocking = False
 
+            # Loop through commands and send them for required time period
             while time.monotonic() - start_time < duration:
-                if self.interrupt: return
+                if self.interrupt: break
                 for cmd_type, msg in msgs_to_send.items():
                     if last_step and not sent_last_step_blocking: msg.blocking_id = -1
                     self.robot_pub.publish(msg)
-
+                # Once finished end command execution
                 if last_step and not sent_last_step_blocking: 
                     sent_last_step_blocking = True  
                     self.last_execute=time.time()
-                rclpy.spin_once(self, timeout_sec=0.05)
+                time.sleep(0.05)
+
+            if self.interrupt: break
+
+        with self.lock:
+            self.is_busy = False
+            self.interrupt = False
+
+        if self.interrupt: self.reset_blocking_ids()
+            
+    # Send blank command to reset blocking ids of last command message
+    def reset_blocking_ids(self):
+        for msg in self.last_msgs.values():
+            msg.blocking_id = -1
+            self.robot_pub.publish(msg)
 
 def main():
     rclpy.init()

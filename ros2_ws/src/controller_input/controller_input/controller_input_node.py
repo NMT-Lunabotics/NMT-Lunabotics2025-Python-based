@@ -133,9 +133,9 @@ class ControllerNode(Node):
             bucket_act_vel=0.0
         elif self.get_input_values(msg, "AUTOMATED") == 1:
             if self.get_input_values(msg, 'X_BUTTON') == 1: self.trigger_sequence("test")
-            elif self.get_input_values(msg, 'A_BUTTON') == 1: self.trigger_sequence("test2")
-            elif self.get_input_values(msg, 'B_BUTTON') == 1: self.trigger_sequence("test3")
-            elif self.get_input_values(msg, 'Y_BUTTON') == 1: self.trigger_sequence("test")
+            elif self.get_input_values(msg, 'A_BUTTON') == 1: self.trigger_sequence("lateral_traverse")
+            elif self.get_input_values(msg, 'B_BUTTON') == 1: self.trigger_sequence("excavation")
+            elif self.get_input_values(msg, 'Y_BUTTON') == 1: self.trigger_sequence("dumping")
             self.triggered_automation=time.time()
             
         # Motor velocity data
