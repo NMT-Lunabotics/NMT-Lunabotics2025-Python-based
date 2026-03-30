@@ -25,6 +25,7 @@ EXCLUDE_FROM_PULL=(
     ".env_file.txt"
     "README.md"
     ".git/"
+    "info.md"
     )
 
 if [[ -f "$TRIPWIRE_FILE" ]]; then

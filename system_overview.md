@@ -1,4 +1,34 @@
-# Ros/Docker system overview:
+# Ros/Docker/UI system overview:
+
+The system is split into 3 parts, ROS, Docker, and the user interface.
+
+### ROS overview
+We currently run [ROS humble](https://docs.ros.org/en/humble/index.html) using linux [ubuntu 22.04](https://releases.ubuntu.com/jammy/) as our primary system. Linux is a MUST for anyone who is working on building coding the ros system. ROS runs our lidar and navigation system, and the rest the robot: controls, cameras, serial, automated operations. For user who are not part of the development of these systems the **User-interface**.
+
+### User interface overview
+The user-interface is a graphical user interface which lets people who have no experince with ros run the robot with minimal install steps. Only requiring python and a few python packages runable on any platform. 
+
+### Docker overview
+While docker has certain limits due to SDK issues it has two main uses. First it's a starting platform allowing new users to learn the ins and outs of linux and ros in an "easy" to setup enveriment requiring no speical hardwere installs. Second it aims to standardize our softwere, by requiring that all packages and install processes be kept inside of a docker file, and for all sub-systems like system services to be kept in the github repository we ensure if any thing ever needs to be reinstalled we have the steps and files to easly repeate it. 
+
+
+
+# System startup
+
+### ROS/Docker
+To start ros/docker on "jetson orion" or on your local pc after all of the 
+
+### User-interface
+To start the user-interface install python onto you system, install all packages found inside of the `DriverStation/f310_gui` file, and run the file to open the user-interface. 
+
+
+
+
+
+
+
+
+
 
 ### Docker overview
 While the ros system can be hosted locally on device like the "jetson orion", this has the trade off of easy sensor intergration but at the cost of repeatability, so docker is used as a framework. It creates a vertual enveriment with instructions for running the robotic system and installed the required packages.
