@@ -64,7 +64,7 @@ usage() {
     echo "This script is used to start and manage Docker and run the whole system. You can start the script by just using $0, adding other parameters that change how the container is run and what starts up on its own."
     
     echo "Actions (pick ONE):"
-    echo "  --start (-s) [l|local]            Start all processes on the robot"
+    echo "  --start (-s) [l|local]                 Start all processes on the robot"
     echo "  --teleop (-t)                          Run joystick control"
     echo "  --usb-cam (-u)                         Launch camera devices"
     echo "  --video-stream (-v)                    View camera video stream"
