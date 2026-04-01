@@ -25,10 +25,13 @@ PWM_Driver bucket_driver(DRV21_PWM_PIN, DRV21_DIR1_PIN, DRV21_DIR2_PIN, true);
 void setup() {
   Serial.begin(115200);
   ibus.begin(115200);
+  left_driver.stop();
+  right_driver.stop();
+  bucket_driver.stop();
 }
 
 void loop() {
-  if (ibus.update()) {
+  /*if (ibus.update()) {
     int16_t* joy = ibus.getJoystick();
     int aL = map(joy[3], -500, 500, -255, 255);
     int aR = aL;
@@ -36,7 +39,12 @@ void loop() {
     left_driver.setSpeed(aL);
     right_driver.setSpeed(aR);
     bucket_driver.setSpeed(aB);
-  }
+  }*/
+
+  //bucket_driver.set_speed(-100);
+  right_driver.set_speed(100);
+  left_driver.set_speed(100);
+ 
 
   int potL = analogRead(POTL_PIN);
   int potR = analogRead(POTR_PIN);
