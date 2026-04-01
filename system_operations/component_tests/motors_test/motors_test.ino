@@ -7,9 +7,6 @@ const int EN_PIN = 32;
 
 int motor_max_vel = 30; 
 
-void setup() {
-  Serial.begin(115200);
-
   OutPin motor_left_dac1(DACL1_PIN);
   OutPin motor_left_dac2(DACL2_PIN);
   OutPin motor_right_dac1(DACR1_PIN);
@@ -17,6 +14,9 @@ void setup() {
   OutPin motor_enable(EN_PIN);
   Motor motor_left(motor_left_dac1, motor_left_dac2, motor_enable, motor_max_vel, false);
   Motor motor_right(motor_right_dac1, motor_right_dac2, motor_enable, motor_max_vel, true);
+
+void setup() {
+  Serial.begin(115200);
 }
 
 void loop() {
