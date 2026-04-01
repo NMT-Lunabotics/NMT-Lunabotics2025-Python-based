@@ -139,8 +139,8 @@ class Actuator {
   float min_pos;
   float max_pos;
   float curved_speed = 0;
-  float ramp_speed_time=2;
-  unsigned long last_vel_time = 0;
+  float ramp_speed_time=0.5;
+  unsigned long last_accel_time = 0;
   PID pid;
 
   SmoothedInput<MEDIAN_SIZE> pot;
@@ -150,8 +150,11 @@ class Actuator {
   }
 
 public:
-  Actuator(PWM_Driver driver, PID pid, InPin pot, float pot_min, float pot_max, float stroke, float act_max_vel, float min_pos=0, float max_pos=0)
-    : pwm_driver(driver), stroke(stroke), pot_min(pot_min), pot_max(pot_max), act_max_vel(act_max_vel), pid(pid), pot(pot), min_pos(min_pos), max_pos(max_pos == 0 ? stroke : max_pos) {}
+  Actuator(PWM_Driver driver, PID pid, InPin pot, float pot_min, float pot_max, float stroke, float act_max_vel, 
+           float min_pos=0, float max_pos=0)
+    : pwm_driver(driver), stroke(stroke), pot_min(pot_min), pot_max(pot_max), act_max_vel(act_max_vel), 
+      pid(pid), pot(pot), min_pos(min_pos), max_pos(max_pos == 0 ? stroke : max_pos) {
+      }
     
   float update_pos() {
     float analog_raw = pot.read_analog_raw();
@@ -178,24 +181,28 @@ public:
   }
 
   void vel_ctrl(int speed) {
-    unsigned long now = millis();
-    float dt = (now - last_vel_time) / 1000.0;
-    last_vel_time = now;
-
-    float target_speed = speed;
-    float max_delta = abs(target_speed) / ramp_speed_time * dt;
-    float delta = target_speed - curved_speed;
-    if(delta > max_delta) delta = max_delta;
-    if(delta < -max_delta) delta = -max_delta;
-    curved_speed += delta;
-
-    int out_speed = curved_speed;
-    if(!MD04_drivers){
-        out_speed = constrain(out_speed, -act_max_vel, act_max_vel);
-        out_speed = out_speed / act_max_vel * 255;
+    if(MD04_drivers==false){
+    speed = constrain(speed, -act_max_vel, act_max_vel);
+    speed = speed / act_max_vel * 255;
     }
-    pwm_driver.set_speed(out_speed);
-}
+    pwm_driver.set_speed(speed);
+  }
+
+  void curved_vel_ctrl(int speed, float factor) {
+    float dt = (millis() - last_accel_time) / 1000.0;
+    last_accel_time = millis();
+    float delta = speed - curved_speed;
+    float max_delta = abs(speed)/ramp_speed_time*dt;
+    if(curved_speed*speed >= 0){
+        if(delta > max_delta) delta = max_delta;
+        if(delta < -max_delta) delta = -max_delta;
+    }
+    curved_speed += delta;
+    if(speed == 0) curved_speed = 0;
+    int out = MD04_drivers ? curved_speed : constrain(curved_speed,-act_max_vel,act_max_vel)/act_max_vel*255;
+    if(curved_speed != 0) out += factor;
+    pwm_driver.set_speed(out);
+  }
 
   void stop() {
     pwm_driver.stop();
@@ -208,18 +215,80 @@ public:
 
 ///////// Motor Class ////////
 class Motor {
-    OutPin dac1;
-    OutPin dac2;
-    OutPin enable;
-
-    int motor_max_vel; //rpm
-
-    bool reverse = false;
+  OutPin dac1, dac2, enable;
+  int motor_max_vel;
+  bool reverse;
+  float curved_speed = 0;
+  float ramp_speed_time = 0.75;
+  unsigned long last_update = 0;
+  unsigned long direction_change_block_until = 0;
 
 public:
-    Motor(OutPin dac1, OutPin dac2, OutPin enable, int motor_max_vel, bool reverse) : dac1(dac1), dac2(dac2), enable(enable), motor_max_vel(motor_max_vel), reverse(reverse) {}
+  Motor(OutPin d1, OutPin d2, OutPin en, int maxv, bool rev)
+      : dac1(d1), dac2(d2), enable(en), motor_max_vel(maxv), reverse(rev) {
+      last_update = millis();
+  }
 
-    void motor_ctrl(int signed_speed) {
+  void motor_ctrl(int target_speed) {
+      unsigned long now = millis();
+      float dt = (now - last_update) / 1000.0;
+      last_update = now;
+
+      target_speed = constrain(target_speed, -motor_max_vel, motor_max_vel);
+
+      bool target_dir = (target_speed > 0);
+      bool current_dir = (curved_speed > 0);
+
+      if (curved_speed != 0 && target_dir != current_dir) {
+          float max_delta = motor_max_vel / ramp_speed_time * dt;
+          if (curved_speed > 0) curved_speed -= max_delta;
+          else curved_speed += max_delta;
+
+          if (abs(curved_speed) < 1) {
+              curved_speed = 0;
+              direction_change_block_until = now + 150; 
+          }
+      } else {
+          if (now < direction_change_block_until) {
+              curved_speed = 0;
+          } else {
+              float delta = target_speed - curved_speed;
+              float max_delta = motor_max_vel / ramp_speed_time * dt;
+              if (delta > max_delta) delta = max_delta;
+              if (delta < -max_delta) delta = -max_delta;
+              curved_speed += delta;
+          }
+      }
+      if (curved_speed == 0) {
+          stop();
+          return;
+      }
+
+      int pwm = map(abs((int)curved_speed), 0, motor_max_vel, 0, 255);
+      enable.write(1);
+      bool forward = (curved_speed > 0);
+      if (reverse) forward = !forward;
+      if (forward) {
+          dac1.write_pwm_raw(pwm);
+          dac2.write_pwm_raw(0);
+      } else {
+          dac1.write_pwm_raw(0);
+          dac2.write_pwm_raw(pwm);
+      }
+  }
+
+  void stop() {
+      enable.write(0);
+      dac1.write_pwm_raw(0);
+      dac2.write_pwm_raw(0);
+  }
+};
+
+
+  
+  
+
+    /*void motor_ctrl(int signed_speed) {
         // Convert motor speeds (in rpm) to PWM values (0-255)
         // Constrain speeds to max velocity first
         if (signed_speed == 0) {
@@ -238,14 +307,9 @@ public:
             dac1.write_pwm_raw(0);
             dac2.write_pwm_raw(motor_speed);
         }
-    }
+    }*/
 
-    void stop() {
-      enable.write(0);
-      dac1.write_pwm_raw(0);
-      dac2.write_pwm_raw(0);
-    }
-};
+
 
 class SimpleMotor {
   int pwmPin;
@@ -442,6 +506,7 @@ class IBusReader {
                         joystick[i] = newJoy;
                     }
                     joystick[4] = constrain(map(channels[6], 1000, 2000, 0, 1),0,1);
+                    joystick[5] = constrain(map(channels[7], 1000, 2000, 0, 1),0,1);
                     if (anyChanged) lastUpdate = millis();
                     for (int i = 0; i < 4; i++) lastValues[i] = joystick[i];
                     changed = true;
@@ -464,8 +529,8 @@ class IBusReader {
       uint8_t buffer[32];
       int idx = 0;
       int threshold = 1;
-      int16_t channels[8];
-      int16_t joystick[5];
+      int16_t channels[12];
+      int16_t joystick[6];
       int16_t lastValues[4]; // store last mapped joystick values
       unsigned long lastUpdate = 0;
       const unsigned long timeoutMs = 2000; // 0.5s timeout

@@ -1,45 +1,52 @@
 #include "helpers.hpp"
 
+#define POTL_PIN A1
+#define POTR_PIN A0
+#define POTB_PIN A3
+
 #define DRV11_PWM_PIN 6
 #define DRV11_DIR1_PIN 34
 #define DRV11_DIR2_PIN 36
+
 #define DRV12_PWM_PIN 7
 #define DRV12_DIR1_PIN 38
 #define DRV12_DIR2_PIN 40
 
-#define POTL_PIN A1
-#define POTR_PIN A0
+#define DRV21_PWM_PIN 9
+#define DRV21_DIR1_PIN 44
+#define DRV21_DIR2_PIN 42
 
-float act_max_vel = 25;
+IBusReader ibus(Serial1);
 
-PID pidL(2.2, 0.0022, 0.34, 2.0);
-PID pidR(1.85, 0.0018, 0.31, 1.7);
-
-PWM_Driver left_driver(DRV12_PWM_PIN, DRV12_DIR1_PIN, DRV12_DIR2_PIN, false);
-Actuator act_left(left_driver, pidL, POTL_PIN, 0, 1023, 191, act_max_vel);
-
-PWM_Driver right_driver(DRV11_PWM_PIN, DRV11_DIR1_PIN, DRV11_DIR2_PIN, false);
-Actuator act_right(right_driver, pidR, POTR_PIN, 50, 1023, 191, act_max_vel);
-
-int done = 0;
+PWM_Driver left_driver(DRV11_PWM_PIN, DRV11_DIR1_PIN, DRV11_DIR2_PIN, false);
+PWM_Driver right_driver(DRV12_PWM_PIN, DRV12_DIR1_PIN, DRV12_DIR2_PIN, false);
+PWM_Driver bucket_driver(DRV21_PWM_PIN, DRV21_DIR1_PIN, DRV21_DIR2_PIN, true);
 
 void setup() {
   Serial.begin(115200);
-  Serial.println("Actuator calibration started");
-
-  act_left.stop();
-  act_right.stop();
-  delay(1000);
+  ibus.begin(115200);
 }
 
 void loop() {
-  if (done == 0) {
-    int potL = analogRead(POTL_PIN);
-    int potR = analogRead(POTR_PIN);
-    Serial.print(potL);
-    Serial.print(" ");
-    Serial.println(potR);
-
-    done = 1;
+  if (ibus.update()) {
+    int16_t* joy = ibus.getJoystick();
+    int aL = map(joy[3], -500, 500, -255, 255);
+    int aR = aL;
+    int aB = map(joy[2], -500, 500, -255, 255);
+    left_driver.setSpeed(aL);
+    right_driver.setSpeed(aR);
+    bucket_driver.setSpeed(aB);
   }
+
+  int potL = analogRead(POTL_PIN);
+  int potR = analogRead(POTR_PIN);
+  int potB = analogRead(POTB_PIN);
+
+  Serial.print(potL);
+  Serial.print(" ");
+  Serial.print(potR);
+  Serial.print(" ");
+  Serial.println(potB);
+
+  delay(50);
 }
