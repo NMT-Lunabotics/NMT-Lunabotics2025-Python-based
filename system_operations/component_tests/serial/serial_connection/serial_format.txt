@@ -1,0 +1,25 @@
+The serial system works based on a key pair system, in general it has this formate:
+<start byte, length, command, data, end byte>
+
+Where the (startByte) and (endByte) are just predetermine values which tells our code when we have recvived the first and last bit of data.
+The (lengthByte) is a byte that tracks the number of bytes of data/id that we recieve.
+And the (dataBytes) are however many bytes of data that we may have.
+
+All data is sent using bytes (int8_t or uint8_t), all data uses floating point (uint8_t) except leftMotorSpeed, rightMotorSpeed, bucketVelocity, armVelocity which use intergers (int8_t).
+We send 3 main types of data (0…255) values for most things, (-128…127) for our velocitys to allow an negitive direction, and (0…1) for on/off components like leds.
+
+Our current system setup is this:
+---Motors---
+<startByte:0x02, M:'M', lengthByte:3, leftMotorSpeed:-128…127, rightMotorSpeed:-128…127, endByte:0x03>
+(-128…128 are converted to/from 0…255 for serial data)
+
+---Actuators---
+<startByte:0x02, A:'A', lengthByte:7, armTargetHighByte:0…255, armTargetLowByte:0…255, bucketTargetHighByte:0…255, bucketTargetLowByte:0…255, armVelocity:-128…127, bucketVelocity:-128…127, endByte:0x03>
+(-128…128 are converted to/from 0…255 for serial data)
+
+---Servo Motor---
+<startByte:0x02, S:'S', lengthByte:2, servoState:0/1, endByte:0x03>
+
+
+---LEDS---
+<startByte:0x02, L:'L', lengthByte:5, redState:0/1, yellowState:0/1, greenState:0/1, blueState:0/1, endByte:0x03>

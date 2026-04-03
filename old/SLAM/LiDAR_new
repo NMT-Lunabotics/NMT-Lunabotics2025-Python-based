@@ -1,0 +1,268 @@
+#!/home/cam/Project/.venv/bin/python
+"""
+RPLIDAR S1 -> BreezySLAM live map (matplotlib viewer)
+Refactor: split serial reader and SLAM into separate threads to prevent serial buffer overrun.
+"""
+
+import os, glob, math, time, threading, queue
+import numpy as np
+import serial
+from rplidar import RPLidar, RPLidarException
+from breezyslam.algorithms import RMHC_SLAM
+from breezyslam.sensors import Laser
+from matplotlib.patches import FancyArrowPatch
+import matplotlib
+if "MPLBACKEND" not in os.environ:
+    matplotlib.use("TkAgg")
+import matplotlib.pyplot as plt
+
+# ---------- TUNABLES ----------
+BAUD = 256000
+TIMEOUT_S = 5
+WARMUP_S = 2.0                # skip first seconds (motor spin-up)
+MAX_DIST_MM = 40000
+FOV_DEG = 360
+BINS = 360                    # 1° bins
+TARGET_SCAN_HZ = 10
+MAP_SIZE_METERS = 20.0
+MAP_SIZE_PIXELS = 800
+MAX_BUF_MEAS = 1200           # allow bigger bursts on S1
+IN_WAITING_FLUSH = 2000       # (kept; we now rarely need to flush)
+SLEEP_ON_NEW_SCAN = 0.002     # tiny breather per sweep to reduce micro-bursts
+# -----------------------------
+
+def add_range_rings(ax, meters_step=1.0):
+    """Draw faint distance rings centered at robot (every meters_step)."""
+    px_per_mm = MAP_SIZE_PIXELS / (MAP_SIZE_METERS * 1000.0)
+    cx = cy = MAP_SIZE_PIXELS / 2.0
+    max_r_mm = (MAP_SIZE_METERS * 1000.0) / 2.0
+    r = meters_step * 1000.0
+    while r < max_r_mm:
+        rad_px = r * px_per_mm
+        c = plt.Circle((cx, cy), rad_px, edgecolor=(1,1,1,0.15),
+                       facecolor='none', lw=1, zorder=1)
+        ax.add_patch(c)
+        if int(r) % 1000 == 0:
+            ax.text(cx + rad_px + 4, cy, f"{int(r/1000)}m",
+                    color=(1,1,1,0.5), fontsize=8)
+        r += meters_step * 1000.0
+
+def find_port():
+    p = os.environ.get('RPLIDAR_PORT')
+    if p and os.path.exists(p): return p
+    ids = sorted(glob.glob('/dev/serial/by-id/*'))
+    if ids: return ids[0]
+    for patt in ('/dev/ttyUSB*','/dev/ttyACM*'):
+        m = sorted(glob.glob(patt))
+        if m: return m[0]
+    return None
+
+def open_lidar():
+    port = find_port()
+    if not port:
+        raise serial.SerialException("No RPLIDAR serial device found.")
+    lidar = RPLidar(port, baudrate=BAUD, timeout=TIMEOUT_S)
+    # purge stale bytes
+    try:
+        lidar.clear_input()
+    except Exception:
+        try: lidar._serial.reset_input_buffer()
+        except Exception: pass
+    lidar.start_motor()
+    time.sleep(0.5)
+    return lidar
+
+def slam_worker(scan_queue: queue.Queue, map_queue: queue.Queue, stop_evt: threading.Event):
+    """Consumes finished sweeps (np.int32[BINS]), runs SLAM, pushes (vis, points)."""
+    laser = Laser(BINS, TARGET_SCAN_HZ, FOV_DEG, MAX_DIST_MM)
+    slam  = RMHC_SLAM(laser, MAP_SIZE_PIXELS, MAP_SIZE_METERS)
+    mapbuf = bytearray(MAP_SIZE_PIXELS * MAP_SIZE_PIXELS)
+
+    while not stop_evt.is_set():
+        try:
+            distances = scan_queue.get(timeout=0.2)  # one finished sweep
+        except queue.Empty:
+            continue
+
+        # Skip empty/weak sweeps until warmed up
+        if (distances > 0).sum() <= BINS * 0.3:
+            continue
+
+        # SLAM update & map
+        slam.update(distances.tolist())
+        slam.getmap(mapbuf)
+        mapimg = np.frombuffer(mapbuf, dtype=np.uint8).reshape(MAP_SIZE_PIXELS, MAP_SIZE_PIXELS)
+        vis = 255 - mapimg  # invert: occupied=black
+
+        # Build blue points (viewer)
+        points = []
+        nz = np.nonzero(distances)[0]
+        for k in nz:
+            ang = math.radians(k)
+            d = int(distances[k])
+            x_mm = int(d * math.cos(ang))
+            y_mm = int(d * math.sin(ang))
+            points.append((x_mm, y_mm, d))
+
+        # keep only newest for viewer
+        try:
+            while not map_queue.empty():
+                map_queue.get_nowait()
+        except queue.Empty:
+            pass
+        try:
+            map_queue.put_nowait((vis.copy(), points))
+        except queue.Full:
+            pass
+
+def collector(scan_queue: queue.Queue, stop_evt: threading.Event):
+    """
+    Reads raw measures as fast as possible and emits one np.int32[BINS] per finished sweep.
+    No SLAM or heavy processing here.
+    """
+    lidar = None
+    distances = np.zeros(BINS, dtype=np.int32)
+    have_bins = np.zeros(BINS, dtype=bool)
+    t0 = None
+
+    while not stop_evt.is_set():
+        try:
+            lidar = open_lidar()
+            try:
+                print("Connected:", lidar.get_info(), "Health:", lidar.get_health())
+            except Exception:
+                pass
+
+            meas_iter = lidar.iter_measures(max_buf_meas=MAX_BUF_MEAS)
+            t0 = time.time()
+            distances.fill(0); have_bins.fill(False)
+
+            for new_scan, q, angle, distance in meas_iter:
+                if stop_evt.is_set():
+                    break
+
+                # Fast insert of nearest hit per angle bin
+                d = int(distance)
+                if d > 0 and d <= MAX_DIST_MM:
+                    k = int(angle) % BINS
+                    if not have_bins[k] or d < distances[k]:
+                        distances[k] = d
+                        have_bins[k] = True
+
+                if new_scan:
+                    # After warmup and enough coverage, emit a *copy* of the sweep
+                    if have_bins.sum() > BINS * 0.3 and (time.time() - t0) > WARMUP_S:
+                        frame = distances.copy()
+                        try:
+                            # If SLAM is behind, drop the oldest to stay real-time
+                            if scan_queue.full():
+                                try: scan_queue.get_nowait()
+                                except queue.Empty: pass
+                            scan_queue.put_nowait(frame)
+                        except queue.Full:
+                            # Drop this sweep rather than blocking serial
+                            pass
+
+                    # Reset for next sweep
+                    distances.fill(0); have_bins.fill(False)
+
+                    # tiny breather to reduce micro-bursts/GIL contention
+                    time.sleep(SLEEP_ON_NEW_SCAN)
+
+        except (OSError, serial.SerialException, RPLidarException) as e:
+            print(f"[WARN] LIDAR stream error: {e}. Resetting…")
+            time.sleep(0.5)
+        except KeyboardInterrupt:
+            break
+        finally:
+            try:
+                if lidar:
+                    lidar.stop(); lidar.stop_motor(); lidar.disconnect()
+                    lidar = None
+            except Exception:
+                pass
+
+# -------------------------------- Viewer -----------------------------------
+def main():
+    map_queue  = queue.Queue(maxsize=1)   # (vis, points)
+    scan_queue = queue.Queue(maxsize=2)   # finished sweeps for SLAM
+    stop_evt   = threading.Event()
+
+    th_reader = threading.Thread(target=collector,   args=(scan_queue, map_queue if False else stop_evt), daemon=True)
+    # NOTE: previous line is intentionally weird-looking in diff tools; it's simply:
+    # th_reader = threading.Thread(target=collector, args=(scan_queue, stop_evt), daemon=True)
+    th_reader = threading.Thread(target=collector, args=(scan_queue, stop_evt), daemon=True)
+    th_slam   = threading.Thread(target=slam_worker, args=(scan_queue, map_queue, stop_evt), daemon=True)
+    th_reader.start()
+    th_slam.start()
+
+    # Viewer (no background image)
+    plt.ion()
+    fig, ax = plt.subplots(figsize=(6, 6))
+    ax.set_title("RPLIDAR S1 – Live scan (blue) + robot (red)")
+    ax.set_facecolor("black")
+    ax.set_xticks([]); ax.set_yticks([])
+
+    # Pixel coordinate frame (0..W, y-down)
+    ax.set_xlim(0, MAP_SIZE_PIXELS)
+    ax.set_ylim(MAP_SIZE_PIXELS, 0)
+    ax.set_facecolor("black")
+    add_range_rings(ax, meters_step=1.0)
+
+    # scale: mm -> pixels, origin at center
+    px_per_mm = MAP_SIZE_PIXELS / (MAP_SIZE_METERS * 1000.0)
+    cx = cy = MAP_SIZE_PIXELS / 2.0
+
+    # artists
+    scan_artist = None
+    robot_dot, = ax.plot([cx], [cy], 'o', ms=6, color='red', zorder=3)
+    arrow_length = 20  # pixels
+    robot_arrow = FancyArrowPatch((cx, cy), (cx + arrow_length, cy),
+                                  mutation_scale=12, color='red', zorder=3)
+    ax.add_patch(robot_arrow)
+
+    try:
+        while plt.fignum_exists(fig.number):
+            try:
+                payload = map_queue.get(timeout=0.5)
+            except queue.Empty:
+                plt.pause(0.01)
+                continue
+
+            vis, points, pose = None, None, None
+            if isinstance(payload, tuple):
+                if len(payload) == 3:
+                    vis, points, pose = payload
+                elif len(payload) == 2:
+                    vis, points = payload
+                else:
+                    vis = payload
+
+            # Update blue scan points
+            if points:
+                xs = [cx + x_mm * px_per_mm for x_mm, _, _ in points]
+                ys = [cy - y_mm * px_per_mm for _, y_mm, _ in points]  # y-down
+                if scan_artist is None:
+                    scan_artist = ax.scatter(xs, ys, s=2, c="tab:blue", zorder=2)
+                else:
+                    scan_artist.set_offsets(np.c_[xs, ys])
+
+            if pose:
+                x_mm, y_mm, _theta_deg = pose
+                x_px = cx + x_mm * px_per_mm
+                y_px = cy - y_mm * px_per_mm
+                robot_dot.set_data([x_px], [y_px])
+
+            fig.canvas.draw()
+            fig.canvas.flush_events()
+            plt.pause(0.01)
+
+    except KeyboardInterrupt:
+        pass
+    finally:
+        stop_evt.set()
+        th_reader.join(timeout=2.0)
+        th_slam.join(timeout=2.0)
+
+if __name__ == '__main__':
+    main()

@@ -1,7 +1,0 @@
-This code uses "SoftwareSerial.h" to create a fake TX pin which is what the RC controller uses for communication.
-
-You setup some inital variables and your controller settings.
-
-Then by calling this function readIbus() i.e. int16_t* joystick = readIbus(); it will return an array of [MotorX, MotorY, ActuatorX, ActuatorY] for the controller inputs.
-
-If the communication fails the function will return nullptr.
