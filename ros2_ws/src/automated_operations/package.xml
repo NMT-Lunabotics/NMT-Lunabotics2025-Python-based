@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>robot_interfaces</name>
+  <name>automated_operations</name>
   <version>0.0.0</version>
-  <description>Package while handles all msg interfaces which are used accross diffrent system packages.</description>
+  <description>The package that handles running sudo automated functions like digging with minimal sensor imports.</description>
   <maintainer email="benjamin.peterson@student.nmt.edu">Benjamin</maintainer>
   <license>Apache-2.0</license>
 

@@ -1,9 +1,9 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>robot_interfaces</name>
+  <name>controller_input</name>
   <version>0.0.0</version>
-  <description>Package while handles all msg interfaces which are used accross diffrent system packages.</description>
+  <description>Package while handles all controller controls/commands to have full control when controlling the robot.</description>
   <maintainer email="benjamin.peterson@student.nmt.edu">Benjamin</maintainer>
   <license>Apache-2.0</license>
 

@@ -1,0 +1,6 @@
+controller_input_node:      
+  ros__parameters:           
+    operation1: test
+    operation2: test
+    operation3: test
+    operation4: test

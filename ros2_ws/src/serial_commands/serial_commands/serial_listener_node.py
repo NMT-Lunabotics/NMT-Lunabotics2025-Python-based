@@ -2,7 +2,7 @@
 
 import rclpy
 from rclpy.node import Node
-from serial_commands.msg import Command
+from robot_interfaces.msg import Command
 import serial
 import serial.tools.list_ports
 import time

@@ -1,0 +1,25 @@
+DEPRICATED
+
+wifi-ping is a wifi ping back system ment to be used for locating the robots ip. The robot will wait to revice a ping, 
+and when it does it will ping back it's username and ip for the host to commuicate over.
+
+----------------------------------------------------------------------
+1. Add script and startup files to jetson, and make py file execyable
+----------------------------------------------------------------------
+
+sudo nano /usr/local/bin/wifi-ping-config.json
+
+sudo nano /etc/systemd/system/wifi-ping.service
+
+sudo nano /usr/local/bin/wifi-ping_service.py
+sudo chmod +x /usr/local/bin/wifi-ping_service.py
+
+----------------------------------------------------------------------
+2. Start the startup services
+----------------------------------------------------------------------
+
+sudo systemctl daemon-reload
+sudo systemctl enable wifi-ping.service
+sudo systemctl start wifi-ping.service
+
+sudo systemctl status wifi-ping.service
