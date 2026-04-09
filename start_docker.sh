@@ -301,8 +301,9 @@ if [ "$INTERACTIVE_HOST" = true ]; then
 
     if [ "$BUILD_IMAGE" = true ]; then
         cd "$ROS_DIR_ABS"
-        rm -rf build/ install/ log/
-        colcon build --packages-select automated_operations camera controller_input robot_interfaces serial_commands system_monitor system_start
+        sudo rm -rf build/ install/ log/
+        source /opt/ros/humble/setup.bash
+        colcon build --continue-on-error --packages-skip CURL nlohmann_json
         source "$ROS_DIR_ABS/install/setup.bash"
         cd "$WORKING_DIR_HOST" 
     fi

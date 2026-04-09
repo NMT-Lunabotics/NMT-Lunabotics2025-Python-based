@@ -66,17 +66,17 @@ class serialCommands:
             msg.append(d % 256)
         msg.append(self.endbyte)
         self.serial.write(msg)
-        self.serial.flush()
-        time.sleep(0.001)
 
 class SerialTalkerNode(Node):
     def __init__(self):
         super().__init__('talker_node')
         self.blocking={}
         self.blocking_timer={}
+        self.command_states={}
 
         self.blocking_timeout=3
         self.blocking_last_time=time.monotonic()
+        self.timeout_period=0.1
 
         self.actuator_vel_scale=25  # Actuator velocity scale (-25 - 25)
         self.motor_vel_scale=30     # Motor velocity scale (-30 - 30)
@@ -93,6 +93,7 @@ class SerialTalkerNode(Node):
         # Subscribe topics that include robot command data
         self.cmd_vel = self.create_subscription(Twist,'/cmd_vel',self.cmd_vel_callback,10)
         self.cmd = self.create_subscription(Command,'/robot_commands',self.cmd_callback,10)
+        self.create_timer(0.005, self.control_loop)
 
         self.get_logger().info("\033[34mSerial talker node started.\033[0m")
 
@@ -102,14 +103,24 @@ class SerialTalkerNode(Node):
     def cmd_vel_callback(self, msg):
         self.send_vel_command([msg.linear.x,msg.angular.z],None,vel_source=True)
 
+    def control_loop(self):
+        time_now = time.monotonic()
+        for command in list(self.command_states.keys()):
+            command_data = self.command_states[command]
+            timestamp = command_data["timestamp"]
+            if(time_now-timestamp>=self.timeout_period):
+                del self.command_states[command]
+                continue
+            self.serial.send_command(command, command_data["data"])
+
     # Handle speical cmd cases, right now only the 'M' and 'A' speical cases exist
     def handle_special_cmd(self, command, data, blocking_id):
         if command == "M": self.send_vel_command(data, blocking_id,vel_source=False)
         elif command == "A": self.send_act_command(data, blocking_id)
-        else: self.handle_command(command, data, blocking_id)
+        else: self.update_command(command, data, blocking_id)
     
     # Handles the sent command taking into account if a command is blocking
-    def handle_command(self, command, data, blocking_id):
+    def update_command(self, command, data, blocking_id):
         if not command: return
         #self.get_logger().info(f"Sending command {command} with data {data}")
         # Blocking and command sender logic
@@ -120,7 +131,7 @@ class SerialTalkerNode(Node):
             elif blocking_id == self.blocking[command]:
                 self.blocking_timer[command] = time.monotonic()
                 combined = [int(d) for d in data]    
-                self.serial.send_command(command, combined)
+                self.command_states[command]={"data": combined, "timestamp": time.monotonic(), "blocking_id": blocking_id}
             elif time.monotonic() - self.blocking_timer[command] >= self.blocking_timeout:
                 del self.blocking[command]
                 del self.blocking_timer[command]
@@ -129,9 +140,8 @@ class SerialTalkerNode(Node):
             if blocking_id not in (-1, None, 0): 
                 self.blocking[command] = blocking_id
                 self.blocking_timer[command] = time.monotonic()
-
-            combined = [int(d) for d in data]    
-            self.serial.send_command(command, combined)
+            combined = [int(d) for d in data]      
+            self.command_states[command]={"data": combined, "timestamp": time.monotonic(), "blocking_id": blocking_id}
 
     # Apply diffrential driving to 'M' command
     def send_vel_command(self, data, blocking_id, vel_source):
@@ -148,7 +158,7 @@ class SerialTalkerNode(Node):
             left_motor = int((left_motor/max_val)*self.motor_vel_scale)
             right_motor = int((right_motor/max_val)*self.motor_vel_scale)
 
-            self.handle_command('M', [left_motor, right_motor], blocking_id)
+            self.update_command('M', [left_motor, right_motor], blocking_id)
         else:
             left_input = data[0]
             right_input = data[1]
@@ -167,7 +177,7 @@ class SerialTalkerNode(Node):
             right_motor = int((right_motor / max_val) * self.motor_vel_scale)
 
             # Send to motors
-            self.handle_command('M', [left_motor, right_motor], blocking_id)
+            self.update_command('M', [left_motor, right_motor], blocking_id)
 
     # Apply scaling to 'A' command
     def send_act_command(self, data, blocking_id):
@@ -196,7 +206,7 @@ class SerialTalkerNode(Node):
             bucket_act_max_pos=-1
             bucket_act_min_pos=-1
 
-        self.handle_command('A', [arm_act_max_pos, arm_act_min_pos, bucket_act_max_pos, bucket_act_min_pos, arm_velocity, bucket_velocity], blocking_id)
+        self.update_command('A', [arm_act_max_pos, arm_act_min_pos, bucket_act_max_pos, bucket_act_min_pos, arm_velocity, bucket_velocity], blocking_id)
 
 def main(args=None):
     rclpy.init(args=args)

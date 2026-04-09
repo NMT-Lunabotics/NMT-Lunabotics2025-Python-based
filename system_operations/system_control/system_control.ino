@@ -8,7 +8,7 @@
 
   // List of components flags to enable/disable for testing
   #define ERROR_LEDS_ENABLED           1 
-  #define MOTORS_ENABLED               1 
+  #define MOTORS_ENABLED               0 
   #define BUCKET_ACTUATOR_ENABLED      1 
   #define ARM_ACTUATORS_ENABLED        1 
   #define SERVO_MOTOR_ENABLED          0
@@ -144,10 +144,10 @@ enum LedState { OFF = 0, NONE = -1, ON = 1, BLINK = 2 };
 // Actuator speed/error/tolerences
 #if MAIN_ROBOT==1
   // Actuator soft bounds (mm) - Restricts movment when passed
-  float bucket_soft_min = 0;
-  float bucket_soft_max = 0;
-  float arm_soft_min = 0;
-  float arm_soft_max = 0;
+  float bucket_soft_min = 2;
+  float bucket_soft_max = 102;
+  float arm_soft_min = 2;
+  float arm_soft_max = 173;
 
   // Actuator hard bounds (mm) - Shuts down system if passed
   float bucket_min = 0;           
@@ -165,10 +165,10 @@ enum LedState { OFF = 0, NONE = -1, ON = 1, BLINK = 2 };
   float act_max_err = 7.0; 
 #else
   // Actuator soft bounds (mm) - Restricts movment when passed
-  float bucket_soft_min = 0;
-  float bucket_soft_max = 0;
-  float arm_soft_min = 0;
-  float arm_soft_max = 0;
+  float bucket_soft_min = 22;
+  float bucket_soft_max = 105;
+  float arm_soft_min = 15;
+  float arm_soft_max = 175;
 
   // Actuator hard bounds (mm) - Shuts down system if passed
   float bucket_min = 20;           
@@ -451,9 +451,9 @@ void loop() {
           mL_speed = constrain(throttle + steering, -30, 30);
           aLR_tgt = -1;
           aB_tgt = -1;
-          aL_speed = joy[3];
+          aL_speed = -joy[3];
           aR_speed = aL_speed;
-          aB_speed = -joy[2];
+          aB_speed = joy[2];
           if(RC_connection_established==false){
             RC_connection_established=true;
             systemFault(false,"","", NONE, NONE, ON);
@@ -461,7 +461,13 @@ void loop() {
         }
       #endif
     } 
-    else if(serial_connection_established==false) systemFault(true,"Serial communication timeout.","", NONE, NONE, BLINK);
+    else if(serial_connection_established==false) {
+      #if SERIAL_COMM_TIMEOUT_FAULT
+        systemFault(true,"Serial communication timeout.","", NONE, NONE, BLINK);
+      #else 
+        systemFault(false,"Serial communication timeout.","", NONE, NONE, BLINK);
+      #endif
+    }
   #endif
   #if SERIAL_COMM_TIMEOUT_FAULT
     if (current_time - last_message_time > estop_timeout && serial_connection_established==true) {

@@ -22,39 +22,38 @@ PWM_Driver left_driver(DRV11_PWM_PIN, DRV11_DIR1_PIN, DRV11_DIR2_PIN, false);
 PWM_Driver right_driver(DRV12_PWM_PIN, DRV12_DIR1_PIN, DRV12_DIR2_PIN, false);
 PWM_Driver bucket_driver(DRV21_PWM_PIN, DRV21_DIR1_PIN, DRV21_DIR2_PIN, true);
 
+unsigned long startTime;
+bool running = true;
+
 void setup() {
   Serial.begin(115200);
   ibus.begin(115200);
   left_driver.stop();
   right_driver.stop();
   bucket_driver.stop();
+  startTime = millis();
 }
 
 void loop() {
-  /*if (ibus.update()) {
-    int16_t* joy = ibus.getJoystick();
-    int aL = map(joy[3], -500, 500, -255, 255);
-    int aR = aL;
-    int aB = map(joy[2], -500, 500, -255, 255);
-    left_driver.setSpeed(aL);
-    right_driver.setSpeed(aR);
-    bucket_driver.setSpeed(aB);
-  }*/
+  if (running) {
+    right_driver.set_speed(100);
+    left_driver.set_speed(100);
+    if (millis() - startTime >= 3000) {
+      left_driver.stop();
+      right_driver.stop();
+      running = false;
+    }
+  }
 
-  //bucket_driver.set_speed(-100);
-  right_driver.set_speed(100);
-  left_driver.set_speed(100);
- 
+  //int potL = analogRead(POTL_PIN);
+  //int potR = analogRead(POTR_PIN);
+  //int potB = analogRead(POTB_PIN);
 
-  int potL = analogRead(POTL_PIN);
-  int potR = analogRead(POTR_PIN);
-  int potB = analogRead(POTB_PIN);
-
-  Serial.print(potL);
-  Serial.print(" ");
-  Serial.print(potR);
-  Serial.print(" ");
-  Serial.println(potB);
+  //Serial.print(potL);
+  //Serial.print(" ");
+  //Serial.print(potR);
+  //Serial.print(" ");
+  //Serial.println(potB);
 
   delay(50);
 }

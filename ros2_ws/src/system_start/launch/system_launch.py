@@ -25,4 +25,4 @@ def generate_launch_description():
     automated_operations=Node(package='automated_operations',executable='automated_operations_node.py',name='automated_operations_node')
 
     # Launch all specifyied launch files and nodes
-    return LaunchDescription([automated_operations,camera_launch,apriltag_node,serial_talker_node])
+    return LaunchDescription([automated_operations,camera_launch,apriltag_node, serial_talker_node])
