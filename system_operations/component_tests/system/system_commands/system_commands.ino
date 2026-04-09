@@ -6,17 +6,11 @@ bool receiving_message = false;
 int serial_index = 0;
 int expected_length = -1;
 
+unsigned long last_time = 0;
+unsigned long count = 0;
+
 void processMessage(byte *data, int length) {
-  char type = data[0];
-  Serial.print("Command: ");
-  Serial.print(type);
-  Serial.print(" Data: ");
-  for (int i = 1; i < length; i++) {
-    int8_t signed_val = (int8_t)data[i];
-    Serial.print(signed_val);
-    Serial.print(" ");
-  }
-  Serial.println();
+  count++;
 }
 
 void processSerialBuffer() {
@@ -39,8 +33,6 @@ void processSerialBuffer() {
         if (serial_index == expected_length + 1) {
           if (serial_buffer[serial_index-1] == 0x03) {
             processMessage(serial_buffer, expected_length);
-          } else {
-            Serial.println("End byte not found");
           }
           receiving_message = false;
         } else if (serial_index >= MY_SERIAL_BUFFER_SIZE) {
@@ -54,8 +46,16 @@ void processSerialBuffer() {
 void setup() {
   Serial.begin(115200);
   Serial.println("Command monitor ready");
+  last_time = millis();
 }
 
 void loop() {
   processSerialBuffer();
+  unsigned long now = millis();
+  if (now - last_time >= 1000) {
+    Serial.print("Rate: ");
+    Serial.println(count);
+    count = 0;
+    last_time = now;
+  }
 }

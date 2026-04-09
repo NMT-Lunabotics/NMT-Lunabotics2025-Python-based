@@ -12,5 +12,8 @@ serial = serialCommands()
 arduino.compile_and_upload()
 
 while True:
+    #serial.send_command("M", [10,10])
+
+
     value = serial.read_serial()
     if value: print(value)

@@ -8,6 +8,7 @@ import time
 import yaml
 import os
 import serial
+import threading
 import serial.tools.list_ports
 
 # Converts /cmd_vel and /actuator messages which range from [-1,1] to [-30,30] or [-25,25] which are sent to run robot 
@@ -93,7 +94,11 @@ class SerialTalkerNode(Node):
         # Subscribe topics that include robot command data
         self.cmd_vel = self.create_subscription(Twist,'/cmd_vel',self.cmd_vel_callback,10)
         self.cmd = self.create_subscription(Command,'/robot_commands',self.cmd_callback,10)
-        self.create_timer(0.005, self.control_loop)
+
+        # Control loop thread
+        self.control_thread = threading.Thread(target=self.control_loop)
+        self.control_thread.daemon = True
+        self.control_thread.start()
 
         self.get_logger().info("\033[34mSerial talker node started.\033[0m")
 
@@ -104,14 +109,15 @@ class SerialTalkerNode(Node):
         self.send_vel_command([msg.linear.x,msg.angular.z],None,vel_source=True)
 
     def control_loop(self):
-        time_now = time.monotonic()
-        for command in list(self.command_states.keys()):
-            command_data = self.command_states[command]
-            timestamp = command_data["timestamp"]
-            if(time_now-timestamp>=self.timeout_period):
-                del self.command_states[command]
-                continue
-            self.serial.send_command(command, command_data["data"])
+        while True:
+            time_now = time.monotonic()
+            for command in list(self.command_states.keys()):
+                command_data = self.command_states[command]
+                timestamp = command_data["timestamp"]
+                if(time_now-timestamp>=self.timeout_period):
+                    del self.command_states[command]
+                    continue
+                self.serial.send_command(command, command_data["data"])
 
     # Handle speical cmd cases, right now only the 'M' and 'A' speical cases exist
     def handle_special_cmd(self, command, data, blocking_id):
