@@ -157,8 +157,8 @@ class SerialTalkerNode(Node):
             angular_velocity=data[1]
 
             # Scale motor command
-            left_motor=velocity-(angular_velocity*self.wheel_base/2)
-            right_motor=velocity+(angular_velocity*self.wheel_base/2)
+            left_motor=velocity+(angular_velocity*self.wheel_base/2)
+            right_motor=velocity-(angular_velocity*self.wheel_base/2)
 
             max_val = max(abs(left_motor), abs(right_motor), 1.0)
 
@@ -175,8 +175,8 @@ class SerialTalkerNode(Node):
             angular = (right_input - left_input) / self.wheel_base
 
             # Compute motor outputs using differential drive
-            left_motor = linear + (angular * self.wheel_base / 2)
-            right_motor = linear - (angular * self.wheel_base / 2)
+            left_motor = linear - (angular * self.wheel_base / 2)
+            right_motor = linear + (angular * self.wheel_base / 2)
 
             # Scale to actual motor range
             max_val = max(abs(left_motor), abs(right_motor), 1)  # avoid div by zero
