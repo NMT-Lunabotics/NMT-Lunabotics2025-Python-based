@@ -571,10 +571,10 @@ void loop() {
         aR_pos = act_right.update_pos();
         float factor = (aL_pos - aR_pos) * vel_gain;
         // Actuator bound chacks, softwere side stops
-        if (aL_speed < 0 && aL_pos >= arm_soft_max) aL_speed = 0;  
-        if (aL_speed > 0 && aL_pos <= arm_soft_min)  aL_speed = 0;
-        if (aR_speed < 0 && aR_pos >= arm_soft_max) aR_speed = 0;
-        if (aR_speed > 0 && aR_pos <= arm_soft_min)  aR_speed = 0;
+        if ((aL_speed < 0 && aL_pos >= arm_soft_max)||(aR_speed > 0 && aR_pos <= arm_soft_min)) {
+          aL_speed = 0;  
+          aR_speed = 0;  
+        }
     
         act_left.curved_vel_ctrl(aL_speed, -factor);
         act_right.curved_vel_ctrl(aR_speed, factor);

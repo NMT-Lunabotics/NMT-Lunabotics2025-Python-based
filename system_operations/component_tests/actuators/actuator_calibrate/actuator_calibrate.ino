@@ -35,6 +35,17 @@ void setup() {
 }
 
 void loop() {
+
+    int potL = analogRead(POTL_PIN);
+    int potR = analogRead(POTR_PIN);
+    int potB = analogRead(POTB_PIN);
+
+    Serial.print(potL);
+    Serial.print(" ");
+    Serial.print(potR);
+    Serial.print(" ");
+    Serial.println(potB);
+
   if (running) {
     right_driver.set_speed(100);
     left_driver.set_speed(100);
@@ -44,16 +55,6 @@ void loop() {
       running = false;
     }
   }
-
-  //int potL = analogRead(POTL_PIN);
-  //int potR = analogRead(POTR_PIN);
-  //int potB = analogRead(POTB_PIN);
-
-  //Serial.print(potL);
-  //Serial.print(" ");
-  //Serial.print(potR);
-  //Serial.print(" ");
-  //Serial.println(potB);
 
   delay(50);
 }
