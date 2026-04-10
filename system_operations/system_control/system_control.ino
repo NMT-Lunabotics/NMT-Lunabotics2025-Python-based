@@ -1,5 +1,5 @@
 #include "helpers.hpp"
-#define MAIN_ROBOT 1 // REGULUS settings=0, BERMINATOR settings=1, NUC settings=2 
+#define MAIN_ROBOT 0 // REGULUS settings=0, BERMINATOR settings=1, NUC settings=2 
 
 //------------------------------------------------------------
 //        MAIN ROBOT SETTINGS (REGULUS and BERMINATOR)
@@ -8,7 +8,7 @@
 
   // List of components flags to enable/disable for testing
   #define ERROR_LEDS_ENABLED           1 
-  #define MOTORS_ENABLED               0 
+  #define MOTORS_ENABLED               1
   #define BUCKET_ACTUATOR_ENABLED      1 
   #define ARM_ACTUATORS_ENABLED        1 
   #define SERVO_MOTOR_ENABLED          0
@@ -597,7 +597,7 @@ void loop() {
           if(mLR_arc_radius!=0){
             float mL_velocity=mLR_rotation_speed*(1-robot_width/mLR_arc_radius);
             float mR_velocity=mLR_rotation_speed*(1+robot_width/mLR_arc_radius);
-            #if MAIN_ROBOT==1
+            #if MAIN_ROBOT==0 || MAIN_ROBOT==1
             motor_left.motor_ctrl(mL_velocity);
             motor_right.motor_ctrl(mR_velocity);
             #else
@@ -606,7 +606,7 @@ void loop() {
             #endif
           }
           else if(mLR_rotation>0){
-            #if MAIN_ROBOT==1
+            #if MAIN_ROBOT==0 || MAIN_ROBOT==1
               motor_left.motor_ctrl(-mLR_rotation_speed);
               motor_right.motor_ctrl(mLR_rotation_speed);
             #else
@@ -615,7 +615,7 @@ void loop() {
             #endif
           }
           else if(mLR_rotation<0){
-            #if MAIN_ROBOT==1
+            #if MAIN_ROBOT==0 || MAIN_ROBOT==1
               motor_left.motor_ctrl(mLR_rotation_speed);
               motor_right.motor_ctrl(-mLR_rotation_speed);
             #else
@@ -625,7 +625,7 @@ void loop() {
           }
           #if IMU_SENSOR_ENABLED
           if((mLR_rotation<0&&IMU_yaw<=mLR_rotation)||(mLR_rotation>0&&IMU_yaw>=mLR_rotation)){
-            #if MAIN_ROBOT==1
+            #if MAIN_ROBOT==0 || MAIN_ROBOT==1
               motor_left.stop();
               motor_right.stop();
             #else
@@ -645,7 +645,7 @@ void loop() {
           #endif
         }
         else{
-          #if MAIN_ROBOT==1
+          #if MAIN_ROBOT==0 || MAIN_ROBOT==1
             motor_left.motor_ctrl(mL_speed*mL_speed_scale);
             motor_right.motor_ctrl(mR_speed*mR_speed_scale);
           #else
