@@ -852,7 +852,7 @@ void stop_all() {
     act_bucket.stop();
   #endif
   #if MOTORS_ENABLED
-    #if MAIN_ROBOT==1
+    #if MAIN_ROBOT==0 || MAIN_ROBOT==1
       motor_right.stop();
       motor_left.stop();
     #else
