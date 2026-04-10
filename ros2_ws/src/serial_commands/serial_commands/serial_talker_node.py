@@ -118,7 +118,7 @@ class SerialTalkerNode(Node):
                     del self.command_states[command]
                     continue
                 self.serial.send_command(command, command_data["data"])
-            time.sleep(0.005)
+           # time.sleep(0.005)
 
     # Handle speical cmd cases, right now only the 'M' and 'A' speical cases exist
     def handle_special_cmd(self, command, data, blocking_id):
