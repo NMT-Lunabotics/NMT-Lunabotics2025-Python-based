@@ -153,12 +153,12 @@ class SerialTalkerNode(Node):
     # Apply diffrential driving to 'M' command
     def send_vel_command(self, data, blocking_id, vel_source):
         if vel_source:
-            velocity=data[0]
+            velocity=-data[0]
             angular_velocity=data[1]
 
             # Scale motor command
-            left_motor=velocity+(angular_velocity*self.wheel_base/2)
-            right_motor=velocity-(angular_velocity*self.wheel_base/2)
+            left_motor=velocity-(angular_velocity*self.wheel_base/2)
+            right_motor=velocity+(angular_velocity*self.wheel_base/2)
 
             max_val = max(abs(left_motor), abs(right_motor), 1.0)
 
