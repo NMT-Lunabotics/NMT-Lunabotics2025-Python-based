@@ -1,5 +1,5 @@
 #include "helpers.hpp"
-#define MAIN_ROBOT 0 // REGULUS settings=0, BERMINATOR settings=1, NUC settings=2 
+#define MAIN_ROBOT 1 // REGULUS settings=0, BERMINATOR settings=1, NUC settings=2 
 
 //------------------------------------------------------------
 //        MAIN ROBOT SETTINGS (REGULUS and BERMINATOR)

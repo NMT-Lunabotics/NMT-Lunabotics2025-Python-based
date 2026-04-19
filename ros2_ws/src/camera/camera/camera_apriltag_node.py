@@ -17,7 +17,7 @@ history_length = 10                         # For smoothing, how many past posit
 max_pos_jump = 0.15                         # Max jump in a single frame
 zoom=5                                      # Scaleing factor for map
 # ROS settings
-camera_topic = '/camera0/image_raw'         # Camera topic to liston to
+camera_topic = '/camera/apriltag'         # Camera topic to liston to
 enable_display=False                        # Should extra display stuff show, or only bare minimum
 
 # -------------------- Camera setup --------------------
@@ -25,7 +25,7 @@ camMatrix = np.array([[390.70924213, 0., 320.5518661],[0., 391.15479783, 239.817
 distCoeffs = np.array([[-0.04335213, 0.0489175, 0.00186086, 0.00056816, 0.03206625]])
 
 dictionary = cv2.aruco.getPredefinedDictionary(tag_type)
-parameters = cv2.aruco.DetectorParameters_create()
+parameters = cv2.aruco.DetectorParameters()
 alpha_x, alpha_z, alpha_yaw = 0.1, 0.2, 0.4
 
 # -------------------- Functioning Functions --------------------
@@ -40,6 +40,10 @@ class AprialTagPose:
         self.pos_count = 0
         self.base_map = np.ones((map_size, map_size, 3), dtype=np.uint8) * 255
         cv2.circle(self.base_map, (map_size // 2, map_size // 2), 5, (255, 0, 0), -1)
+
+        self.dictionary = cv2.aruco.getPredefinedDictionary(tag_type)
+        self.parameters = cv2.aruco.DetectorParameters()
+        self.detector = cv2.aruco.ArucoDetector(self.dictionary, self.parameters)
 
     # Limits angles above 180 and below -180
     @staticmethod
@@ -109,9 +113,8 @@ class AprialTagPose:
         return img
 
     # Code for detecting and returning tags
-    @staticmethod
-    def detect_markers(img):
-        corners, ids, _ = cv2.aruco.detectMarkers(img, dictionary, parameters=parameters)
+    def detect_markers(self, img):
+        corners, ids, _ = self.detector.detectMarkers(img)
         return corners, ids
 
     # Takes data and returns a position
@@ -119,8 +122,21 @@ class AprialTagPose:
         X, Z, yaw = self.prev_X, self.prev_Z, self.prev_yaw or 0
         if ids is not None and len(ids) > 0:
             cv2.aruco.drawDetectedMarkers(img, corners, ids)
-            rvecs, tvecs, _ = cv2.aruco.estimatePoseSingleMarkers(corners, markerLength, camMatrix, distCoeffs)
-            rvec, tvec = rvecs[0][0], tvecs[0][0]
+
+            obj = np.array([
+                [-markerLength/2,  markerLength/2, 0],
+                [ markerLength/2,  markerLength/2, 0],
+                [ markerLength/2, -markerLength/2, 0],
+                [-markerLength/2, -markerLength/2, 0]
+            ], dtype=np.float32)
+
+            img_pts = corners[0].reshape(4, 2).astype(np.float32)
+
+            _, rvec, tvec = cv2.solvePnP(
+                obj, img_pts, camMatrix, distCoeffs,
+                flags=cv2.SOLVEPNP_IPPE_SQUARE
+            )
+
             R_marker, _ = cv2.Rodrigues(rvec)
             T_marker_to_cam = np.eye(4)
             T_marker_to_cam[:3, :3] = R_marker
@@ -129,18 +145,27 @@ class AprialTagPose:
             X_new, _, Z_new = T_cam_to_marker[:3, 3]
             R_cam = T_cam_to_marker[:3, :3]
             yaw_new = -math.atan2(R_cam[0, 2], R_cam[2, 2])
+
             if self.prev_yaw is not None:
                 yaw_new = self.unwrap_angle(self.prev_yaw, yaw_new)
-            filtered, self.pos_history, self.pos_index, self.pos_count = self.filter_outlier([X_new, Z_new], self.pos_history, self.pos_index, self.pos_count)
+
+            filtered, self.pos_history, self.pos_index, self.pos_count = self.filter_outlier(
+                [X_new, Z_new], self.pos_history, self.pos_index, self.pos_count
+            )
+
             X_smooth = alpha_x * filtered[0] + (1 - alpha_x) * self.prev_X
             Z_smooth = alpha_z * filtered[1] + (1 - alpha_z) * self.prev_Z
+
             x_vec, z_vec = math.cos(yaw_new), math.sin(yaw_new)
             prev_x, prev_z = math.cos(self.prev_yaw or 0), math.sin(self.prev_yaw or 0)
+
             x_s = alpha_yaw * x_vec + (1 - alpha_yaw) * prev_x
             z_s = alpha_yaw * z_vec + (1 - alpha_yaw) * prev_z
             yaw_smooth = math.atan2(z_s, x_s)
+
             self.prev_X, self.prev_Z, self.prev_yaw = X_smooth, Z_smooth, yaw_smooth
             X, Z, yaw = X_smooth, Z_smooth, yaw_smooth
+
         return X, Z, yaw
 
     # Handles windows and drawing
@@ -174,8 +199,8 @@ class AprialTagPoseNode(Node):
         if self.publish_processed: self.processed_pub = self.create_publisher(Image, '/apriltag/raw_image', 10)
 
         # Setup stuff for updating tag pose estimate
-        self.create_subscription(Image,self.camera_topic,self.image_callback,10)
-        self.timer = self.create_timer(0.01, self.timer_callback)  
+        self.create_subscription(Image, self.camera_topic, self.image_callback, 10)
+        self.timer = self.create_timer(0.01, self.timer_callback)
         self.frame_rate = None
         self.frame_shape = None
 
@@ -184,7 +209,8 @@ class AprialTagPoseNode(Node):
     # Template for ros to cv2 image
     def image_callback(self, msg):
         img = self.bridge.imgmsg_to_cv2(msg, desired_encoding='bgr8')
-        if self.frame_shape is None: self.frame_shape = img.shape
+        if self.frame_shape is None:
+            self.frame_shape = img.shape
         self.latest_image = img
 
     # Apriltag updater callback
@@ -203,7 +229,8 @@ class AprialTagPoseNode(Node):
             tag_id = int(ids[0][0])
             tag_id = max(-128, min(127, tag_id))
             msg.id = tag_id
-        else: msg.id = -1 
+        else:
+            msg.id = -1
         self.pose_pub.publish(msg)
 
         # If enabled publish map and raw_image modifyied video streams
@@ -211,6 +238,7 @@ class AprialTagPoseNode(Node):
             processed_msg = self.bridge.cv2_to_imgmsg(img, encoding='bgr8')
             processed_msg.header.stamp = self.get_clock().now().to_msg()
             self.processed_pub.publish(processed_msg)
+
         if self.publish_map:
             map_img = self.tag_instance.visualize(X, Z, yaw, img)
             map_msg = self.bridge.cv2_to_imgmsg(map_img, encoding='bgr8')
@@ -221,9 +249,10 @@ def main(args=None):
     rclpy.init(args=args)
     node = AprialTagPoseNode()
     try: rclpy.spin(node)
+    except KeyboardInterrupt: pass
     finally:
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok(): rclpy.shutdown()
 
 if __name__ == "__main__":
     main()

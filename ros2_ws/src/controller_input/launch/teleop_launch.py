@@ -27,7 +27,7 @@ def generate_launch_description():
             parameters=[{
                 'device_id': device_id,
                 'deadzone': 0.2,
-                'autorepeat_rate': 10.0,  # Set the publish rate in Hz
+                'autorepeat_rate': 50.0,  # Set the publish rate in Hz
             }],
         ),
 

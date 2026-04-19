@@ -77,7 +77,7 @@ class SerialTalkerNode(Node):
 
         self.blocking_timeout=3
         self.blocking_last_time=time.monotonic()
-        self.timeout_period=0.1
+        self.timeout_period=0.01
 
         self.actuator_vel_scale=25  # Actuator velocity scale (-25 - 25)
         self.motor_vel_scale=30     # Motor velocity scale (-30 - 30)

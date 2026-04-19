@@ -68,8 +68,8 @@ class ControllerNode(Node):
         self.joy = self.create_subscription(Joy,'/joy',self.joy_callback,10)
         self.create_timer(0.1, self.check_connection)
 
-        self.create_timer(0.05, self.publish_cmd_vel)       
-        self.create_timer(0.05, self.publish_actuators)    
+        self.create_timer(0.005, self.publish_cmd_vel)       
+        self.create_timer(0.005, self.publish_actuators)    
         self.create_timer(0.1, self.publish_camera_state) 
 
         # Create publishers for robot commands
@@ -132,10 +132,10 @@ class ControllerNode(Node):
             arm_act_vel=0.0
             bucket_act_vel=0.0
         elif self.get_input_values(msg, "AUTOMATED") == 1:
-            if self.get_input_values(msg, 'X_BUTTON') == 1: self.trigger_sequence("test")
-            elif self.get_input_values(msg, 'A_BUTTON') == 1: self.trigger_sequence("lateral_traverse")
-            elif self.get_input_values(msg, 'B_BUTTON') == 1: self.trigger_sequence("excavation")
-            elif self.get_input_values(msg, 'Y_BUTTON') == 1: self.trigger_sequence("dumping")
+            if self.get_input_values(msg, 'X_BUTTON') == 1: self.trigger_sequence("dig2")
+            #elif self.get_input_values(msg, 'A_BUTTON') == 1: self.trigger_sequence("lateral_traverse")
+            #elif self.get_input_values(msg, 'B_BUTTON') == 1: self.trigger_sequence("excavation")
+            #elif self.get_input_values(msg, 'Y_BUTTON') == 1: self.trigger_sequence("dumping")
             self.triggered_automation=time.time()
             
         # Motor velocity data
