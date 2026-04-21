@@ -95,14 +95,14 @@ while [[ "$#" -gt 0 ]]; do
         -v|--video-stream) RUN_VIEW_CAMERA_LAUNCH=true; shift ;;                                                                                                                                     # Launches camera stream viewer (local)
 
         -i|--host) INTERACTIVE_HOST=true; shift ;;   
-        -ip|--ip_address) FIND_IP=true; if [[ "$2" == "find" || "$2" == "f" ]]; then IP_FIND_MODE=1; shift; elif [[ "$2" == "all" || "$2" == "a" ]]; then IP_FIND_MODE=2; shift; fi; shift ;;        # Enabled system to auto ssh into system, list robot ip, or all ips
+        -ip|--ip_address) FIND_IP=true; case "$2" in find|f) IP_FIND_MODE=1; shift ;; all|a) IP_FIND_MODE=2; shift ;; ping|p) IP_FIND_MODE=3; shift ;; *) IP_FIND_MODE=0 ;; esac; shift ;;           # Enabled system to auto ssh into system, list robot ip, or all ips
         -d|--display) DISPLAY_ENABLED=true; shift ;;                                                                                                                                                 # Enable GUI forwarding
         -b|--build) BUILD_IMAGE=true; if [[ "$2" == "skip" || "$2" == "s" ]]; then BUILD_SKIP=true; shift; fi; shift ;;                                                                              # Force image rebuild
         -r|--restart) RESTART_CONTAINER=true; shift ;;                                                                                                                                               # Remove old containers first
         -p|--pull) GITHUB_PULL=true; [[ "$2" == "local" || "$2" == "l" ]] && LOCAL_PULL=true && shift; [[ -n "$2" && "$2" != -* ]] && LOCAL_USERNAME="$2" && shift; shift ;;                         # Pull github changes before building
         -h|--help) usage; shift ;;                                                                                                                                                                   # Shows help startupmation about the system
         -mm|--mount) [[ "$#" -lt 3 ]] && { echo "Error: --mount <username> <host_path>"; exit 1; }; MOUNT_USERNAME="$2"; MOUNT_HOST_PATH="$3"; shift 3 ;;                                            # Custom mount point
-        -cmd|--command) COMMAND_STRING="$2"; shift 2 ;;                                                                                                                                               # Execute command in container without entering
+        -cmd|--command) COMMAND_STRING="$2"; shift 2 ;;                                                                                                                                              # Execute command in container without entering
         -x|--stop) STOP_CONTAINER=true; shift ;;                                                                                                                                                     # Stop all running containers
         -q|--quite) QUIET_MODE=true; shift ;;                                                                                                                                                        # Start bash in quite mode
         -sys|--arduino) ARDUINO_UPDATER_IMAGE=true; shift ;;                                                                                                                                         # Update arduino code
@@ -125,16 +125,31 @@ run_cmd() {
 
 if [ "$FIND_IP" = true ]; then
     if [ "$IP_FIND_MODE" == 2 ]; then
-    echo -e "\e[36m[STARTUP]\e[0m Scanning network for devices..."
-    sudo arp-scan --localnet | grep -E '([0-9]{1,3}\.){3}[0-9]{1,3}' | while read line; do
-        ip=$(echo "$line" | awk '{print $1}')
-        mac=$(echo "$line" | awk '{print $2}')
-        echo "Device: $ip - $mac"
-    done
-    exit 0
+        echo -e "\e[36m[STARTUP]\e[0m Scanning network for devices..."
+        sudo arp-scan --localnet | grep -E '([0-9]{1,3}\.){3}[0-9]{1,3}' | while read line; do
+            ip=$(echo "$line" | awk '{print $1}')
+            mac=$(echo "$line" | awk '{print $2}')
+            echo "Device: $ip - $mac"
+        done
+        exit 0
+    elif [ "$IP_FIND_MODE" == 3 ]; then
+        echo -e "\e[36m[STARTUP]\e[0m Listening for response to discovery ping..."
+
+        RESULT=$(python3 -c 'import socket;PORT=11010;sock=socket.socket(socket.AF_INET,socket.SOCK_DGRAM);sock.setsockopt(socket.SOL_SOCKET,socket.SO_BROADCAST,1);sock.settimeout(5);sock.sendto(b"B-NMT26",("<broadcast>",PORT));exec("try:\n data,addr=sock.recvfrom(1024)\n print(addr[0],data.decode())\nexcept:\n pass")')
+
+        [ -z "$RESULT" ] && echo -e "\e[31m[ERROR]\e[0m No response to ping recived." && exit 1
+
+        IP=${RESULT%% *}
+        DATA=${RESULT#* }
+
+        echo -e "\e[36m[STARTUP]\e[0m Robot found at: $IP"
+        echo -e "\e[36m[STARTUP]\e[0m Response: $DATA"
+
+        exit 0
     else
         IP=""
         USERNAME=""
+        echo -e "\e[36m[STARTUP]\e[0m Listening for heatbeat ping..."
         # Listion to network heartbeat from jetson
         while read -r line; do
             if echo "$line" | grep -q "UDP"; then

@@ -1,4 +1,5 @@
 #include "helpers.hpp"
+#pragma once
 #define MAIN_ROBOT 1 // REGULUS settings=0, BERMINATOR settings=1, NUC settings=2 
 
 //------------------------------------------------------------
@@ -7,10 +8,10 @@
 #if MAIN_ROBOT==0 || MAIN_ROBOT==1
 
   // List of components flags to enable/disable for testing
-  #define ERROR_LEDS_ENABLED           1 
+  #define ERROR_LEDS_ENABLED           1
   #define MOTORS_ENABLED               1
   #define BUCKET_ACTUATOR_ENABLED      1 
-  #define ARM_ACTUATORS_ENABLED        1 
+  #define ARM_ACTUATORS_ENABLED        1
   #define SERVO_MOTOR_ENABLED          0
   #define IMU_SENSOR_ENABLED           0
   #define IBUS_RECIVER_ENABLED         1 
@@ -22,7 +23,7 @@
 
   // Debug mode flags
   #define DEBUG_MODE                   0
-  #define SENSOR_OUTPUT                0  // 1: IMU, 2: IBUS, 3: IBUS raw
+  #define SENSOR_OUTPUT                0  // 1: IMU, 2: IBUS, 3: IBUS raw, 4: Final IBUS commands
 
 #else
 //------------------------------------------------------------
@@ -445,15 +446,37 @@ void loop() {
           aB_speed=0;
         }
         else{
-          int16_t throttle = -joy[1]; 
-          int16_t steering = -joy[0];
-          mR_speed = constrain(throttle - steering, -30, 30);
-          mL_speed = constrain(throttle + steering, -30, 30);
-          aLR_tgt = -1;
-          aB_tgt = -1;
-          aL_speed = -joy[3];
-          aR_speed = aL_speed;
-          aB_speed = joy[2];
+          #if MAIN_ROBOT==1
+            int16_t steering = joy[2];
+            int16_t throttle = joy[3]; 
+            mR_speed = constrain(throttle - steering, -30, 30);
+            mL_speed = constrain(throttle + steering, -30, 30);
+            aLR_tgt = -1;
+            aB_tgt = -1;
+            aB_speed = -joy[0];
+            aL_speed = joy[1];
+            aR_speed = aL_speed;
+          #else
+            int16_t steering = -joy[0];
+            int16_t throttle = -joy[1]; 
+            mR_speed = constrain(throttle - steering, -30, 30);
+            mL_speed = constrain(throttle + steering, -30, 30);
+            aLR_tgt = -1;
+            aB_tgt = -1;
+            aB_speed = joy[2];
+            aL_speed = -joy[3];
+            aR_speed = aL_speed;
+          #endif
+          #if SENSOR_OUTPUT == 4
+            Serial.print("Motor,Act values: ");
+            Serial.print(mL_speed);
+            Serial.print(" ");
+            Serial.print(mR_speed);
+            Serial.print(" ");
+            Serial.print(aR_speed);
+            Serial.print(" ");
+            Serial.println(aB_speed );
+          #endif
           if(RC_connection_established==false){
             RC_connection_established=true;
             systemFault(false,"","", NONE, NONE, ON);

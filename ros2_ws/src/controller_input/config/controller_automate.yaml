@@ -1,6 +1,11 @@
 controller_input_node:      
-  ros__parameters:           
-    operation1: test
-    operation2: test
-    operation3: test
-    operation4: test
+  ros__parameters:      
+    automations:     
+      A_BUTTON: dumping2
+      B_BUTTON: dig2
+      X_BUTTON: test
+      Y_BUTTON: dumping
+      HORIZONTAL_DPAD_LEFT: excavation
+      HORIZONTAL_DPAD_RIGHT: lateral_traverse
+      VERTICAL_DPAD_UP: apriltag_localize
+      VERTICAL_DPAD_DOWN: test2

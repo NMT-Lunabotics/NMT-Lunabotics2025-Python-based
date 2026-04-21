@@ -2,6 +2,9 @@
 #ifndef HELPERS_H
 #define HELPERS_H
 
+#pragma once
+#define MAIN_ROBOT 1
+
 //Condition that changes actuator code to accept pwm, and GND, instead of current setup that uses pinout, pwm, and GND
 bool MD04_drivers = false;
 
@@ -524,14 +527,23 @@ class IBusReader {
       int16_t joystick[6];
       int16_t lastValues[4]; // store last mapped joystick values
       unsigned long lastUpdate = 0;
-      const unsigned long timeoutMs = 2000; // 0.5s timeout
+      const unsigned long timeoutMs = 5000; // 5s timeout
       // Joystick settings (leftJoyX, leftJoyY, rightJoyX, rightJoyY) (MotorX, MotorY, actuatorX, actuatorY)
-      int16_t maxJoyValues[4]=    {1979, 1971, 2000, 2000}; // Joystick max values
-      int16_t minJoyValues[4]=    {1045, 1000, 1071, 1060}; // Joystick min values
-      int16_t centers[4] =        {1621, 1623, 1620, 1616}; // Center of each joystick
-      int16_t softZones[4] =      {70, 70, 50, 50};        // Joystick drift ranges
-      int16_t outMin[4] =         {-30, -30, -30, -30};     // Mapped min range
-      int16_t outMax[4] =         {30, 30, 30, 30};         // Mapped max range
+      #if  MAIN_ROBOT==1
+        int16_t maxJoyValues[4]=    {2000, 2000, 2000, 2000}; // Joystick max values
+        int16_t minJoyValues[4]=    {1000, 1000, 1000, 1000}; // Joystick min values
+        int16_t centers[4] =        {1564, 1553, 1583, 1575}; // Center of each joystick
+        int16_t softZones[4] =      {20, 20, 20, 20};         // Joystick drift ranges
+        int16_t outMin[4] =         {-30, -30, -30, -30};     // Mapped min range
+        int16_t outMax[4] =         {30, 30, 30, 30};         // Mapped max range
+      #else
+        int16_t maxJoyValues[4]=    {1979, 1971, 2000, 2000}; // Joystick max values
+        int16_t minJoyValues[4]=    {1045, 1000, 1071, 1060}; // Joystick min values
+        int16_t centers[4] =        {1621, 1623, 1620, 1616}; // Center of each joystick
+        int16_t softZones[4] =      {70, 70, 50, 50};         // Joystick drift ranges
+        int16_t outMin[4] =         {-30, -30, -30, -30};     // Mapped min range
+        int16_t outMax[4] =         {30, 30, 30, 30};         // Mapped max range
+      #endif
 };
 
 //------------------------------------------------------------

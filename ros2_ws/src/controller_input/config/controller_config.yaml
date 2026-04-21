@@ -1,5 +1,12 @@
+joy_node:
+  ros__parameters:
+    device_id: 0
+    deadzone: 0.3
+    autorepeat_rate: 50.0
+
 controller_input_node:      
-  ros__parameters:           
-    timeout: 1.0
-    deadzone: 0.4
-    device: /dev/input/by-id/*-event-joystick
+  ros__parameters:      
+    config:     
+      timeout: 1.0
+      actuator_deadzone: 0.4
+      device: /dev/input/by-id/*-event-joystick
