@@ -1,0 +1,16 @@
+rgbd_odometry:
+  ros__parameters:
+
+    frame_id: camera_link
+    odom_frame_id: odom
+
+    publish_tf: true
+    publish_null_when_lost: true
+
+    guess_frame_id: ""
+
+    wait_for_transform: 0.1
+
+    Odom/Strategy: 0
+
+    sync_queue_size: 10

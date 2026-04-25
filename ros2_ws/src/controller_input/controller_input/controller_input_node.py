@@ -37,6 +37,7 @@ class ControllerNode(Node):
             "ACTUATOR_Y": "LEFT_JOY_Y",                   # Move arm actuators up/down  
             "ARM": "LEFT_BUMPER",                         # Arming button
             "CAMERA_TOGGLE": "RIGHT_STICK_BUTTON",        # Toggle between camera views
+            "LEFT_STICK": "LEFT_STICK_BUTTON",            # Extra
             "CAMERA_SWITCH": "START",                     # Switch between cameras
             "AUTOMATED": "BACK",                          # Trigger automation 
 
@@ -52,6 +53,8 @@ class ControllerNode(Node):
         self.cmd_vel_msg = Twist()
         self.actuator_msg = Command()
         self.camera_msg = Camera()
+        self.servo_msg = Command()
+        self.estop_msg = Command()
         self.camera_msg.camera_view = self.default_camera_view
 
         # Load the controller schematic
@@ -82,8 +85,8 @@ class ControllerNode(Node):
         self.create_timer(0.1, self.check_connection)
 
         self.create_timer(0.005, self.publish_cmd_vel)       
-        self.create_timer(0.005, self.publish_actuators)    
-        self.create_timer(0.1, self.publish_camera_state) 
+        self.create_timer(0.005, self.publish_actuators) 
+        self.create_timer(0.1, self.publish_extra)    
 
         # Create publishers for robot commands
         self.robot_command_publisher = self.create_publisher(Command, '/robot_commands', 5)
@@ -155,6 +158,13 @@ class ControllerNode(Node):
                 elif self.get_input_values(msg, 'V_DPAD') == -1: self.trigger_sequence(self.controller_automations["VERTICAL_DPAD_DOWN"])
                 self.triggered_automation=time.time()
 
+        if(self.get_input_values(msg, "ARM")==0 and self.get_input_values(msg, 'CAMERA_TOGGLE')==1 and self.get_input_values(msg, 'LEFT_STICK')==1):
+            estop_msg = Command()
+            estop_msg.command="B"
+            estop_msg.data=[]
+            estop_msg.blocking_id=0
+            self.estop_msg=estop_msg
+
         if self.get_input_values(msg, "AUTOMATED") == 1 and time.time()-self.triggered_settings_update>0.3:
             # Swaps indavidual controls
             if self.get_input_values(msg, "CAMERA_SWITCH") == 1:
@@ -170,11 +180,20 @@ class ControllerNode(Node):
                 elif self.get_input_values(msg, 'Y_BUTTON') == 1: 
                     self.motor_lateral_direction=1-self.motor_lateral_direction
                     self.triggered_settings_update=time.time()
+
             # Swaps motor directions for backwords driving
             elif self.get_input_values(msg, 'CAMERA_TOGGLE') == 1:
-                self.motor_sideways_direction=1-self.motor_sideways_direction
                 self.motor_lateral_direction=1-self.motor_lateral_direction
                 self.triggered_settings_update=time.time()
+
+            elif self.get_input_values(msg, 'MOTOR_X') != 0:
+                servo_msg = Command()
+                servo_msg.command="S"
+                angle=self.map_value(self.get_input_values(msg, "MOTOR_X"), -1, 1, 0, 180)
+                servo_msg.data=[angle]
+                servo_msg.blocking_id=0
+                self.servo_msg=servo_msg
+                
             
         # Motor velocity data
         motor=Twist()
@@ -220,7 +239,13 @@ class ControllerNode(Node):
     def publish_actuators(self):
         self.robot_command_publisher.publish(self.actuator_msg)
 
-    def publish_camera_state(self):
+    def publish_extra(self):
+        if self.servo_msg != None:
+            self.robot_command_publisher.publish(self.servo_msg)
+            self.servo_msg=None
+        if self.estop_msg != None:
+            self.robot_command_publisher.publish(self.estop_msg)
+            self.estop_msg=None
         self.camera_state_publisher.publish(self.camera_msg)
 
     # Get data dynamiclly from joystick using input type

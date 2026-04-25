@@ -2,14 +2,12 @@
 #ifndef HELPERS_H
 #define HELPERS_H
 
-#pragma once
-#define MAIN_ROBOT 1
-
 //Condition that changes actuator code to accept pwm, and GND, instead of current setup that uses pinout, pwm, and GND
 bool MD04_drivers = false;
 
 #include <Arduino.h>
 #include "arduino_lib.hpp"
+#include "config.h"
 
 #define MEDIAN_SIZE 8 // Median filter window size for potentionmeter smoothing
 
@@ -166,9 +164,12 @@ public:
       pid(pid), pot(pot), min_pos(min_pos), max_pos(max_pos == 0 ? stroke : max_pos) {
       }
     
-  float update_pos() {
+  float update_pos(char* source) {
     float analog_raw = pot.read_analog_raw();
-    // Serial.println(analog_raw);
+    #if SENSOR_OUTPUT == 6
+      Serial.println(source);
+      Serial.println(analog_raw);
+    #endif
     pos_mm = f_map(analog_raw, pot_min, pot_max, 0, stroke);
     return pos_mm;
   }

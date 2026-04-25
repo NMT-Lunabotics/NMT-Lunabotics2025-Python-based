@@ -1,47 +1,5 @@
 #include "helpers.hpp"
-#pragma once
-#define MAIN_ROBOT 1 // REGULUS settings=0, BERMINATOR settings=1, NUC settings=2 
-
-//------------------------------------------------------------
-//        MAIN ROBOT SETTINGS (REGULUS and BERMINATOR)
-//------------------------------------------------------------
-#if MAIN_ROBOT==0 || MAIN_ROBOT==1
-
-  // List of components flags to enable/disable for testing
-  #define ERROR_LEDS_ENABLED           1
-  #define MOTORS_ENABLED               1
-  #define BUCKET_ACTUATOR_ENABLED      1 
-  #define ARM_ACTUATORS_ENABLED        1
-  #define SERVO_MOTOR_ENABLED          0
-  #define IMU_SENSOR_ENABLED           0
-  #define IBUS_RECIVER_ENABLED         1 
-  #define SCREEN_ENABLED               0 
-
-  // List of faults to disable
-  #define SERIAL_COMM_TIMEOUT_FAULT    0 //1
-  #define COMPONENT_TIMEOUT_FAULTS     0 //1
-
-  // Debug mode flags
-  #define DEBUG_MODE                   0
-  #define SENSOR_OUTPUT                0  // 1: IMU, 2: IBUS, 3: IBUS raw, 4: Final IBUS commands
-
-#else
-//------------------------------------------------------------
-//                    NUC ROBOT SETTINGS
-//------------------------------------------------------------
-  #define ERROR_LEDS_ENABLED           0
-  #define MOTORS_ENABLED               1
-  #define BUCKET_ACTUATOR_ENABLED      0
-  #define ARM_ACTUATORS_ENABLED        0
-  #define SERVO_MOTOR_ENABLED          1
-  #define IMU_SENSOR_ENABLED           0
-  #define IBUS_RECIVER_ENABLED         0
-  #define SCREEN_ENABLED               0
-  #define SERIAL_COMM_TIMEOUT_FAULT    1
-  #define COMPONENT_TIMEOUT_FAULTS     0
-  #define DEBUG_MODE                   0
-  #define SENSOR_OUTPUT                0  
-#endif
+#include "config.h"
 
 //------------------------------------------------------------
 //             Nonessential component setup
@@ -122,8 +80,13 @@ enum LedState { OFF = 0, NONE = -1, ON = 1, BLINK = 2 };
 //--------------- SETTINGS ---------------
 
 // Allowed actuator stroke lengths (mm)
-#define ALR_STROKE 191
-#define AB_STROKE 140
+#if MAIN_ROBOT==1
+  #define ALR_STROKE 191
+  #define AB_STROKE 125
+#else
+  #define ALR_STROKE 191
+  #define AB_STROKE 140
+#endif
 
 // Actuator potentiometer min and max values
 #if MAIN_ROBOT==1
@@ -263,8 +226,8 @@ bool system_started = false;
 // Motor and actuator timeout variables, shutdown motors and actuators if a message is not reviced within timeout period
 unsigned long last_actuator_cmd_time = 0; 
 unsigned long last_motor_cmd_time = 0;
-int motor_timeout = 2000;
-int actuator_timeout = 2000;
+int motor_timeout = 1000;
+int actuator_timeout = 500;
 
 // Serial and state
 bool serial_connection_established=false;
@@ -275,6 +238,7 @@ bool at_bucket_max = false;
 bool dual_actuator_correct = false;
 int serial_index = 0;
 int expected_length = -1;
+bool control_take_over=false;
 const int MY_SERIAL_BUFFER_SIZE = 128;
 byte serial_buffer[MY_SERIAL_BUFFER_SIZE];
 
@@ -387,11 +351,11 @@ void setup() {
   // Allow actuators to fix themselfs to prevent it from being permanently stuck
   for (int i = 0; i < 10; i++) {
     #if ARM_ACTUATORS_ENABLED
-      aL_pos = act_left.update_pos();
-      aR_pos = act_right.update_pos();
+      aL_pos = act_left.update_pos("Act L: ");
+      aR_pos = act_right.update_pos("Act R: ");
     #endif
     #if BUCKET_ACTUATOR_ENABLED
-      aB_pos = act_bucket.update_pos();
+      aB_pos = act_bucket.update_pos("Act B: ");
     #endif
   }
 
@@ -444,6 +408,7 @@ void loop() {
           aL_speed=0;
           aR_speed=0;
           aB_speed=0;
+          control_take_over=true;
         }
         else{
           #if MAIN_ROBOT==1
@@ -456,6 +421,8 @@ void loop() {
             aB_speed = -joy[0];
             aL_speed = joy[1];
             aR_speed = aL_speed;
+            last_actuator_cmd_time=current_time;
+            last_motor_cmd_time=current_time;
           #else
             int16_t steering = -joy[0];
             int16_t throttle = -joy[1]; 
@@ -484,13 +451,18 @@ void loop() {
         }
       #endif
     } 
-    else if(serial_connection_established==false) {
-      #if SERIAL_COMM_TIMEOUT_FAULT
-        systemFault(true,"Serial communication timeout.","", NONE, NONE, BLINK);
-      #else 
-        systemFault(false,"Serial communication timeout.","", NONE, NONE, BLINK);
-      #endif
+    else{
+      control_take_over=false;
+      if(serial_connection_established==false) {
+        #if SERIAL_COMM_TIMEOUT_FAULT
+          systemFault(true,"Serial communication timeout.","", NONE, NONE, BLINK);
+        #else 
+          systemFault(false,"Serial communication timeout.","", NONE, NONE, BLINK);
+        #endif
+      }
     }
+    
+    
   #endif
   #if SERIAL_COMM_TIMEOUT_FAULT
     if (current_time - last_message_time > estop_timeout && serial_connection_established==true) {
@@ -501,12 +473,30 @@ void loop() {
   // Update actuator saved positions
   if (current_time - last_update_actuator_time >= 1000 / update_actuator_feedback) {
     last_update_actuator_time = current_time;
+    #if SENSOR_OUTPUT == 5
+      Serial.print("Act pos: ");
+    #endif
     #if ARM_ACTUATORS_ENABLED
-    aL_pos = act_left.update_pos();
-    aR_pos = act_right.update_pos();
+      aL_pos = act_left.update_pos("Act L: ");
+      aR_pos = act_right.update_pos("Act R: ");
+      #if SENSOR_OUTPUT == 5
+          Serial.print("Arm=(");
+          Serial.print(aL_pos);     
+          Serial.print(","); 
+          Serial.print(aR_pos);  
+          Serial.print(") "); 
+      #endif
     #endif
     #if BUCKET_ACTUATOR_ENABLED
-    aB_pos = act_bucket.update_pos();
+      aB_pos = act_bucket.update_pos("Act B: ");
+      #if SENSOR_OUTPUT == 5
+          Serial.print("Bucket=(");
+          Serial.print(aB_pos); 
+          Serial.println(")");      
+      #endif
+    #endif
+    #if SENSOR_OUTPUT == 5
+      Serial.println("");
     #endif
   }
 
@@ -520,13 +510,13 @@ void loop() {
          stop_all();
          while (aB_pos < bucket_min) {
              act_bucket.vel_ctrl(5);
-             aB_pos = act_bucket.update_pos();
+             aB_pos = act_bucket.update_pos("Act B: ");
              delay(5);
              systemFault(false,"","Bucket past minimum. Fixing...", BLINK, NONE, NONE);
          }
          while (aB_pos > bucket_max) {
              act_bucket.vel_ctrl(-5);
-             aB_pos = act_bucket.update_pos();
+             aB_pos = act_bucket.update_pos("Act B: ");
              delay(5);
              systemFault(false,"","Bucket past maximum. Fixing...", BLINK, NONE, NONE);
          }
@@ -543,8 +533,8 @@ void loop() {
         #if BUCKET_ACTUATOR_ENABLED
           act_bucket.stop();
         #endif
-        aL_pos = act_left.update_pos();
-        aR_pos = act_right.update_pos();
+        aL_pos = act_left.update_pos("Act L: ");
+        aR_pos = act_right.update_pos("Act R: ");
         float factor = (aL_pos - aR_pos) * vel_gain;
 
         act_left.vel_ctrl(aL_speed - factor);
@@ -565,7 +555,7 @@ void loop() {
     if (!emergency_stop) {
       #if COMPONENT_TIMEOUT_FAULTS
       // Timeout motors and actuators if a command isn't recived within the timeout period
-      if(serial_connection_established==true){
+      //if(serial_connection_established==true){
         if(current_time-last_motor_cmd_time>=motor_timeout&&(mR_speed!=0||mL_speed!=0||mLR_rotation_speed!=0||mLR_rotation!=0)){
           mR_speed=0;
           mL_speed=0;
@@ -573,7 +563,7 @@ void loop() {
           mLR_rotation=0;
           systemFault(false,"","Motors timed out, no motor command received within "+ String(motor_timeout/1000)+"s", NONE, NONE, NONE);
         }
-        if(current_time-last_actuator_cmd_time>=actuator_timeout && (aL_speed!=0 || aR_speed !=0 || aB_speed!=0 || aLR_tgt != -1 || aB_tgt != -1 )){
+        if(current_time-last_actuator_cmd_time>=actuator_timeout && (aL_speed!=0 || aR_speed !=0 || aB_speed!=0)){
           aLR_tgt = -1;
           aB_tgt = -1;
           aL_speed = 0;
@@ -581,7 +571,7 @@ void loop() {
           aB_speed = 0;
           systemFault(false,"","Actuators timed out, no actuator command received within "+ String(actuator_timeout/1000)+"s", NONE, NONE, NONE);
         }
-      }
+      //}
       #endif
       #if ARM_ACTUATORS_ENABLED
       // Update actuator positions.
@@ -590,8 +580,8 @@ void loop() {
         act_left.tgt_ctrl(aLR_tgt);
         act_right.tgt_ctrl(aLR_tgt);
       } else {
-        aL_pos = act_left.update_pos();
-        aR_pos = act_right.update_pos();
+        aL_pos = act_left.update_pos("Act L: ");
+        aR_pos = act_right.update_pos("Act R: ");
         float factor = (aL_pos - aR_pos) * vel_gain;
         // Actuator bound chacks, softwere side stops
         if ((aL_speed < 0 && aL_pos >= arm_soft_max)||(aR_speed > 0 && aR_pos <= arm_soft_min)) {
@@ -731,41 +721,43 @@ void processMessage(byte *data, int length) {
     // Chnage actuator speeds/positions
     case 'A':
       {      
+        if(control_take_over) break;
         #if BUCKET_ACTUATOR_ENABLED || ARM_ACTUATOR_ENABLED       
-        // (A, actuators) Recvived Arm and Bucket actuator speeds and positions.
-        aLR_tgt = (int16_t)((data[1] << 8) | data[2]);  // Adjusted index to skip the type byte
-        aB_tgt = (int16_t)((data[3] << 8) | data[4]);
-        aL_speed = -(int8_t)data[5];
-        aR_speed = aL_speed;
-        aB_speed = -(int8_t)data[6];
-        #if DEBUG_MODE
-          Serial.print("Arm Position: ");
-          Serial.println(aLR_tgt);
-          Serial.print("Bucket Position: ");
-          Serial.println(aB_tgt);
-          Serial.print("Arm Velocity: ");
-          Serial.println(aL_speed);
-          Serial.print("Bucket Velocity: ");
-          Serial.println(aB_speed);
-        #endif
-        last_actuator_cmd_time=current_time;
+          // (A, actuators) Recvived Arm and Bucket actuator speeds and positions.
+          aLR_tgt = (int16_t)((data[1] << 8) | data[2]);  // Adjusted index to skip the type byte
+          aB_tgt = (int16_t)((data[3] << 8) | data[4]);
+          aL_speed = -(int8_t)data[5];
+          aR_speed = aL_speed;
+          aB_speed = -(int8_t)data[6];
+          #if DEBUG_MODE
+            Serial.print("Arm Position: ");
+            Serial.println(aLR_tgt);
+            Serial.print("Bucket Position: ");
+            Serial.println(aB_tgt);
+            Serial.print("Arm Velocity: ");
+            Serial.println(aL_speed);
+            Serial.print("Bucket Velocity: ");
+            Serial.println(aB_speed);
+          #endif
+          last_actuator_cmd_time=current_time;
         #endif
         break;
       }
     // Change motor speeds
     case 'M':
       {    
+        if(control_take_over) break;
         #if MOTORS_ENABLED
-        // (M, motors) Recvived left and right motor speeds
-        mR_speed = (int8_t)data[1];  
-        mL_speed = (int8_t)data[2];
-        #if DEBUG_MODE
-          Serial.print("Left Speed: ");
-          Serial.println(mL_speed);
-          Serial.print("Right Speed: ");
-          Serial.println(mR_speed);
-        #endif
-        last_motor_cmd_time=current_time;
+          // (M, motors) Recvived left and right motor speeds
+          mR_speed = (int8_t)data[1];  
+          mL_speed = (int8_t)data[2];
+          #if DEBUG_MODE
+            Serial.print("Left Speed: ");
+            Serial.println(mL_speed);
+            Serial.print("Right Speed: ");
+            Serial.println(mR_speed);
+          #endif
+          last_motor_cmd_time=current_time;
         #endif
         break;
       }

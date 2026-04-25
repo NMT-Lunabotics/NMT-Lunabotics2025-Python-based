@@ -38,6 +38,8 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     ros-humble-joy-linux \
     ros-humble-rviz2 \
     ros-humble-domain-bridge \
+    ros-humble-tf-transformations \
+    ros-humble-robot-localization \
 && rm -rf /var/lib/apt/lists/*
 
 # Create non-root user (luna) with access to full container

@@ -35,7 +35,7 @@ RUN_TELEOP_LAUNCH=false                                     # Start controller f
 RUN_USB_CAMERA_NODE=false                                   # Launch system cameras
 RUN_VIEW_CAMERA_LAUNCH=false                                # View camera stream (local)
 RUN_SERIAL_LAUNCH=false                                     # Launch serial writter 
-LOCAL_LAUNCH_FILE=false;
+LAUNCH_FILE_TYPE=0;
 
 # Settings for containor mount point, TODO depricate --> replaced by local pull system
 MOUNT_USERNAME=false
@@ -88,7 +88,7 @@ usage() {
 # Parse input flags
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
-        -s|--start) RUN_SYSTEM_CONTROL_LAUNCH=true; [[ -n "$2" && ( "$2" == "local" || "$2" == "l" ) ]] && LOCAL_LAUNCH_FILE=true && shift 2 || shift 1 ;;                                           # Launches whole system 
+        -s|--start) RUN_SYSTEM_CONTROL_LAUNCH=true; [[ -n "$2" && ( "$2" == "local" || "$2" == "l" ) ]] && { LAUNCH_FILE_TYPE=1; shift 2; } || { [[ -n "$2" && ( "$2" == "nav" || "$2" == "n" ) ]] && { LAUNCH_FILE_TYPE=2; shift 2; } || shift 1; } ;;                                          # Launches whole system 
         -t|--teleop) RUN_TELEOP_LAUNCH=true; shift ;;                                                                                                                                                # Launches ros joystick (local)
         -u|--usb-cam) RUN_USB_CAMERA_NODE=true; shift ;;                                                                                                                                             # Launches all system cameras
         -ser|--serial) RUN_SERIAL_LAUNCH=true; shift ;;                                                                                                                                              # Launches serial talker
@@ -205,17 +205,17 @@ if [ -n "$MOUNT_USERNAME" ] && [ -n "$MOUNT_HOST_PATH" ] && [ "$MOUNT_USERNAME" 
 fi
 
 # Pull latest changes from GitHub if --pull flag is used
-if [ "$GITHUB_PULL" = true ]; then
-        if [ -d "ros2_ws" ]; then
-            echo -e "\e[36m[STARTUP]\e[0m Fixing file permissions for pull..."
-            sudo chown -R $USER:$USER ros2_ws/ 2>/dev/null || true
-            find ros2_ws -type d -exec chmod 755 {} \; 2>/dev/null || true
-            find ros2_ws -type f -exec chmod 644 {} \; 2>/dev/null || true
-        fi
-        echo -e "\e[36m[STARTUP]\e[0m Pulling new files..."
-        ./pull.sh $LOCAL_PULL $LOCAL_USERNAME
-        RESTART_CONTAINER=true
-        BUILD_IMAGE=true
+if [ "$GITHUB_PULL" == true ]; then
+    if [ -d "ros2_ws" ]; then
+        echo -e "\e[36m[STARTUP]\e[0m Fixing file permissions for pull..."
+        sudo chown -R $USER:$USER ros2_ws/ 2>/dev/null || true
+        find ros2_ws -type d -exec chmod 755 {} \; 2>/dev/null || true
+        find ros2_ws -type f -exec chmod 644 {} \; 2>/dev/null || true
+    fi
+    echo -e "\e[36m[STARTUP]\e[0m Pulling new files..."
+    ./pull.sh $LOCAL_PULL $LOCAL_USERNAME
+    RESTART_CONTAINER=true
+    BUILD_IMAGE=true
 fi
 
 # --------------------------------------------------------------------------------
@@ -344,10 +344,12 @@ if [ "$INTERACTIVE_HOST" = true ]; then
     elif [ "$RUN_VIEW_CAMERA_LAUNCH" == true ]; then
         ros2 launch camera view_camera_launch.py
     elif [ "$RUN_SYSTEM_CONTROL_LAUNCH" == true ]; then
-        if [ "$LOCAL_LAUNCH_FILE" == true ]; then
-            ros2 launch system_start system_user_interface_launch.py
-        else 
+        if [ "$LAUNCH_FILE_TYPE" == 0 ]; then
             ros2 launch system_start system_launch.py
+        elif [ "$LAUNCH_FILE_TYPE" == 1 ]; then
+            ros2 launch system_start system_user_interface_launch.py
+        elif [ "$LAUNCH_FILE_TYPE" == 2 ]; then
+            ros2 launch system_start system_navigation_launch.py
         fi
     elif [ "$RUN_SERIAL_LAUNCH" == true ]; then
         ros2 launch serial_commands serial_launch.py
@@ -416,10 +418,10 @@ elif [ "$RUN_VIEW_CAMERA_LAUNCH" == true ]; then
 # Start all system operations
 elif [ "$RUN_SYSTEM_CONTROL_LAUNCH" = true ]; then
     echo -e "\e[36m[STARTUP]\e[0m All robot operations started..."
-    if [ "$LOCAL_LAUNCH_FILE" == true ]; then
-        docker exec -it -u root --env-file $ENV_FILE $CONTAINER_ID /entry_point.sh ros2 launch system_start system_user_interface_launch.py
-    else 
+    if [ "$LAUNCH_FILE_TYPE" == 0 ]; then
         docker exec -it -u root --env-file $ENV_FILE $CONTAINER_ID /entry_point.sh ros2 launch system_start system_launch.py
+    else 
+        docker exec -it -u root --env-file $ENV_FILE $CONTAINER_ID /entry_point.sh ros2 launch system_start system_user_interface_launch.py
     fi
 # Start serial communications
 elif [ "$RUN_SERIAL_LAUNCH" = true ]; then

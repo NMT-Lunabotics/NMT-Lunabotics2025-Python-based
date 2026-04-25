@@ -1,0 +1,18 @@
+rtabmap:
+  ros__parameters:
+
+    frame_id: "camera_link"
+    map_frame_id: "map"
+    odom_frame_id: "odom"
+
+    subscribe_depth: true
+    subscribe_rgb: true
+
+    approx_sync: true
+    sync_queue_size: 10
+    topic_queue_size: 10
+
+    Mem/IncrementalMemory: true
+    Odom/Strategy: 0
+
+    Grid/CellSize: 0.05

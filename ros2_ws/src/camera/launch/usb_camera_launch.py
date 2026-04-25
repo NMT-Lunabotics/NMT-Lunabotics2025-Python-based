@@ -42,11 +42,6 @@ def launch_setup(context):
                 '--remap', f'in:=/{cam["name"]}/image_raw',
                 '--remap', f'out/compressed:=/{cam["name"]}/compressed'
             ],
-            #arguments=['raw', 'compressed'],
-            #remappings=[
-            #    ('in', f'/{cam["name"]}/image_raw'),
-            #    ('out/compressed', f'/{cam["name"]}/compressed')  
-            #],
             parameters=[{'jpeg_quality': 0}]
         )
         
@@ -78,7 +73,6 @@ def launch_setup(context):
 
 def generate_launch_description():
     default_camera_yaml = os.path.join(get_package_share_directory('camera'),'config','pc_cameras.yaml')
-    #default_camera_yaml = os.path.join(get_package_share_directory('camera'),'config','cameras.yaml')
     return LaunchDescription([
         DeclareLaunchArgument('camera_config',default_value=default_camera_yaml, description='Path to cameras.yaml configuration file'),
         OpaqueFunction(function=launch_setup)
