@@ -1,7 +1,8 @@
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription
+from launch.actions import IncludeLaunchDescription, TimerAction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
+from launch.actions import ExecuteProcess
 from ament_index_python.packages import get_package_share_directory
 import os
 
@@ -35,6 +36,12 @@ def generate_launch_description():
         }]
     )
 
+    waypoint_node = Node(
+        package='point_navigation',
+        executable='waypoint.py',
+        name='waypoint'
+    )
+
     base_frame = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
@@ -51,10 +58,40 @@ def generate_launch_description():
         )
     )
 
+    nav2_params_file = os.path.join(
+        get_package_share_directory('point_navigation'),
+        'config',
+        'nav2_params.yaml'
+    )
+
+    nav2_launch = ExecuteProcess(
+        cmd=[
+            "ros2", "launch", "nav2_bringup", "navigation_launch.py",
+            "use_sim_time:=false",
+            f"params_file:={nav2_params_file}"
+        ],
+        output="screen"
+    )
+
+    rviz_node = Node(
+        package='rviz2',
+        executable='rviz2',
+        name='rviz2',
+        arguments=['-d',
+            os.path.join(
+                get_package_share_directory('point_navigation'),
+                'config',
+                'nav.rviz'
+            )
+        ],
+        output='screen'
+    )
+
     return LaunchDescription([
         realsense_launch,
-        apriltag_frame,
-        apriltag_node,
         base_frame,
-        rtabmap_launch
+        rtabmap_launch,
+        #rviz_node,
+        waypoint_node,
+        nav2_launch,
     ])

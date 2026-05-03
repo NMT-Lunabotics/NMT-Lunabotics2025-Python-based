@@ -10,6 +10,7 @@ import os
 import serial
 import threading
 import serial.tools.list_ports
+import rclpy.logging
 
 # Converts /cmd_vel and /actuator messages which range from [-1,1] to [-30,30] or [-25,25] which are sent to run robot 
 
@@ -71,6 +72,21 @@ class serialCommands:
 class SerialTalkerNode(Node):
     def __init__(self):
         super().__init__('talker_node')
+        self.declare_parameter('navigation_mode', False)
+        self.navigation_mode = self.get_parameter('navigation_mode').value
+        if self.navigation_mode != True: self.navigation_mode = False
+
+        self.declare_parameter("log_level", "error")
+        log_level = self.get_parameter("log_level").value
+        level_map = {
+            "debug": rclpy.logging.LoggingSeverity.DEBUG,
+            "info": rclpy.logging.LoggingSeverity.INFO,
+            "warn": rclpy.logging.LoggingSeverity.WARN,
+            "error": rclpy.logging.LoggingSeverity.ERROR,
+            "fatal": rclpy.logging.LoggingSeverity.FATAL,
+        }
+        self.get_logger().set_level(level_map[log_level])
+
         self.blocking={}
         self.blocking_timer={}
         self.command_states={}
@@ -100,13 +116,29 @@ class SerialTalkerNode(Node):
         self.control_thread.daemon = True
         self.control_thread.start()
 
-        self.get_logger().info("\033[34mSerial talker node started.\033[0m")
+        if self.navigation_mode: self.get_logger().info("\033[34mSerial talker node started. (Navigation mode)\033[0m")
+        else: self.get_logger().info("\033[34mSerial talker node started.\033[0m")
 
     # System callbacks which handle the the cmd_vel and /robot_command topics
     def cmd_callback(self, msg):
         self.handle_special_cmd(msg.command, msg.data, msg.blocking_id)
     def cmd_vel_callback(self, msg):
-        self.send_vel_command([msg.linear.x,msg.angular.z],None,vel_source=True)
+        if self.navigation_mode==False:
+            linear=self.deadband(-self.scale(msg.linear.x, -1.0, 1.0, -0.7, 0.7), 0.1)
+            angular=self.deadband(self.scale(msg.angular.z, -2.0, 2.0, -0.5, 0.5), 0.1)
+
+            self.get_logger().info(f"Linear: {linear}\nAngular: {angular}\n---")
+        else:
+            linear=msg.linear.x
+            angular=msg.angular.z
+        self.send_vel_command([-linear,angular],None,vel_source=True)
+
+    def scale(self, value, in_min, in_max, out_min, out_max):
+        return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
+    
+    def deadband(self, value, threshold=0.05):
+        if abs(value) < threshold: return 0.0
+        return value
 
     def control_loop(self):
         while True:
@@ -118,7 +150,7 @@ class SerialTalkerNode(Node):
                     del self.command_states[command]
                     continue
                 self.serial.send_command(command, command_data["data"])
-           # time.sleep(0.005)
+            time.sleep(0.01)
 
     # Handle speical cmd cases, right now only the 'M' and 'A' speical cases exist
     def handle_special_cmd(self, command, data, blocking_id):
@@ -153,7 +185,7 @@ class SerialTalkerNode(Node):
     # Apply diffrential driving to 'M' command
     def send_vel_command(self, data, blocking_id, vel_source):
         if vel_source:
-            velocity=-data[0]
+            velocity=data[0]
             angular_velocity=data[1]
 
             # Scale motor command

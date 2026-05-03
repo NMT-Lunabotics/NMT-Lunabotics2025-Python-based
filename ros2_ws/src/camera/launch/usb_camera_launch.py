@@ -23,6 +23,7 @@ def launch_setup(context):
             namespace=cam['name'],
             name='v4l2_camera_node',
             output='screen',
+            arguments=['--ros-args', '--log-level', 'error'],
             parameters=[{
                 'video_device': cam['video_device'],
                 'image_size': [cam['width'],cam['height']],

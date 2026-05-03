@@ -47,7 +47,7 @@ elif [[ "$LOCAL" == true ]]; then
         RSYNC_EXCLUDES+=(--exclude="$item")
     done
 
-    rsync -avz --delete --exclude-from=<(printf "%s\n" "${EXCLUDE_FROM_PULL[@]}") --exclude-from=.gitignore $LOCAL_USERNAME@$PC_IP:/home/Documents/$LOCAL_USERNAME/$REPO/ "$(pwd)/"
+    rsync -avz --delete --exclude-from=<(printf "%s\n" "${EXCLUDE_FROM_PULL[@]}") --exclude-from=.gitignore $LOCAL_USERNAME@$PC_IP:~/Documents/$REPO/ "$(pwd)/"
 else
     git config --global user.email "benjamin.peterson@student.nmt.edu"
     git config --global user.name "benjamin-p15"

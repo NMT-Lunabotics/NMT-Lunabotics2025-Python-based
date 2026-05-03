@@ -1,14 +1,21 @@
 cameras:
   - name: camera0
-    video_device: /dev/video4 
-    pixle_format: "YUYV"
+    video_device: /dev/video2
+    #pixle_format: "YUYV"
     frame_rate: 60
     width: 848
     height: 480
 
   - name: camera1
-    video_device: /dev/video10
-    pixle_format: "YUYV"
+    video_device: /dev/video6
+    #pixle_format: "YUYV"
+    frame_rate: 24
+    width: 80
+    height: 60
+
+  - name: camera2
+    video_device: /dev/video4
+    #pixle_format: "YUYV"
     frame_rate: 24
     width: 80
     height: 60

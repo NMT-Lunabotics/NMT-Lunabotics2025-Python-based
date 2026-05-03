@@ -18,6 +18,7 @@ install(DIRECTORY config
 install(PROGRAMS
   point_navigation/imu_tf_frame_mapper.py
   point_navigation/point_navigation.py
+  point_navigation/waypoint.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

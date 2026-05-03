@@ -12,7 +12,10 @@ class CameraMux(Node):
         self.cameras = {
             0: 'camera0/image_raw/compressed',
             1: 'camera1/image_raw/compressed',
+            2: 'camera2/image_raw/compressed',
         }
+        self.camera_indexes = [0,1]
+        self.index_cycle_state=0
 
         self.active_index = 0
         self.last_index = None
@@ -45,6 +48,17 @@ class CameraMux(Node):
 
     # Switch camera streams
     def toggle_stream(self, msg: Camera):
+        if msg.camera_increment == True:
+            if self.index_cycle_state == 0:
+                self.index_cycle_state = 1
+                index = self.camera_indexes[self.active_index] + 1
+                if index >= len(self.cameras):index = 0
+                if index == self.camera_indexes[1 - self.active_index]:
+                    index += 1
+                    if index >= len(self.cameras): index = 0
+                self.camera_indexes[self.active_index] = index
+        else: self.index_cycle_state=0
+
         if msg.camera_view in self.cameras:
             self.active_index = msg.camera_view
             self.last_index = self.active_index
@@ -61,7 +75,7 @@ class CameraMux(Node):
         
         # Rate limit the topic
         if time_since_last >= (1.0 / self.output_fps) and self.active_index in self.latest_frames:
-            self.pub.publish(self.latest_frames[self.active_index])
+            self.pub.publish(self.latest_frames[self.camera_indexes[self.active_index]])
             self.frames_published += 1
             self.last_publish_time = current_time
 

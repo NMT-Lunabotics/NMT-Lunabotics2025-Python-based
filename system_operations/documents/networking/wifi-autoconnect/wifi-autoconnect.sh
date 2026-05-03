@@ -1,53 +1,109 @@
 #!/bin/bash
 
+# Load config file
 CONF="/etc/wifi-autoconnect.conf"
-
+if [[ ! -f "$CONF" ]]; then
+    echo "[ERROR] Missing config: $CONF"
+    exit 1
+fi
 source "$CONF"
 
+# System varibles
+failure_count=0
+last_recovery=0
+
+# Connect to the network
 connect_wifi() {
-    ssid="$1"
-    psk="$2"
-    nmcli dev wifi connect "$ssid" ${psk:+password "$psk"}
+    echo "[INFO] Connecting to $PRIORITY_SSID"
+    nmcli dev wifi connect "$PRIORITY_SSID" password "$PRIORITY_PSK"
 }
 
-login_captive_portal() {
-    ssid="$1"
-    if [ "$ssid" = "$CAP_NMT_SSID" ]; then
-        curl -s -L -d "${CAP_NMT_USERNAME_FIELD}=${CAP_NMT_USERNAME}&${CAP_NMT_PASSWORD_FIELD}=${CAP_NMT_PASSWORD}&${CAP_NMT_EXTRA_FIELDS}" "$CAP_NMT_LOGIN_URL" >/dev/null
+# Check connection to the primary network
+is_connected() {
+    nmcli -t -f DEVICE,STATE dev status | grep -q "^${WIFI_INTERFACE}:connected"
+}
+
+# Check connection non-primary network
+current_ssid() {
+    nmcli -t -f ACTIVE,SSID dev wifi | grep '^yes' | cut -d: -f2
+}
+
+ssid_exists() {
+    nmcli -t -f SSID dev wifi list | grep -Fxq "$PRIORITY_SSID"
+}
+
+# Restart network interface
+interface_restart() {
+    echo "[WARN] Restarting interface $WIFI_INTERFACE"
+    sudo ip link set "$WIFI_INTERFACE" down
+    sleep 2
+    sudo ip link set "$WIFI_INTERFACE" up
+}
+
+# Toggle wifi on and then off
+wifi_toggle() {
+    echo "[WARN] Toggling Wi-Fi"
+    nmcli radio wifi off
+    sleep 2
+    nmcli radio wifi on
+}
+
+run_recovery() {
+    # Limit rate of recovery attempts 
+    now=$(date +%s)
+    if (( now - last_recovery < RECOVERY_COOLDOWN )); then
+        echo "[WARN] Recovery cooldown active"
+        return
     fi
-}
+    last_recovery=$now
 
-check_internet() {
-    curl -s --max-time 5 "$INTERNET_CHECK_URL" >/dev/null
-}
+    # Attempt recovery pattern from config order
+    IFS=',' read -ra actions <<< "$RECOVERY_ACTIONS"
+    for action in "${actions[@]}"; do
+        case "$action" in
+            reconnect) connect_wifi ;; interface_restart) interface_restart ;; wifi_toggle) wifi_toggle ;;
+        esac
 
-while true; do
-    connected_ssid=$(nmcli -t -f active,ssid dev wifi | grep "^yes:" | cut -d: -f2)
-    if [ "$connected_ssid" != "$PRIORITY_SSID" ]; then
-        if echo "$found" | grep -q "^$PRIORITY_SSID$"; then
-            echo "[INFO] Switching to priority network $PRIORITY_SSID"
-            nmcli dev disconnect wlan0
-            connect_wifi "$PRIORITY_SSID" "$PRIORITY_PSK"
-            sleep "$CONNECT_TIMEOUT"
-            continue
+        # Between steps if router becomes active stop recovery pattern 
+        sleep 2
+        if ping -c 1 -W "$PING_TIMEOUT" "$ROUTER_IP" >/dev/null 2>&1; then
+            echo "[INFO] Connection re-established"
+            failure_count=0
+            return 0 
         fi
+    done
+}
+
+
+# Main control loop
+while true; do
+    ssid=$(current_ssid)
+
+    # Constantly check connection status 
+    if [[ "$ssid" == "$PRIORITY_SSID" ]]; then
+        if ! ping -c 1 -W "$PING_TIMEOUT" "$ROUTER_IP" >/dev/null 2>&1; then
+            echo "[ERROR] Router not responding"
+            ((failure_count++))
+        else
+            echo "[INFO] Connection ok"
+            failure_count=0
+        fi
+    else
+        echo "[ERROR] Not connected to $PRIORITY_SSID"
+        ((failure_count++))
+        if ssid_exists; then connect_wifi; fi
     fi
 
-    found=$(nmcli -t -f ssid dev wifi | sort -u)
-    if echo "$found" | grep -q "^$PRIORITY_SSID$"; then
-        connect_wifi "$PRIORITY_SSID" "$PRIORITY_PSK"
-        sleep "$CONNECT_TIMEOUT"
+    # Check if we are on a non primary backup connection
+    if [[ "$ssid" != "$PRIORITY_SSID" ]]; then
+        sleep "$CONNECTION_INTERVAL"
         continue
     fi
 
-    for s in $FALLBACK_SSIDS; do
-        if echo "$found" | grep -q "^$s$"; then
-            connect_wifi "$s"
-            sleep "$CONNECT_TIMEOUT"
-            login_captive_portal "$s"
-            break
-        fi
-    done
-
-    sleep "$SCAN_INTERVAL"
+    # If no backup or primary network is found attempt recovery cycle
+    if (( failure_count >= FAILURE_THRESHOLD )); then
+        echo "[WARN] Attempting recovery"
+        run_recovery
+    fi
+    sleep "$CONNECTION_INTERVAL"
 done

@@ -82,7 +82,7 @@ enum LedState { OFF = 0, NONE = -1, ON = 1, BLINK = 2 };
 // Allowed actuator stroke lengths (mm)
 #if MAIN_ROBOT==1
   #define ALR_STROKE 191
-  #define AB_STROKE 125
+  #define AB_STROKE 100
 #else
   #define ALR_STROKE 191
   #define AB_STROKE 140
@@ -105,11 +105,18 @@ enum LedState { OFF = 0, NONE = -1, ON = 1, BLINK = 2 };
   #define AB_POT_MAX 782
 #endif     
 
+// Correction system that limits the bucket angle if arms are lowered
+#if ARM_ACTUATORS_ENABLED==1 && BUCKET_ACTUATOR_ENABLED==1
+  #define BUCKET_END_CORRECTION 1 
+  #define BUCKET_AUTO_CORRECTION 1
+#endif
+
 // Actuator speed/error/tolerences
 #if MAIN_ROBOT==1
   // Actuator soft bounds (mm) - Restricts movment when passed
   float bucket_soft_min = 2;
   float bucket_soft_max = 102;
+  float bucket_linear_soft_max = 85;
   float arm_soft_min = 2;
   float arm_soft_max = 173;
 
@@ -188,6 +195,8 @@ int mLR_rotation = 0;
 int mLR_arc_radius = 0;
 float robot_width = 7.276186; //m
 
+int bucket_dynamic_max=arm_soft_max;
+
 #if MAIN_ROBOT==0 || MAIN_ROBOT==1
   #define mL_speed_scale 1
   #define mR_speed_scale 1
@@ -222,12 +231,23 @@ int error_message_interval = 2000;
 bool emergency_stop = false;
 String system_fault_msg = "";
 bool system_started = false;
+//int rc_startup_state=0;
+
+#if SENSOR_OUTPUT == 7
+  unsigned long last_report_time = 0;
+  int count_A = 0;
+  int count_M = 0;
+  int count_A_zero = 0;
+  int count_A_nonzero = 0;
+  int count_M_zero = 0;
+  int count_M_nonzero = 0;
+#endif
 
 // Motor and actuator timeout variables, shutdown motors and actuators if a message is not reviced within timeout period
 unsigned long last_actuator_cmd_time = 0; 
 unsigned long last_motor_cmd_time = 0;
-int motor_timeout = 1000;
-int actuator_timeout = 500;
+int motor_timeout = 100;
+int actuator_timeout = 100;
 
 // Serial and state
 bool serial_connection_established=false;
@@ -381,6 +401,31 @@ void setup() {
 void loop() {
   current_time = millis();
   processSerialBuffer();
+
+  #if SENSOR_OUTPUT == 7
+    if (current_time-last_report_time>=1000) {
+      Serial.print("A: ");
+      Serial.print(count_A);
+      Serial.print(" Zero: ");
+      Serial.print(count_A_zero);
+      Serial.print(" Not-zero: ");
+      Serial.print(count_A_nonzero);
+      Serial.print(" | M: ");
+      Serial.print(count_M);
+      Serial.print(" Zero: ");
+      Serial.print(count_M_zero);
+      Serial.print(" Not-zero: ");
+      Serial.println(count_M_nonzero);
+      count_A = 0;
+      count_M = 0;
+      count_A_zero = 0;
+      count_A_nonzero = 0;
+      count_M_zero = 0;
+      count_M_nonzero = 0;
+      last_report_time=current_time;
+    }
+  #endif
+
   #if IBUS_RECIVER_ENABLED
   // Read serial and process messages while being Non-blocking
     if (ibus.update()) {
@@ -402,6 +447,10 @@ void loop() {
         Serial.println("");
       #else
         int16_t* joy = ibus.getJoystick();
+        // if(joy[4]==0) rc_startup_state=1;
+        // else if(joy[4]==1 && rc_startup_state==1) rc_startup_state=2;
+        // else if(joy[4]==0 && rc_startup_state==2) rc_startup_state=1;
+        // && rc_startup_state==2
         if(joy[4]==0) {
           mL_speed=0;
           mR_speed=0;
@@ -410,7 +459,8 @@ void loop() {
           aB_speed=0;
           control_take_over=true;
         }
-        else{
+        // && rc_startup_state!=0
+        else {
           #if MAIN_ROBOT==1
             int16_t steering = joy[2];
             int16_t throttle = joy[3]; 
@@ -584,7 +634,7 @@ void loop() {
         aR_pos = act_right.update_pos("Act R: ");
         float factor = (aL_pos - aR_pos) * vel_gain;
         // Actuator bound chacks, softwere side stops
-        if ((aL_speed < 0 && aL_pos >= arm_soft_max)||(aR_speed > 0 && aR_pos <= arm_soft_min)) {
+        if ((aL_speed < 0 && aL_pos >= arm_soft_max) || (aR_speed > 0 && aR_pos <= arm_soft_min)) {
           aL_speed = 0;  
           aR_speed = 0;  
         }
@@ -595,9 +645,23 @@ void loop() {
     
       #endif
       #if BUCKET_ACTUATOR_ENABLED
+        #if BUCKET_END_CORRECTION==1
+          int avg_arm_pos=(aL_pos+aR_pos)/2;
+          int start_stroke=arm_soft_min+(arm_soft_max-arm_soft_min)/4;
+          if (avg_arm_pos <= start_stroke) bucket_dynamic_max = mapSegmentInt(avg_arm_pos, arm_soft_min, start_stroke, bucket_linear_soft_max, bucket_max);
+          else bucket_dynamic_max = bucket_max;
+        #endif
+      
       if (aB_tgt >= 0) act_bucket.tgt_ctrl(aB_tgt);
       else if ((aB_speed > 0 && aB_pos < bucket_max) || (aB_speed < 0 && aB_pos > bucket_min)) {
-        if (aB_speed > 0 && aB_pos >= bucket_soft_max) aB_speed = 0;  
+        if (aB_speed > 0 && (aB_pos >= bucket_soft_max || aB_pos >= bucket_dynamic_max)) aB_speed = 0;  
+
+        #if BUCKET_AUTO_CORRECTION==1
+          int speed = -abs(aL_speed);
+          if(aB_speed > speed && B_pos >= bucket_dynamic_max) aB_speed = speed; 
+        #endif
+
+        
         if (aB_speed < 0 && aB_pos <= bucket_soft_min)  aB_speed = 0;
         act_bucket.curved_vel_ctrl(aB_speed, 0);
         //act_bucket.vel_ctrl(aB_speed);
@@ -729,6 +793,10 @@ void processMessage(byte *data, int length) {
           aL_speed = -(int8_t)data[5];
           aR_speed = aL_speed;
           aB_speed = -(int8_t)data[6];
+          #if SENSOR_OUTPUT==7
+            if (aL_speed == 0 && aB_speed == 0) count_A_zero++;
+            else count_A_nonzero++;
+          #endif
           #if DEBUG_MODE
             Serial.print("Arm Position: ");
             Serial.println(aLR_tgt);
@@ -751,6 +819,10 @@ void processMessage(byte *data, int length) {
           // (M, motors) Recvived left and right motor speeds
           mR_speed = (int8_t)data[1];  
           mL_speed = (int8_t)data[2];
+          #if SENSOR_OUTPUT==7
+            if (mR_speed == 0 && mL_speed == 0) count_M_zero++;
+            else count_M_nonzero++;
+          #endif
           #if DEBUG_MODE
             Serial.print("Left Speed: ");
             Serial.println(mL_speed);

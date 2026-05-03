@@ -21,9 +21,11 @@ class ControllerNode(Node):
         self.automation_timeout=15
         self.deadzone=0.4  # Deadzone of actuator joystick
         self.timeout=1
+        self.triggered_settings_update=0
+        self.last_save_time=0
+
         self.default_camera_view=0
         self.second_camera_view=1
-        self.triggered_settings_update=0
 
         self.arm_actuator_direction=0
         self.bucket_actuator_direction=0
@@ -36,6 +38,8 @@ class ControllerNode(Node):
             "ACTUATOR_X": "LEFT_JOY_X",                   # Move bucket actuator up/down
             "ACTUATOR_Y": "LEFT_JOY_Y",                   # Move arm actuators up/down  
             "ARM": "LEFT_BUMPER",                         # Arming button
+            "POS1_SAVE": "RIGHT_BUMPER",                  # Save pos for mapping 
+            "NAV_TRIGGER": "RIGHT_TRIGGER",               # Trigger navigation cycle 
             "CAMERA_TOGGLE": "RIGHT_STICK_BUTTON",        # Toggle between camera views
             "LEFT_STICK": "LEFT_STICK_BUTTON",            # Extra
             "CAMERA_SWITCH": "START",                     # Switch between cameras
@@ -193,7 +197,16 @@ class ControllerNode(Node):
                 servo_msg.data=[angle]
                 servo_msg.blocking_id=0
                 self.servo_msg=servo_msg
-                
+
+            elif self.get_input_values(msg, 'POS1_SAVE') == 1 and time.time() - self.last_save_time > 0.5:
+                self.last_save_time = time.time()
+                subprocess.Popen(["ros2", "param", "set","/waypoint", "target_name", "berm"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.Popen(["ros2", "service", "call","/save_target_location","std_srvs/srv/SetBool","{data: true}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+
+            elif self.get_input_values(msg, 'NAV_TRIGGER') == -1 and time.time() - self.last_save_time > 0.5:
+                self.last_save_time = time.time()
+                subprocess.Popen(["ros2", "param", "set","/waypoint", "nav_target_name", "berm"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                subprocess.Popen(["ros2", "service", "call","/navigation_goal_target","std_srvs/srv/SetBool","{data: true}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             
         # Motor velocity data
         motor=Twist()
@@ -213,10 +226,14 @@ class ControllerNode(Node):
         self.actuator_msg=actuator_msg
 
         # Publish camera data
+        camera_msg = Camera()
+
+        self.get_logger().error(f"{self.get_input_values(msg, 'LEFT_STICK')}")
+
         camera_state_actiave=self.get_input_values(msg, "CAMERA_TOGGLE")
         camera_state = self.get_input_values(msg, "CAMERA_SWITCH")
+        if self.get_input_values(msg, "LEFT_STICK") == 1: camera_msg.camera_increment=True 
         
-        camera_msg = Camera()
         if(camera_state_actiave==0): camera_msg.camera_view = self.default_camera_view
         else: camera_msg.camera_view = self.second_camera_view
 
