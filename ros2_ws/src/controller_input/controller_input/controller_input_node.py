@@ -18,6 +18,7 @@ class ControllerNode(Node):
         self.active_controller={}
         self.controller_name="None"
         self.triggered_automation=None
+        self.triggered_automation_type=None
         self.automation_timeout=15
         self.deadzone=0.4  # Deadzone of actuator joystick
         self.timeout=1
@@ -69,8 +70,7 @@ class ControllerNode(Node):
 
         self.declare_parameter('config', '')
         controller_config=self.get_parameter('config').get_parameter_value().string_value
-        with open(controller_config, 'r') as f: self.controller_config = yaml.safe_load(f).get('controller_input_node', {}).get('ros__parameters', {}).get('config', [])
-        self.controller_config=list(self.controller_config.values())
+        with open(controller_config, 'r') as f:self.controller_config = yaml.safe_load(f).get('controller_input_node', {}).get('ros__parameters', {}).get('config', {})
 
         self.declare_parameter('automations', '')
         controller_automations=self.get_parameter('automations').get_parameter_value().string_value
@@ -141,9 +141,15 @@ class ControllerNode(Node):
         # If unarmed or controller is disconnected send a speed of 0, 
         if self.triggered_automation != None and (self.get_input_values(msg, "ARM") == 0 or self.connected == False):
             if time.time()-self.triggered_automation>=self.automation_timeout: self.triggered_automation=None
-            else:
+            elif self.triggered_automation_type<=3:
                 self.trigger_sequence("interrupt")
                 self.triggered_automation=None
+                self.triggered_automation_type=None
+        
+        if self.triggered_automation != None and self.get_input_values(msg, "POS1_SAVE") == 1:
+            self.trigger_sequence("interrupt")
+            self.triggered_automation=None
+            self.triggered_automation_type=None
 
         if(self.get_input_values(msg, "ARM") == 0 or self.connected == False): 
             vel=0.0
@@ -152,14 +158,30 @@ class ControllerNode(Node):
             bucket_act_vel=0.0
         elif self.get_input_values(msg, "AUTOMATED") == 1:
                 # Triggers automated functions
-                if self.get_input_values(msg, 'X_BUTTON') == 1: self.trigger_sequence(self.controller_automations["X_BUTTON"])
-                elif self.get_input_values(msg, 'A_BUTTON') == 1: self.trigger_sequence(self.controller_automations["A_BUTTON"])
-                elif self.get_input_values(msg, 'B_BUTTON') == 1: self.trigger_sequence(self.controller_automations["B_BUTTON"])
-                elif self.get_input_values(msg, 'Y_BUTTON') == 1: self.trigger_sequence(self.controller_automations["Y_BUTTON"])
-                elif self.get_input_values(msg, 'H_DPAD') == 1: self.trigger_sequence(self.controller_automations["HORIZONTAL_DPAD_LEFT"])
-                elif self.get_input_values(msg, 'H_DPAD') == -1: self.trigger_sequence(self.controller_automations["HORIZONTAL_DPAD_RIGHT"])
-                elif self.get_input_values(msg, 'V_DPAD') == 1: self.trigger_sequence(self.controller_automations["VERTICAL_DPAD_UP"])
-                elif self.get_input_values(msg, 'V_DPAD') == -1: self.trigger_sequence(self.controller_automations["VERTICAL_DPAD_DOWN"])
+                if self.get_input_values(msg, 'X_BUTTON') == 1: 
+                    self.trigger_sequence(self.controller_automations["X_BUTTON"])
+                    self.triggered_automation_type=0
+                elif self.get_input_values(msg, 'A_BUTTON') == 1: 
+                    self.trigger_sequence(self.controller_automations["A_BUTTON"])
+                    self.triggered_automation_type=1
+                elif self.get_input_values(msg, 'B_BUTTON') == 1: 
+                    self.trigger_sequence(self.controller_automations["B_BUTTON"])
+                    self.triggered_automation_type=2
+                elif self.get_input_values(msg, 'Y_BUTTON') == 1: 
+                    self.trigger_sequence(self.controller_automations["Y_BUTTON"])
+                    self.triggered_automation_type=3
+                elif self.get_input_values(msg, 'H_DPAD') == 1: 
+                    self.trigger_sequence(self.controller_automations["HORIZONTAL_DPAD_LEFT"])
+                    self.triggered_automation_type=3
+                elif self.get_input_values(msg, 'H_DPAD') == -1: 
+                    self.trigger_sequence(self.controller_automations["HORIZONTAL_DPAD_RIGHT"])
+                    self.triggered_automation_type=5
+                elif self.get_input_values(msg, 'V_DPAD') == 1: 
+                    self.trigger_sequence(self.controller_automations["VERTICAL_DPAD_UP"])
+                    self.triggered_automation_type=6
+                elif self.get_input_values(msg, 'V_DPAD') == -1: 
+                    self.trigger_sequence(self.controller_automations["VERTICAL_DPAD_DOWN"])
+                    self.triggered_automation_type=7
                 self.triggered_automation=time.time()
 
         if(self.get_input_values(msg, "ARM")==0 and self.get_input_values(msg, 'CAMERA_TOGGLE')==1 and self.get_input_values(msg, 'LEFT_STICK')==1):
@@ -190,10 +212,10 @@ class ControllerNode(Node):
                 self.motor_lateral_direction=1-self.motor_lateral_direction
                 self.triggered_settings_update=time.time()
 
-            elif self.get_input_values(msg, 'MOTOR_X') != 0:
+            elif self.get_input_values(msg, 'MOTOR_X') != 0 and self.get_input_values(msg, "ARM") == 0:
                 servo_msg = Command()
                 servo_msg.command="S"
-                angle=self.map_value(self.get_input_values(msg, "MOTOR_X"), -1, 1, 0, 180)
+                angle=self.map_value(self.get_input_values(msg, "MOTOR_X"), -1, 1, 0, self.controller_config["servo_range"])
                 servo_msg.data=[angle]
                 servo_msg.blocking_id=0
                 self.servo_msg=servo_msg
@@ -227,8 +249,6 @@ class ControllerNode(Node):
 
         # Publish camera data
         camera_msg = Camera()
-
-        self.get_logger().error(f"{self.get_input_values(msg, 'LEFT_STICK')}")
 
         camera_state_actiave=self.get_input_values(msg, "CAMERA_TOGGLE")
         camera_state = self.get_input_values(msg, "CAMERA_SWITCH")

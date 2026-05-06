@@ -10,6 +10,11 @@ ls -a
 mkdir test
 ```
 
+**Create/edit file**
+```
+nano file.txt
+```
+
 **Make file execuatable**
 ```
 chmod +x file.py
@@ -31,6 +36,22 @@ sudo systemctl start heartbeat.service
 **Check status of system service**
 ```
 sudo systemctl status heartbeat.service
+```
+
+**Check service startup errors/warnings, use (warning, err) to see warnings/errors, remove (-p err) to see both**
+```
+journalctl -b -u heartbeat.service -p err
+```
+
+## Video tools
+**List /dev cameras**
+```
+v4l2-ctl --list-devices
+```
+
+**Usful tool to visualy inspect cameras**
+```
+qv4l2
 ```
 
 # ROS tools
@@ -60,6 +81,11 @@ ros2 node list
 ros2 topic list
 ```
 
+**List ros topic data usage**
+```
+ros2 topic bw /cmd_vel
+```
+
 **List all ROS parameters of a node/topic**
 ```
 ros2 param list /controller_server
@@ -82,7 +108,7 @@ python3 system_control/uploud_code.py
 
 
 
-
+# Extra
 ros2 launch nav2_bringup navigation_launch.py use_sim_time:=false params_file:=Documents/NMT-Lunabotics2025-Python-based/ros2_ws/src/point_navigation/config/nav2_params.yaml
 
 

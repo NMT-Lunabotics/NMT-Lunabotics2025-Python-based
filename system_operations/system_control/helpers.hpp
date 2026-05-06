@@ -112,7 +112,7 @@ public:
     pwm_pin.write_pwm_raw(abs(speed));
   }
   else{
-    Serial.println(speed);
+    //Serial.println(speed);
     if (speed > 128) {
       dir1_pin.write(1);
       dir2_pin.write(speed);
@@ -350,7 +350,7 @@ class SimpleServo {
       int currentAngle;
   
   public:
-      SimpleServo(uint8_t pin, int minPulse = 1000, int maxPulse = 2000)
+      SimpleServo(uint8_t pin, int minPulse = 500, int maxPulse = 2500)
           : pin(pin), minPulse(minPulse), maxPulse(maxPulse), currentAngle(90) {}
   
       void attach() {

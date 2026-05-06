@@ -1,11 +1,11 @@
 controller_input_node:      
   ros__parameters:      
     automations:     
-      A_BUTTON: dumping2
-      B_BUTTON: dig2
-      X_BUTTON: test
-      Y_BUTTON: dumping
-      HORIZONTAL_DPAD_LEFT: excavation
-      HORIZONTAL_DPAD_RIGHT: lateral_traverse
-      VERTICAL_DPAD_UP: apriltag_localize
-      VERTICAL_DPAD_DOWN: test2
+      A_BUTTON: dig
+      B_BUTTON: none
+      X_BUTTON: dump
+      Y_BUTTON: none
+      HORIZONTAL_DPAD_LEFT: auto_dig_1s
+      HORIZONTAL_DPAD_RIGHT: none
+      VERTICAL_DPAD_UP: none
+      VERTICAL_DPAD_DOWN: auto_dump_1s

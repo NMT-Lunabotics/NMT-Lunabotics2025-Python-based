@@ -76,7 +76,7 @@ class SerialTalkerNode(Node):
         self.navigation_mode = self.get_parameter('navigation_mode').value
         if self.navigation_mode != True: self.navigation_mode = False
 
-        self.declare_parameter("log_level", "error")
+        self.declare_parameter("log_level", "info")
         log_level = self.get_parameter("log_level").value
         level_map = {
             "debug": rclpy.logging.LoggingSeverity.DEBUG,
@@ -103,9 +103,10 @@ class SerialTalkerNode(Node):
             self.serial = serialCommands()  # could throw RuntimeError
             self.get_logger().info(f"Arduino started on port: {self.serial.port}")
         except RuntimeError as e:
-            self.get_logger().error(f"Serial initialization failed: {e}")
+            self.get_logger().error(f"\033[31mSerial initialization failed: {e}\033[0m")
+            self.serial = None
             # optionally exit cleanly
-            rclpy.shutdown()
+            # rclpy.shutdown()
 
         # Subscribe topics that include robot command data
         self.cmd_vel = self.create_subscription(Twist,'/cmd_vel',self.cmd_vel_callback,10)
@@ -124,13 +125,14 @@ class SerialTalkerNode(Node):
         self.handle_special_cmd(msg.command, msg.data, msg.blocking_id)
     def cmd_vel_callback(self, msg):
         if self.navigation_mode==False:
-            linear=self.deadband(-self.scale(msg.linear.x, -1.0, 1.0, -0.7, 0.7), 0.1)
-            angular=self.deadband(self.scale(msg.angular.z, -2.0, 2.0, -0.5, 0.5), 0.1)
-
-            self.get_logger().info(f"Linear: {linear}\nAngular: {angular}\n---")
+            linear=-msg.linear.x
+            angular=msg.angular.z
+            #self.get_logger().info(f"Linear: {linear}\nAngular: {angular}\n---")
         else:
             linear=msg.linear.x
             angular=msg.angular.z
+            #linear=self.deadband(-self.scale(msg.linear.x, -1.0, 1.0, -1.0, 1.0), 0.1)
+            #angular=self.deadband(self.scale(msg.angular.z, -2.0, 2.0, -1.0, 1.0), 0.1)
         self.send_vel_command([-linear,angular],None,vel_source=True)
 
     def scale(self, value, in_min, in_max, out_min, out_max):
@@ -185,6 +187,7 @@ class SerialTalkerNode(Node):
     # Apply diffrential driving to 'M' command
     def send_vel_command(self, data, blocking_id, vel_source):
         if vel_source:
+            # NOT CORRECTLY MAPPING
             velocity=data[0]
             angular_velocity=data[1]
 
@@ -196,6 +199,7 @@ class SerialTalkerNode(Node):
 
             left_motor = int((left_motor/max_val)*self.motor_vel_scale)
             right_motor = int((right_motor/max_val)*self.motor_vel_scale)
+            self.get_logger().info(f"{left_motor} {right_motor}")
 
             self.update_command('M', [left_motor, right_motor], blocking_id)
         else:

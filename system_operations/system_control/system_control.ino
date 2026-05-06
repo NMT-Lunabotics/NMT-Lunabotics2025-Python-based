@@ -116,7 +116,7 @@ enum LedState { OFF = 0, NONE = -1, ON = 1, BLINK = 2 };
   // Actuator soft bounds (mm) - Restricts movment when passed
   float bucket_soft_min = 2;
   float bucket_soft_max = 102;
-  float bucket_linear_soft_max = 85;
+  float bucket_linear_soft_max = 50;
   float arm_soft_min = 2;
   float arm_soft_max = 173;
 
@@ -195,7 +195,7 @@ int mLR_rotation = 0;
 int mLR_arc_radius = 0;
 float robot_width = 7.276186; //m
 
-int bucket_dynamic_max=arm_soft_max;
+float bucket_dynamic_max=arm_soft_max;
 
 #if MAIN_ROBOT==0 || MAIN_ROBOT==1
   #define mL_speed_scale 1
@@ -647,19 +647,28 @@ void loop() {
       #if BUCKET_ACTUATOR_ENABLED
         #if BUCKET_END_CORRECTION==1
           int avg_arm_pos=(aL_pos+aR_pos)/2;
-          int start_stroke=arm_soft_min+(arm_soft_max-arm_soft_min)/4;
+          int start_stroke=arm_soft_min+(arm_soft_max-arm_soft_min)/1.5;
           if (avg_arm_pos <= start_stroke) bucket_dynamic_max = mapSegmentInt(avg_arm_pos, arm_soft_min, start_stroke, bucket_linear_soft_max, bucket_max);
           else bucket_dynamic_max = bucket_max;
         #endif
+
+        //Serial.println(aL_speed);
+        //Serial.println(aB_speed);
+        //Serial.println(aB_pos >= bucket_dynamic_max && aL_speed>0);
       
       if (aB_tgt >= 0) act_bucket.tgt_ctrl(aB_tgt);
-      else if ((aB_speed > 0 && aB_pos < bucket_max) || (aB_speed < 0 && aB_pos > bucket_min)) {
+      else if (aB_pos < bucket_max || aB_pos > bucket_min) {
         if (aB_speed > 0 && (aB_pos >= bucket_soft_max || aB_pos >= bucket_dynamic_max)) aB_speed = 0;  
 
         #if BUCKET_AUTO_CORRECTION==1
-          int speed = -abs(aL_speed);
-          if(aB_speed > speed && B_pos >= bucket_dynamic_max) aB_speed = speed; 
+          if(aL_speed>0){
+            int speed = -aL_speed;
+            //aB_speed < speed && 
+            if(aB_pos >= bucket_dynamic_max) aB_speed = speed; 
+          }
         #endif
+        
+        //Serial.println(aB_speed);
 
         
         if (aB_speed < 0 && aB_pos <= bucket_soft_min)  aB_speed = 0;

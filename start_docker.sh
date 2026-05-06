@@ -76,7 +76,7 @@ usage() {
     echo "  --build (-b) [skip|s]                  Build the Docker container (will stop the running container if any)"
     echo "  --restart (-r)                         Restart all Docker containers"
     echo "  --pull (-p) [local|l] <username>       Pulls the most recent files from github or pulls local files with local connection"
-    echo "  --ip_address (-ip) [find|f|all|a]      Automaticlly finds robot ip using pinging system and ssh's into it"
+    echo "  --ip_address (-ip) [f|find|a|all|p|ping]      Automaticlly finds robot ip using pinging system and ssh's into it"
     echo "  --mount (-m) <username> <host_path>    Mounts a directory into jetson across wifi"
     echo "  --arduino (-sys)                       Force updates arduino, does not do full build"
     echo "  --quiet (-q)                           Suppress bash messages"
@@ -180,7 +180,7 @@ if [ "$FIND_IP" = true ]; then
                 fi
             done
             # Execute modifyeid start docker file inside of terminal
-            ssh -X -t "$USERNAME@$IP" "cd $REPOSITORY_NAME && ./$(basename "$0") ${NEW_ARGS[@]}"
+            # ssh -X -t "$USERNAME@$IP" "cd $REPOSITORY_NAME && ./$(basename "$0") ${NEW_ARGS[@]}"
         fi
         exit 0
     fi
