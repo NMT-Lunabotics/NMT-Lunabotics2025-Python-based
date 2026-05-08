@@ -9,7 +9,7 @@ import numpy as np #math and data types
 import math
 
 # -------------------- Changeable Variables --------------------
-tag_type = cv2.aruco.DICT_6X6_250           # Change according to which tag library
+tag_type = cv2.aruco.DICT_APRILTAG_25h9     # Change according to which tag library (cv2.aruco.DICT_6X6_250)
 markerLength = 0.269                        # Size of marker, (meters)
 map_size = 750                              # The size of the displayed maps in pixels
 scale = 25                                  # How many pixels per meter
@@ -25,7 +25,8 @@ camMatrix = np.array([[390.70924213, 0., 320.5518661],[0., 391.15479783, 239.817
 distCoeffs = np.array([[-0.04335213, 0.0489175, 0.00186086, 0.00056816, 0.03206625]])
 
 dictionary = cv2.aruco.getPredefinedDictionary(tag_type)
-parameters = cv2.aruco.DetectorParameters()
+parameters = cv2.aruco.DetectorParameters_create()
+#parameters = cv2.aruco.DetectorParameters()
 alpha_x, alpha_z, alpha_yaw = 0.1, 0.2, 0.4
 
 # -------------------- Functioning Functions --------------------
@@ -42,8 +43,10 @@ class AprialTagPose:
         cv2.circle(self.base_map, (map_size // 2, map_size // 2), 5, (255, 0, 0), -1)
 
         self.dictionary = cv2.aruco.getPredefinedDictionary(tag_type)
-        self.parameters = cv2.aruco.DetectorParameters()
-        self.detector = cv2.aruco.ArucoDetector(self.dictionary, self.parameters)
+        self.parameters = cv2.aruco.DetectorParameters_create()
+        #self.dictionary = cv2.aruco.getPredefinedDictionary(tag_type)
+        #self.parameters = cv2.aruco.DetectorParameters()
+        #self.detector = cv2.aruco.ArucoDetector(self.dictionary, self.parameters)
 
     # Limits angles above 180 and below -180
     @staticmethod
@@ -114,7 +117,8 @@ class AprialTagPose:
 
     # Code for detecting and returning tags
     def detect_markers(self, img):
-        corners, ids, _ = self.detector.detectMarkers(img)
+        corners, ids, _ = cv2.aruco.detectMarkers(img,self.dictionary,parameters=self.parameters)
+        #corners, ids, _ = self.detector.detectMarkers(img)
         return corners, ids
 
     # Takes data and returns a position

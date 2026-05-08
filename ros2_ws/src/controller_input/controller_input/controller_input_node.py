@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import time, sys, yaml, subprocess, rclpy, glob
+import time, sys, yaml, subprocess, rclpy, glob, math
 from rclpy.node import Node
 from sensor_msgs.msg import Joy
 from robot_interfaces.msg import Camera, Command, Sequence
@@ -24,6 +24,8 @@ class ControllerNode(Node):
         self.timeout=1
         self.triggered_settings_update=0
         self.last_save_time=0
+        self.remap_square=True
+        self.sqrt2=math.sqrt(2)
 
         self.default_camera_view=0
         self.second_camera_view=1
@@ -129,11 +131,22 @@ class ControllerNode(Node):
 
         # Deadzone mapping for actuator to prevent double inputs and movment issues
         arm_act_vel=self.get_input_values(msg, "ACTUATOR_Y")
+        bucket_act_vel=self.get_input_values(msg, "ACTUATOR_X")
+        if self.remap_square:
+            x = bucket_act_vel
+            y = arm_act_vel
+            magnetude=math.sqrt(x*x + y*y)
+            if magnetude>0:
+                scale=1+(magnetude*(self.sqrt2-1))  
+                bucket_act_vel=x*scale
+                arm_act_vel=y*scale
+
+
+
         if(arm_act_vel<self.deadzone and arm_act_vel>-self.deadzone): arm_act_vel=0.0
         elif(arm_act_vel > 0): arm_act_vel=self.map_value(arm_act_vel,self.deadzone,1.0,0.0,1.0)
         else: arm_act_vel=self.map_value(arm_act_vel,-1.0,-self.deadzone,-1.0,0.0)
 
-        bucket_act_vel=self.get_input_values(msg, "ACTUATOR_X")
         if(bucket_act_vel<self.deadzone and bucket_act_vel>-self.deadzone): bucket_act_vel=0.0
         elif(bucket_act_vel > 0): bucket_act_vel=self.map_value(bucket_act_vel,self.deadzone,1.0,0.0,1.0)
         else: bucket_act_vel=self.map_value(bucket_act_vel,-1.0,-self.deadzone,-1.0,0.0)
@@ -141,7 +154,7 @@ class ControllerNode(Node):
         # If unarmed or controller is disconnected send a speed of 0, 
         if self.triggered_automation != None and (self.get_input_values(msg, "ARM") == 0 or self.connected == False):
             if time.time()-self.triggered_automation>=self.automation_timeout: self.triggered_automation=None
-            elif self.triggered_automation_type<=3:
+            elif self.triggered_automation_type != None and self.triggered_automation_type<=3:
                 self.trigger_sequence("interrupt")
                 self.triggered_automation=None
                 self.triggered_automation_type=None

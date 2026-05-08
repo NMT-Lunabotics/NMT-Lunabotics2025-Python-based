@@ -1,9 +1,9 @@
 controller_input_node:      
   ros__parameters:      
     automations:     
-      A_BUTTON: dig
+      A_BUTTON: dump
       B_BUTTON: none
-      X_BUTTON: dump
+      X_BUTTON: dig
       Y_BUTTON: none
       HORIZONTAL_DPAD_LEFT: auto_dig_1s
       HORIZONTAL_DPAD_RIGHT: none

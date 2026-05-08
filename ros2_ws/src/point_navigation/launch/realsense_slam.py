@@ -63,7 +63,7 @@ def generate_launch_description():
             'map_frame_id': 'map',
             'publish_tf_map': 'true',
 
-            'rtabmap_viz': 'false',
+            'rtabmap_viz': 'true',
 
 
 

@@ -109,18 +109,21 @@ python3 system_control/uploud_code.py
 
 
 # Extra
+**Launch nav2**
 ros2 launch nav2_bringup navigation_launch.py use_sim_time:=false params_file:=Documents/NMT-Lunabotics2025-Python-based/ros2_ws/src/point_navigation/config/nav2_params.yaml
 
-
-
+**Launch serial**
 ros2 run serial_commands serial_talker_node.py --ros-args -p navigation_mode:=true -p log_level:=info
 
+**Launch point navigator**
 ros2 launch nav2_bringup navigation_launch.py use_sim_time:=false params_file:=ros2_ws/src/point_navigation/config/nav2_params.yaml
 
-./start_docker.sh -i -b -s n
-
+**Launch rviz2 with config**
 rviz2 -d ros2_ws/src/point_navigation/config/nav.rviz
 
-
+**Set system waypoint**
 ros2 param set /waypoint target_name berm
 ros2 service call /save_target_location std_srvs/srv/SetBool "{data: true}"
+
+**Launch apriltag node with visuals**
+ros2 run camera camera_apriltag_node.py ros2 run camera camera_apriltag_node --ros-args -p publish_map:=true -p publish_processed:=true

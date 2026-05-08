@@ -246,8 +246,8 @@ bool system_started = false;
 // Motor and actuator timeout variables, shutdown motors and actuators if a message is not reviced within timeout period
 unsigned long last_actuator_cmd_time = 0; 
 unsigned long last_motor_cmd_time = 0;
-int motor_timeout = 100;
-int actuator_timeout = 100;
+int motor_timeout = 300;
+int actuator_timeout = 300;
 
 // Serial and state
 bool serial_connection_established=false;
