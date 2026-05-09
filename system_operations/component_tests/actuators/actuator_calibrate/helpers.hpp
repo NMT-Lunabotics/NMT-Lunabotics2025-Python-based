@@ -83,6 +83,7 @@ class PWM_Driver {
   OutPin dir1_pin;
   OutPin dir2_pin;
   bool invert = false;
+  int act_speed = 0;
 
 public:
   PWM_Driver(OutPin pwm_pin, OutPin dir1_pin, OutPin dir2_pin, bool invert=false) 
@@ -105,6 +106,7 @@ public:
       dir2_pin.write(0);
     }
     pwm_pin.write_pwm_raw(abs(speed));
+    digitalWrite(30, abs(speed));
   }
   else{
     Serial.println(speed);
@@ -125,6 +127,7 @@ public:
     dir1_pin.write(0);
     dir2_pin.write(0);
     pwm_pin.write_pwm_raw(0);
+    digitalWrite(24, 0);
   }
 };
 
