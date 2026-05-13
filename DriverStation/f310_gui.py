@@ -77,8 +77,8 @@ CONTROLLER_NAME_HINTS = (
     "x-box 360 pad",
 )
 UDP_DESTINATION: Tuple[str, int] = ("0.0.0.0", 11000)
-SEND_RATE_HZ = 40.0
-IDLE_RATE_HZ = 40.0  # kee p the outbound stream at a constant 50 Hz
+SEND_RATE_HZ = 500.0
+IDLE_RATE_HZ = 500.0  # kee p the outbound stream at a constant 50 Hz
 DEADZONE = 0.10
 HOLD_BUTTON_INDEX = 4  # LB acts as deadman switch by default
 MAX_DISPLAY_AXES = 8
@@ -95,7 +95,7 @@ LEGACY_DISCOVERY_PORT = 10000
 DISCOVERY_ATTEMPTS = 5
 DISCOVERY_TIMEOUT = 0.6
 AUTO_IP_CONNECT=False
-SAVED_IPS = ["192.168.0.207", "129.138.171.148"]
+SAVED_IPS = ["192.168.0.207", "129.138.171.148", "192.168.2.127"]
 password_file = os.path.join("DriverStation", "userpassword")
 
 # --- UI colors -------------------------------------------------------------------
@@ -1300,6 +1300,37 @@ class ControlStationGUI:
             return
 
         axes = (snapshot.axes + [0.0] * MAX_DISPLAY_AXES)[:MAX_DISPLAY_AXES]
+
+        def _maybe_send_packet(self, snapshot: ControllerSnapshot) -> None:
+            now = time.monotonic()
+            interval = 1.0 / (SEND_RATE_HZ if snapshot.connected else IDLE_RATE_HZ)
+            if now - self._last_tx < interval:
+                return
+
+            raw = (snapshot.axes + [0.0] * MAX_DISPLAY_AXES)[:MAX_DISPLAY_AXES]
+
+            axes = [0.0] * MAX_DISPLAY_AXES
+            axes[0] = raw[3]   # left X
+            axes[1] = raw[2]   # left Y
+            axes[2] = raw[0]   # right X
+            axes[3] = raw[1]   # right Y
+            axes[4] = raw[4]   # left trigger
+            axes[5] = raw[5]   # right trigger
+            axes[6] = raw[6]   # dpad X
+            axes[7] = raw[7]   # dpad Y
+
+            buttons = snapshot.buttons
+            armed = False
+            if HOLD_BUTTON_INDEX < len(buttons):
+                armed = bool(buttons[HOLD_BUTTON_INDEX])
+
+            axes_i8 = [quantize_axis(value, DEADZONE) for value in axes]
+            mask = 0
+            for i in range(min(16, len(buttons))):
+                if buttons[i]:
+                    mask |= 1 << i
+
+
         buttons = snapshot.buttons
         armed = False
         if HOLD_BUTTON_INDEX < len(buttons):
