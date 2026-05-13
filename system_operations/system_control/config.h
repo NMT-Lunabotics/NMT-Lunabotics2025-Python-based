@@ -3,6 +3,7 @@
 #define CONFIG_H
 
 #define MAIN_ROBOT 1 // REGULUS settings=0, BERMINATOR settings=1, NUC settings=2 
+#define PCB_BOARD_SCHEMATIC 0 // REGULUS=0, BERMINATOR=1
 
 //------------------------------------------------------------
 //        MAIN ROBOT SETTINGS (REGULUS and BERMINATOR)
@@ -16,7 +17,7 @@
   #define ARM_ACTUATORS_ENABLED        1
   #define SERVO_MOTOR_ENABLED          0
   #define IMU_SENSOR_ENABLED           0
-  #define IBUS_RECIVER_ENABLED         1
+  #define IBUS_RECIVER_ENABLED         0
   #define SCREEN_ENABLED               0
 
   // List of faults to disable

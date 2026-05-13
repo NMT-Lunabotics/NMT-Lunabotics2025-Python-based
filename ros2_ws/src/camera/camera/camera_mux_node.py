@@ -14,6 +14,7 @@ class CameraMux(Node):
             1: 'camera1/image_raw/compressed',
             2: 'camera2/image_raw/compressed',
         }
+        self.direct_mode = True
         self.camera_indexes = [0,1]
         self.index_cycle_state=0
 
@@ -24,6 +25,11 @@ class CameraMux(Node):
         publisher_qos = QoSProfile(reliability=QoSReliabilityPolicy.RELIABLE,history=QoSHistoryPolicy.KEEP_LAST,depth=1,durability=DurabilityPolicy.VOLATILE)
         self.pub = self.create_publisher(CompressedImage, '/camera/stream', publisher_qos)
         self.latest_frames = {}
+        if self.direct_mode: self.camera_indexes = list(self.cameras.keys())
+
+        self.declare_parameter('nav_stream', '-1')
+        self.nav_stream = int(self.get_parameter('nav_stream').value)
+        if self.nav_stream !=-1: self.cameras = {self.nav_stream: '/camera/camera/color/image_raw/compressed'}
 
         self.declare_parameter('output_fps', 5.0)
         self.output_fps = self.get_parameter('output_fps').value
@@ -48,6 +54,12 @@ class CameraMux(Node):
 
     # Switch camera streams
     def toggle_stream(self, msg: Camera):
+        if self.direct_mode:
+            if msg.camera_view in self.cameras:
+                self.active_index = msg.camera_view
+                self.last_index = self.active_index
+            return
+
         if msg.camera_increment == True:
             if self.index_cycle_state == 0:
                 self.index_cycle_state = 1
@@ -75,7 +87,9 @@ class CameraMux(Node):
         
         # Rate limit the topic
         if time_since_last >= (1.0 / self.output_fps) and self.active_index in self.latest_frames:
-            self.pub.publish(self.latest_frames[self.camera_indexes[self.active_index]])
+            if self.active_index < len(self.camera_indexes):
+                cam_id = self.camera_indexes[self.active_index]
+                if cam_id in self.latest_frames: self.pub.publish(self.latest_frames[cam_id])
             self.frames_published += 1
             self.last_publish_time = current_time
 

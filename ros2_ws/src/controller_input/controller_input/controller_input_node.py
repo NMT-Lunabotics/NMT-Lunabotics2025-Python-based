@@ -12,7 +12,7 @@ class ControllerNode(Node):
         super().__init__('controller_input_node')
         self.connected = False
         self.time=self.get_clock().now()
-        self.last_camera_state_change=self.time
+        self.last_camera_state_change=self.get_clock().now()
         self.last_msg_time = self.time
         self.controller_schematic=[]
         self.active_controller={}
@@ -26,9 +26,13 @@ class ControllerNode(Node):
         self.last_save_time=0
         self.remap_square=True
         self.sqrt2=math.sqrt(2)
+        self.current_camera_view=0
 
-        self.default_camera_view=0
-        self.second_camera_view=1
+        self.main_camera=0
+        self.arm_camera=1
+        self.bridge_camera=2
+        self.toggle_activated=False
+        self.toggle_state=0
 
         self.arm_actuator_direction=0
         self.bucket_actuator_direction=0
@@ -62,7 +66,7 @@ class ControllerNode(Node):
         self.camera_msg = Camera()
         self.servo_msg = Command()
         self.estop_msg = Command()
-        self.camera_msg.camera_view = self.default_camera_view
+        self.camera_msg.camera_view = 0
 
         # Load the controller schematic
         self.declare_parameter('controllers', '')
@@ -210,20 +214,25 @@ class ControllerNode(Node):
                 if self.get_input_values(msg, 'X_BUTTON') == 1: 
                     self.motor_sideways_direction=1-self.motor_sideways_direction
                     self.triggered_settings_update=time.time()
+                    return
                 elif self.get_input_values(msg, 'A_BUTTON') == 1: 
                     self.arm_actuator_direction=1-self.arm_actuator_direction
                     self.triggered_settings_update=time.time()
+                    return
                 elif self.get_input_values(msg, 'B_BUTTON') == 1: 
                     self.bucket_actuator_direction=1-self.bucket_actuator_direction
                     self.triggered_settings_update=time.time()
+                    return
                 elif self.get_input_values(msg, 'Y_BUTTON') == 1: 
                     self.motor_lateral_direction=1-self.motor_lateral_direction
                     self.triggered_settings_update=time.time()
+                    return
 
             # Swaps motor directions for backwords driving
             elif self.get_input_values(msg, 'CAMERA_TOGGLE') == 1:
                 self.motor_lateral_direction=1-self.motor_lateral_direction
                 self.triggered_settings_update=time.time()
+                return
 
             elif self.get_input_values(msg, 'MOTOR_X') != 0 and self.get_input_values(msg, "ARM") == 0:
                 servo_msg = Command()
@@ -232,16 +241,19 @@ class ControllerNode(Node):
                 servo_msg.data=[angle]
                 servo_msg.blocking_id=0
                 self.servo_msg=servo_msg
+                return
 
             elif self.get_input_values(msg, 'POS1_SAVE') == 1 and time.time() - self.last_save_time > 0.5:
                 self.last_save_time = time.time()
                 subprocess.Popen(["ros2", "param", "set","/waypoint", "target_name", "berm"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 subprocess.Popen(["ros2", "service", "call","/save_target_location","std_srvs/srv/SetBool","{data: true}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                return
 
             elif self.get_input_values(msg, 'NAV_TRIGGER') == -1 and time.time() - self.last_save_time > 0.5:
                 self.last_save_time = time.time()
                 subprocess.Popen(["ros2", "param", "set","/waypoint", "nav_target_name", "berm"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 subprocess.Popen(["ros2", "service", "call","/navigation_goal_target","std_srvs/srv/SetBool","{data: true}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                return
             
         # Motor velocity data
         motor=Twist()
@@ -263,18 +275,38 @@ class ControllerNode(Node):
         # Publish camera data
         camera_msg = Camera()
 
-        camera_state_actiave=self.get_input_values(msg, "CAMERA_TOGGLE")
+        camera_state_active=self.get_input_values(msg, "CAMERA_TOGGLE")
+        camera_state_active2=self.get_input_values(msg, "LEFT_STICK")
         camera_state = self.get_input_values(msg, "CAMERA_SWITCH")
-        if self.get_input_values(msg, "LEFT_STICK") == 1: camera_msg.camera_increment=True 
-        
-        if(camera_state_actiave==0): camera_msg.camera_view = self.default_camera_view
-        else: camera_msg.camera_view = self.second_camera_view
 
-        if(camera_state==1 and (self.time-self.last_camera_state_change).nanoseconds*1e-9>0.3):
-            default=self.default_camera_view
-            self.default_camera_view=self.second_camera_view
-            self.second_camera_view=default
-            self.last_camera_state_change=self.time
+        if(camera_state_active==0 and camera_state_active2==0 and self.toggle_activated==True): 
+            if(self.toggle_state==1):
+                if(self.current_camera_view==self.main_camera): self.current_camera_view=self.arm_camera
+                else: self.current_camera_view=self.main_camera
+            elif(self.toggle_state==2):
+                if(self.current_camera_view==self.main_camera): self.current_camera_view=self.bridge_camera
+                else: self.current_camera_view=self.main_camera
+            self.toggle_state=0
+            self.toggle_activated=False
+
+        if(camera_state_active==1 and self.toggle_activated==False): 
+            if(self.current_camera_view==self.main_camera): self.current_camera_view=self.arm_camera
+            else: self.current_camera_view=self.main_camera
+            self.toggle_activated=True
+            self.toggle_state=1
+
+        elif(camera_state_active2==1 and self.toggle_activated==False): 
+            if(self.current_camera_view==self.main_camera): self.current_camera_view=self.bridge_camera
+            else: self.current_camera_view=self.main_camera
+            self.toggle_activated=True
+            self.toggle_state=2
+
+        elif camera_state == 1 and (self.get_clock().now() - self.last_camera_state_change).nanoseconds * 1e-9 > 0.3:
+            if(self.current_camera_view==self.main_camera): self.current_camera_view=self.arm_camera
+            elif(self.current_camera_view==self.arm_camera): self.current_camera_view=self.bridge_camera
+            elif(self.current_camera_view==self.bridge_camera): self.current_camera_view=self.main_camera
+            self.last_camera_state_change=self.get_clock().now()
+        camera_msg.camera_view=self.current_camera_view
         self.camera_msg=camera_msg
 
     def trigger_sequence(self, name):

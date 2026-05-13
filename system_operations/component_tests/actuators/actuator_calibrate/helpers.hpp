@@ -127,7 +127,6 @@ public:
     dir1_pin.write(0);
     dir2_pin.write(0);
     pwm_pin.write_pwm_raw(0);
-    digitalWrite(24, 0);
   }
 };
 

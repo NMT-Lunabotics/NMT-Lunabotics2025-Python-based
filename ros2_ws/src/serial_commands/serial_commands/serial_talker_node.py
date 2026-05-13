@@ -199,7 +199,7 @@ class SerialTalkerNode(Node):
 
             left_motor = int((left_motor/max_val)*self.motor_vel_scale)
             right_motor = int((right_motor/max_val)*self.motor_vel_scale)
-            self.get_logger().info(f"{left_motor} {right_motor}")
+            #self.get_logger().info(f"{left_motor} {right_motor}")
 
             self.update_command('M', [left_motor, right_motor], blocking_id)
         else:

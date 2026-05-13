@@ -5,18 +5,24 @@ from launch.events import Shutdown
 from launch_ros.actions import Node
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from ament_index_python.packages import get_package_share_directory
-from launch.actions import SetEnvironmentVariable
+from launch.logging import get_logger
 import yaml, os
 
 def launch_setup(context):
     """Launches a topic for each camera specified in cameras.yaml, debug/system use. And starts camera stream with feed switching for userinterface use"""
+    logger = get_logger('camera_launch')
     camera_config = context.launch_configurations['camera_config']
+    nav_stream = context.launch_configurations['nav_stream']
     with open(camera_config, 'r') as f: config = yaml.safe_load(f)
 
     nodes = []
     shutdown_handlers = []
     for cam in config['cameras']:
         # v4l2 camera node publishes raw video data
+        if not os.path.exists(cam['video_device']):
+             if not os.path.exists(cam['video_device']):
+                logger.warning(f"\033[33mCamera device {cam['video_device']} "f"does not exist. Skipping {cam['name']}\033[0m")
+                continue
         camera_node = Node(
             package='v4l2_camera',
             executable='v4l2_camera_node',
@@ -66,7 +72,8 @@ def launch_setup(context):
             executable='camera_mux_node.py',
             name='camera_mux_node',
             parameters=[{
-                'output_fps': mux_fps
+                'output_fps': mux_fps,
+                'nav_stream': nav_stream
             }]
         )
     )
@@ -75,6 +82,7 @@ def launch_setup(context):
 def generate_launch_description():
     default_camera_yaml = os.path.join(get_package_share_directory('camera'),'config','pc_cameras.yaml')
     return LaunchDescription([
+        DeclareLaunchArgument('nav_stream', default_value='-1'),
         DeclareLaunchArgument('camera_config',default_value=default_camera_yaml, description='Path to cameras.yaml configuration file'),
         OpaqueFunction(function=launch_setup)
     ])

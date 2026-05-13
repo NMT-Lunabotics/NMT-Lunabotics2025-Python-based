@@ -349,7 +349,7 @@ if [ "$INTERACTIVE_HOST" = true ]; then
         elif [ "$LAUNCH_FILE_TYPE" == 1 ]; then
             ros2 launch system_start system_user_interface_launch.py
         elif [ "$LAUNCH_FILE_TYPE" == 2 ]; then
-            ros2 launch system_start system_navigation_launch.py
+            ros2 launch system_start system_navigation_launch.py nav_stream:=-1
         fi
     elif [ "$RUN_SERIAL_LAUNCH" == true ]; then
         ros2 launch serial_commands serial_launch.py

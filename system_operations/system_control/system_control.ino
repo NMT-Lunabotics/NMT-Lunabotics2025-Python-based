@@ -56,26 +56,63 @@ enum LedState { OFF = 0, NONE = -1, ON = 1, BLINK = 2 };
 
 //--------------- PINS ---------------
 
-// Driver 1 pins
+#if PCB_BOARD_SCHEMATIC == 0
+//REGULITH_PCD_BOARD
+  // Driver 1 pins
+  #define DRV11_PWM_PIN 6
+  #define DRV11_DIR1_PIN 34
+  #define DRV11_DIR2_PIN 36
+  #define DRV12_PWM_PIN 7
+  #define DRV12_DIR1_PIN 38
+  #define DRV12_DIR2_PIN 40
+
+  // Driver 2 pins
+  #define DRV21_PWM_PIN 9
+  #define DRV21_DIR1_PIN 44
+  #define DRV21_DIR2_PIN 42
+  #define DRV22_PWM_PIN 8
+  #define DRV22_DIR1_PIN 46
+  #define DRV22_DIR2_PIN 48
+#endif
+
+#if PCB_BOARD_SCHEMATIC == 1
+//LEFT
+#define DRV12_PWM_PIN 8
+#define DRV12_DIR1_PIN 38
+#define DRV12_DIR2_PIN 40
+#define POTL_PIN A0
+//35, 865
+
+//RIGHT
 #define DRV11_PWM_PIN 6
 #define DRV11_DIR1_PIN 34
 #define DRV11_DIR2_PIN 36
-#define DRV12_PWM_PIN 7
-#define DRV12_DIR1_PIN 38
-#define DRV12_DIR2_PIN 40
+#define POTR_PIN A2
+// 35, 876
 
-// Driver 2 pins
-#define DRV21_PWM_PIN 9
-#define DRV21_DIR1_PIN 44
-#define DRV21_DIR2_PIN 42
-#define DRV22_PWM_PIN 8
-#define DRV22_DIR1_PIN 46
-#define DRV22_DIR2_PIN 48
+//BUCKET
+#define DRV21_PWM_PIN 7
+#define DRV21_DIR1_PIN 48
+#define DRV21_DIR2_PIN 46
+#define POTB_PIN A1
+// 37 ,800
 
-// Actuator potentiometer read pins
-#define POTL_PIN A1
-#define POTR_PIN A0
-#define POTB_PIN A3
+
+#endif
+
+#if PCB_BOARD_SCHEMATIC == 0
+  // Actuator potentiometer read pins
+  #define POTL_PIN A1
+  #define POTR_PIN A0
+  #define POTB_PIN A3
+#endif
+
+#if PCB_BOARD_SCHEMATIC == 1
+  // Actuator potentiometer read pins
+  //#define POTL_PIN A0
+  //#define POTR_PIN A3
+  //#define POTB_PIN A1
+#endif
 
 //--------------- SETTINGS ---------------
 
@@ -90,12 +127,21 @@ enum LedState { OFF = 0, NONE = -1, ON = 1, BLINK = 2 };
 
 // Actuator potentiometer min and max values
 #if MAIN_ROBOT==1
-  #define AL_POT_MIN 30   
-  #define AL_POT_MAX 868  
-  #define AR_POT_MIN 30   
-  #define AR_POT_MAX 878  
-  #define AB_POT_MIN 32          
-  #define AB_POT_MAX 799          
+  #if PCB_BOARD_SCHEMATIC == 0
+    #define AL_POT_MIN 30   
+    #define AL_POT_MAX 868  
+    #define AR_POT_MIN 30   
+    #define AR_POT_MAX 878  
+    #define AB_POT_MIN 32          
+    #define AB_POT_MAX 799    
+  #elif PCB_BOARD_SCHEMATIC == 1
+    #define AL_POT_MIN 35  
+    #define AL_POT_MAX 865  
+    #define AR_POT_MIN 35 
+    #define AR_POT_MAX 876 
+    #define AB_POT_MIN 37     
+    #define AB_POT_MAX 800
+  #endif
 #else
   #define AL_POT_MIN 48 
   #define AL_POT_MAX 881  
@@ -634,10 +680,19 @@ void loop() {
         aR_pos = act_right.update_pos("Act R: ");
         float factor = (aL_pos - aR_pos) * vel_gain;
         // Actuator bound chacks, softwere side stops
-        if ((aL_speed < 0 && aL_pos >= arm_soft_max) || (aR_speed > 0 && aR_pos <= arm_soft_min)) {
-          aL_speed = 0;  
-          aR_speed = 0;  
-        }
+        #if PCB_BOARD_SCHEMATIC == 0
+          if ((aL_speed < 0 && aL_pos >= arm_soft_max) || (aR_speed > 0 && aR_pos <= arm_soft_min)) {
+            Serial.println(aL_speed);
+            aL_speed = 0;  
+            aR_speed = 0;  
+          }
+        #elif PCB_BOARD_SCHEMATIC == 1
+          if ((aL_speed > 0 && aL_pos >= arm_soft_max) || (aR_speed < 0 && aR_pos <= arm_soft_min)) {
+            Serial.println(aL_speed);
+            aL_speed = 0;  
+            aR_speed = 0;  
+          }
+        #endif
     
         act_left.curved_vel_ctrl(aL_speed, -factor);
         act_right.curved_vel_ctrl(aR_speed, factor);
