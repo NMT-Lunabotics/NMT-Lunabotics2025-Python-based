@@ -1,0 +1,49 @@
+controller_input_node:      
+  ros__parameters:           
+    controllers:
+      logitech:
+        identifying_keys: ["Logitech"]
+        axes:
+          LEFT_JOY_X: 0
+          LEFT_JOY_Y: 1
+          LEFT_TRIGGER: 2
+          RIGHT_JOY_X: 3
+          RIGHT_JOY_Y: 4
+          RIGHT_TRIGGER: 5
+          HORIZONTAL_DPAD: 6
+          VERTICAL_DPAD: 7
+        buttons:
+          BUTTON_X: 2
+          BUTTON_A: 0
+          BUTTON_B: 1
+          BUTTON_Y: 3
+          LEFT_BUMPER: 4
+          RIGHT_BUMPER: 5
+          BACK: 6
+          START: 7
+          LEFT_STICK_BUTTON: 9
+          RIGHT_STICK_BUTTON: 10
+
+      xbox:
+        identifying_keys: ["Xbox", "microsoft"]
+        axes:
+          LEFT_JOY_X: 0
+          LEFT_JOY_Y: 1
+          LEFT_TRIGGER: 2
+          RIGHT_JOY_X: 3
+          RIGHT_JOY_Y: 4
+          RIGHT_TRIGGER: 5
+          HORIZONTAL_DPAD: 6
+          VERTICAL_DPAD: 7
+        buttons:
+          BUTTON_A: 0
+          BUTTON_B: 1
+          BUTTON_X: 2
+          BUTTON_Y: 3
+          LEFT_BUMPER: 4
+          RIGHT_BUMPER: 5
+          BACK: 6
+          START: 7
+          GUIDE: 8
+          LEFT_STICK_BUTTON: 9
+          RIGHT_STICK_BUTTON: 10

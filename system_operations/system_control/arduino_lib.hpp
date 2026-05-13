@@ -170,6 +170,12 @@ public:
   }
 };
 
+int mapSegmentInt(int x, int in_min, int in_max, int out_min, int out_max) {
+  if (x <= in_min) return out_min;
+  if (x >= in_max) return out_max;
+  return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min;
+}
+
 // // Captured data to be sent to interrupt handlers.
 // static void *interrupt_data[EXTERNAL_NUM_INTERRUPTS];
 

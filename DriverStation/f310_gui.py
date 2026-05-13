@@ -20,12 +20,15 @@ Command console submissions are transmitted verbatim (UTF-8 encoded) to
 from __future__ import annotations
 
 import io
+import ipaddress
 import json
 import os
 import socket
 import struct
 import threading
 import time
+import subprocess
+import platform
 import urllib.request
 from array import array
 from dataclasses import dataclass
@@ -42,24 +45,58 @@ else:
 try:
     import tkinter as tk
     from tkinter import ttk
+    import tkinter.font as tkfont
+    from tkinter import simpledialog
 except ImportError as exc:  # pragma: no cover - tkinter unavailable on some envs
     raise SystemExit(f"tkinter is required for this GUI: {exc}")
 
+if os.name == "nt":
+    try:
+        from inputs import devices as inputs_devices  # type: ignore
+        from inputs import UnpluggedError as InputsUnpluggedError  # type: ignore
+        from inputs import get_gamepad as inputs_get_gamepad  # type: ignore
+    except Exception:  # pragma: no cover - optional dependency
+        inputs_devices = None  # type: ignore[assignment]
+        InputsUnpluggedError = None  # type: ignore[assignment]
+        inputs_get_gamepad = None  # type: ignore[assignment]
+else:  # pragma: no cover - non-Windows platforms never import inputs
+    inputs_devices = None  # type: ignore[assignment]
+    InputsUnpluggedError = None  # type: ignore[assignment]
+    inputs_get_gamepad = None  # type: ignore[assignment]
+
 # --- Controller/UDP configuration test---192.168.0.207----------------------------------------------
 
-TARGET_CONTROLLER_NAME = "Logitech Gamepad F310"
-UDP_DESTINATION: Tuple[str, int] = ("192.168.0.207", 11000)
-SEND_RATE_HZ = 50.0
-IDLE_RATE_HZ = 50.0  # kee p the outbound stream at a constant 50 Hz
+TARGET_CONTROLLER_NAME = "Logitech Gamepad F310" #Logitech Logitech Cordless RumblePad 2
+CONTROLLER_NAME_HINTS = (
+    "logitech gamepad f310",
+    "logitech",
+    "f310",
+    "xbox 360 controller",
+    "controller (xbox 360 for windows)",
+    "microsoft controller",
+    "x-box 360 pad",
+)
+UDP_DESTINATION: Tuple[str, int] = ("0.0.0.0", 11000)
+SEND_RATE_HZ = 500.0
+IDLE_RATE_HZ = 500.0  # kee p the outbound stream at a constant 50 Hz
 DEADZONE = 0.10
 HOLD_BUTTON_INDEX = 4  # LB acts as deadman switch by default
-MAX_DISPLAY_AXES = 6
-MAX_DISPLAY_BUTTONS = 12
+MAX_DISPLAY_AXES = 8
+MAX_DISPLAY_BUTTONS = 16
 TELEMETRY_LISTEN: Tuple[str, int] = ("0.0.0.0", 10000)
 COMMAND_DESTINATION: Tuple[str, int] = ("0.0.0.0", 10001)
+CAMERA_HTTP_PORT = 8081
 CAMERA_REFRESH_HZ = 6.0
-CAMERA_DEFAULT_URL: Optional[str] = "http://127.0.0.1:8081/frame"
+CAMERA_DEFAULT_URL: Optional[str] = None
 KEEPALIVE_INTERVAL = 0.5  # seconds between forced resend of identical packet
+DISCOVERY_PORT = 11010
+DISCOVERY_MAGIC = b"F310_DISCOVERY_V1"
+LEGACY_DISCOVERY_PORT = 10000
+DISCOVERY_ATTEMPTS = 5
+DISCOVERY_TIMEOUT = 0.6
+AUTO_IP_CONNECT=False
+SAVED_IPS = ["192.168.0.207", "129.138.171.148", "192.168.2.127"]
+password_file = os.path.join("DriverStation", "userpassword")
 
 # --- UI colors -------------------------------------------------------------------
 
@@ -93,6 +130,35 @@ JSIOCGBUTTONS = _IOC(_IOC_READ, "j", 0x12, 1)
 def JSIOCGNAME(length: int) -> int:
     return _IOC(_IOC_READ, "j", 0x13, length)
 
+WINDOWS_AXIS_MAP = {
+    "ABS_X": 0,
+    "ABS_Y": 1,
+    "ABS_Z": 2,
+    "ABS_RX": 3,
+    "ABS_RY": 4,
+    "ABS_RZ": 5,
+    "ABS_HAT0X": 6,
+    "ABS_HAT0Y": 7,
+}
+
+WINDOWS_BUTTON_MAP = {
+    "BTN_SOUTH": 0,
+    "BTN_EAST": 1,
+    "BTN_NORTH": 2,
+    "BTN_WEST": 3,
+    "BTN_TL": 4,
+    "BTN_TR": 5,
+    "BTN_SELECT": 6,
+    "BTN_START": 7,
+    "BTN_MODE": 8,
+    "BTN_THUMBL": 9,
+    "BTN_THUMBR": 10,
+    "BTN_TRIGGER_HAPPY1": 11,
+    "BTN_TRIGGER_HAPPY2": 12,
+    "BTN_TRIGGER_HAPPY3": 13,
+    "BTN_TRIGGER_HAPPY4": 14,
+}
+
 
 # --- Helper utilities -------------------------------------------------------------
 
@@ -120,6 +186,7 @@ def find_matching_device(target_name: Optional[str]) -> Tuple[Optional[str], Opt
     import glob
 
     candidates = sorted(glob.glob("/dev/input/js*"))
+    fallback: Tuple[Optional[str], Optional[str]] = (None, None)
     for path in candidates:
         try:
             fd = os.open(path, os.O_RDONLY | os.O_NONBLOCK)
@@ -129,12 +196,43 @@ def find_matching_device(target_name: Optional[str]) -> Tuple[Optional[str], Opt
             name = read_device_name(fd)
         finally:
             os.close(fd)
-        if target_name:
-            if target_name.lower() in (name or "").lower():
-                return path, name
-        else:
+        if fallback == (None, None):
+            fallback = (path, name)
+        if _matches_controller_name(name, target_name):
             return path, name
-    return None, None
+    return fallback
+
+
+def _matches_controller_name(name: Optional[str], target_name: Optional[str]) -> bool:
+    if not name:
+        return target_name is None
+    lower_name = name.lower()
+    if target_name and target_name.lower() in lower_name:
+        return True
+    return any(hint in lower_name for hint in CONTROLLER_NAME_HINTS)
+
+
+def _windows_gamepad_name(gamepad: object) -> str:
+    for attr in ("name", "device_name", "_GamePad__device_path", "_character_device_path"):
+        value = getattr(gamepad, attr, None)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return "Windows Gamepad"
+
+
+def _pick_windows_gamepad(target_name: Optional[str]) -> Optional[object]:
+    if inputs_devices is None:
+        return None
+    try:
+        gamepads = list(inputs_devices.gamepads)
+    except Exception:
+        return None
+    if not gamepads:
+        return None
+    for gamepad in gamepads:
+        if _matches_controller_name(_windows_gamepad_name(gamepad), target_name):
+            return gamepad
+    return gamepads[0]
 
 
 def normalize_axis_value(raw: int) -> float:
@@ -150,6 +248,22 @@ def quantize_axis(value: float, deadzone: float) -> int:
         return 0
     value = max(-1.0, min(1.0, value))
     return int(round(value * 127.0))
+
+
+def _normalize_windows_axis(_code: str, value: int) -> float:
+    if value is None:
+        return 0.0
+    if _code in {"ABS_HAT0X", "ABS_HAT0Y"}:
+        return max(-1.0, min(1.0, float(value)))
+    if -32768 <= value <= 32767:
+        return max(-1.0, min(1.0, value / 32767.0))
+    if 0 <= value <= 65535:
+        scaled = (value / 32767.5) - 1.0
+        return max(-1.0, min(1.0, scaled))
+    if 0 <= value <= 255:
+        scaled = (value / 127.5) - 1.0
+        return max(-1.0, min(1.0, scaled))
+    return 0.0
 
 
 def build_full_packet(seq: int, armed: bool, axes_i8: List[int], buttons_mask16: int) -> bytes:
@@ -230,6 +344,7 @@ class JoystickWorker:
         self._name = ""
         self._stop_event = threading.Event()
         self._thread = threading.Thread(target=self._run, name="JoystickWorker", daemon=True)
+        self._backend = self._select_backend()
 
     def start(self) -> None:
         self._thread.start()
@@ -252,6 +367,17 @@ class JoystickWorker:
     # Internal ------------------------------------------------------------------
 
     def _run(self) -> None:
+        if self._backend == "windows":
+            self._run_windows()
+            return
+        if self._backend == "linux":
+            self._run_linux()
+            return
+        self._mark_disconnected()
+        while not self._stop_event.wait(1.0):
+            pass
+
+    def _run_linux(self) -> None:
         fd: Optional[int] = None
         while not self._stop_event.is_set():
             if fd is None:
@@ -315,6 +441,67 @@ class JoystickWorker:
                 os.close(fd)
             except OSError:
                 pass
+
+    def _run_windows(self) -> None:
+        if inputs_get_gamepad is None or InputsUnpluggedError is None:
+            print("Windows controller support requires the 'inputs' package (pip install inputs).")
+            self._mark_disconnected()
+            while not self._stop_event.wait(1.0):
+                pass
+            return
+
+        axes = [0.0] * MAX_DISPLAY_AXES
+        buttons = [0] * MAX_DISPLAY_BUTTONS
+        selected_gamepad = _pick_windows_gamepad(self._target_name)
+        if selected_gamepad is not None:
+            with self._lock:
+                self._axes = list(axes)
+                self._buttons = list(buttons)
+                self._connected = True
+                self._name = _windows_gamepad_name(selected_gamepad)
+        while not self._stop_event.is_set():
+            try:
+                events = inputs_get_gamepad()
+            except InputsUnpluggedError:
+                self._mark_disconnected()
+                self._stop_event.wait(0.5)
+                continue
+            except Exception:
+                self._mark_disconnected()
+                self._stop_event.wait(0.5)
+                continue
+            updated = False
+            if not self._connected:
+                selected_gamepad = _pick_windows_gamepad(self._target_name)
+                if selected_gamepad is not None:
+                    with self._lock:
+                        self._axes = list(axes)
+                        self._buttons = list(buttons)
+                        self._connected = True
+                        self._name = _windows_gamepad_name(selected_gamepad)
+            for event in events:
+                code = event.code
+                value = event.state
+                if code in WINDOWS_AXIS_MAP:
+                    idx = WINDOWS_AXIS_MAP[code]
+                    axes[idx] = _normalize_windows_axis(code, value)
+                    updated = True
+                elif code in WINDOWS_BUTTON_MAP:
+                    idx = WINDOWS_BUTTON_MAP[code]
+                    if 0 <= idx < MAX_DISPLAY_BUTTONS:
+                        buttons[idx] = 1 if value else 0
+                        updated = True
+            if updated:
+                with self._lock:
+                    self._axes = list(axes)
+                    self._buttons = list(buttons)
+                    self._connected = True
+                    self._name = _windows_gamepad_name(selected_gamepad) if selected_gamepad is not None else "Windows Gamepad"
+
+    def _select_backend(self) -> str:
+        if os.name == "nt":
+            return "windows" if inputs_get_gamepad is not None else "unsupported"
+        return "linux"
 
     def _mark_disconnected(self) -> None:
         with self._lock:
@@ -460,6 +647,249 @@ class TelemetryListener:
         return str(value)
 
 
+def ask_password():
+    root = tk.Tk()
+    root.withdraw()
+    pw = simpledialog.askstring("User password","Please enter PC password.\nThis will be saved inside DriverStation.")
+    root.destroy()
+    
+    if pw is None:
+        print("Password entry canceled by user!")
+        return None
+    return pw
+
+def discover_robot(
+    attempts: int = DISCOVERY_ATTEMPTS, timeout: float = DISCOVERY_TIMEOUT
+) -> Optional[Tuple[str, int, int, int]]:
+    """Discover robot via a cross-platform UDP probe and parse modern or legacy replies."""
+    sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
+    sock.settimeout(timeout)
+    try:
+        sock.bind(("", 0))
+    except OSError:
+        sock.close()
+        return None
+
+    try:
+        for _ in range(max(1, attempts)):
+            for port, payload in (
+                (DISCOVERY_PORT, DISCOVERY_MAGIC),
+                (LEGACY_DISCOVERY_PORT, b"B-NMT26"),
+            ):
+                try:
+                    sock.sendto(payload, ("255.255.255.255", port))
+                except OSError:
+                    continue
+
+            deadline = time.monotonic() + timeout
+            while time.monotonic() < deadline:
+                remaining = max(0.01, deadline - time.monotonic())
+                sock.settimeout(remaining)
+                try:
+                    data, addr = sock.recvfrom(1024)
+                except socket.timeout:
+                    break
+                except OSError:
+                    return None
+
+                text = data.decode(errors="ignore").strip()
+                if not text:
+                    continue
+
+                try:
+                    parsed = json.loads(text)
+                except json.JSONDecodeError:
+                    parsed = None
+
+                if isinstance(parsed, dict):
+                    host = addr[0]
+                    udp_port = int(parsed.get("udp_port", UDP_DESTINATION[1]))
+                    command_port = int(parsed.get("command_port", COMMAND_DESTINATION[1]))
+                    telemetry_port = int(parsed.get("telemetry_port", TELEMETRY_LISTEN[1]))
+                    return host, udp_port, command_port, telemetry_port
+
+                if text.startswith("NMT26:"):
+                    return addr[0], UDP_DESTINATION[1], COMMAND_DESTINATION[1], TELEMETRY_LISTEN[1]
+    finally:
+        sock.close()
+
+    return None
+
+def prompt_for_robot_selection(timeout: float = 5.0) -> Optional[Tuple[str, int, int, int]]:
+    """Show a blocking window that searches for the robot, allowing manual entry."""
+    global SAVED_IPS
+    result: Dict[str, Optional[Tuple[str, int, int, int]]] = {"value": None}
+
+    root = tk.Tk()
+    root.title("Robot Discovery")
+    root.geometry("400x250")
+    root.configure(background=WINDOW_BG)
+
+    status_font = tkfont.Font(family="Arial", size=10, weight="bold")
+    status_var = tk.StringVar(value="Select robot IP address.")
+    ip_var = tk.StringVar()
+    searching = {"active": False}
+    animation_after_id: Dict[str, Optional[str]] = {"value": None}
+    window_closed = {"value": False}
+    attempt=0
+
+    frame = ttk.Frame(root, padding=12, style="Panel.TFrame")
+    frame.pack(fill="both", expand=True)
+    ttk.Label(frame, textvariable=status_var, style="Muted.TLabel", wraplength=400,font=status_font).pack(anchor="w", fill="x")
+
+    # Play loading ip animation while searching for ip address
+    loading_font = tkfont.Font(family="Arial", size=8, weight="normal")
+    anim_var = tk.StringVar(value=f"Attempt(0), Searching for robot IP address")
+
+    entry_label = ttk.Label(frame, text="IP address:", style="Subheading.TLabel")
+    entry_label.pack(anchor="w", pady=(12, 4))
+    entry = ttk.Entry(frame, textvariable=ip_var, style="Console.TEntry")
+    entry.pack(fill="x")
+
+    buttons = ttk.Frame(frame, style="Panel.TFrame")
+    stop_event = threading.Event()
+
+    def window_alive() -> bool:
+        return (not window_closed["value"]) and bool(root.winfo_exists())
+
+    def run_on_ui(func: Callable[[], None]) -> None:
+        if not window_alive():
+            return
+        try:
+            root.after(0, func)
+        except tk.TclError:
+            pass
+
+    def on_dropdown_select(event):
+        value = dropdown_var.get()
+        if value.startswith("---"):
+            dropdown_var.set("")
+        else:
+            ip_var.set(value)
+
+    def finish(value: Optional[Tuple[str, int, int, int]]) -> None:
+        result["value"] = value
+        searching["active"] = False
+        stop_event.set()
+        window_closed["value"] = True
+        after_id = animation_after_id["value"]
+        if after_id is not None:
+            try:
+                root.after_cancel(after_id)
+            except tk.TclError:
+                pass
+            animation_after_id["value"] = None
+        try:
+            root.quit()
+        except tk.TclError:
+            pass
+        try:
+            root.destroy()
+        except tk.TclError:
+            pass
+
+    def run_search() -> None:
+        nonlocal attempt
+        if searching["active"]: return
+        searching["active"] = True
+
+        def worker() -> None:
+            nonlocal attempt
+            while searching["active"] and not stop_event.is_set():
+                attempt += 1
+                current_attempt = attempt
+                run_on_ui(lambda: anim_var.set(f"Attempt({current_attempt}), Searching for robot IP address"))
+                found = discover_robot(attempts=1, timeout=DISCOVERY_TIMEOUT)
+                if found:
+                    searching["active"] = False
+                    run_on_ui(lambda: anim_var.set("Robot IP found!"))
+                    if AUTO_IP_CONNECT:
+                        run_on_ui(lambda: root.after(500, lambda: finish(found)))
+                    else:
+                        result["value"] = found
+                        run_on_ui(update_dropdown)
+                    return
+
+                for _ in range(5):
+                    if stop_event.is_set() or not searching["active"]:return
+                    time.sleep(0.1)
+        
+        threading.Thread(target=worker, daemon=True).start()
+
+    def use_manual_ip() -> None:
+        raw_ip = ip_var.get().strip()
+        if not raw_ip:
+            status_var.set("Please select IP address first.")
+            return
+        try:
+            ipaddress.ip_address(raw_ip)
+        except ValueError:
+            status_var.set("Invalid IP address format. Please try again.")
+            return
+        finish((raw_ip, UDP_DESTINATION[1], COMMAND_DESTINATION[1], TELEMETRY_LISTEN[1]))
+
+    def update_button_state(*_):
+        value = ip_var.get().strip()
+        manual_btn.config(state="normal" if value else "disabled")
+
+    # Show text animation to indicate that system is looking for ip heartbeat
+    def animate_search():
+        if not searching["active"] or stop_event.is_set() or not window_alive():
+            animation_after_id["value"] = None
+            return
+        text = anim_var.get()
+        if text.endswith("..."):
+            anim_var.set(f"Attempt({attempt}), Searching for robot ip address")
+        else:
+            anim_var.set(text + ".")
+        try:
+            animation_after_id["value"] = root.after(500, animate_search)
+        except tk.TclError:
+            animation_after_id["value"] = None
+        
+    # Update dropdown if ip is found from heartbeat
+    def update_dropdown():
+        if result["value"]: found_ip = result["value"][0]
+        else:found_ip = ""
+
+        values = ["----- IP Searcher -----"]
+        if found_ip: values.append(found_ip)
+        values += ["----- Saved IPs -----"] + SAVED_IPS
+        ip_dropdown["values"] = values
+
+        if found_ip and not ip_var.get().strip(): ip_var.set(found_ip)
+        if found_ip: dropdown_var.set(found_ip)
+
+    # Drop down
+    dropdown_label = ttk.Label(frame, text="Select:")
+    dropdown_label.pack(anchor="w", pady=(12, 4))
+
+    dropdown_var = tk.StringVar()
+    ip_dropdown = ttk.Combobox(frame, textvariable=dropdown_var, state="readonly")
+    ip_dropdown.pack(fill="x")
+    update_dropdown()
+    ip_dropdown.bind("<<ComboboxSelected>>", on_dropdown_select)
+    ttk.Label(frame, textvariable=anim_var, style="Muted.TLabel", font=loading_font).pack(anchor="w")
+
+    # Use ip button
+    manual_btn = ttk.Button(buttons,text="Use IP",command=use_manual_ip,style="Accent.TButton")
+    manual_btn.pack(side="left", expand=True, fill="x", padx=(4, 4))
+    buttons.pack(fill="x", pady=(12, 0))
+
+    # Ip hook that only allows "use ip" button if ip field is filled out
+    ip_var.trace_add("write", update_button_state)
+    update_button_state()
+
+    root.protocol("WM_DELETE_WINDOW", lambda: finish(None))
+    run_search()
+    animation_after_id["value"] = root.after(500, animate_search)
+    entry.focus_set()
+    root.mainloop()
+    return result["value"]
+
+
+
 # --- GUI -------------------------------------------------------------------------
 
 class CommandConsole(ttk.LabelFrame):
@@ -534,6 +964,7 @@ class CameraFeedFrame(ttk.Frame):
         self._stop_event = threading.Event()
         self._thread: Optional[threading.Thread] = None
         self._rx_tracker = rx_tracker
+        self._destroyed = False
 
     def _initial_message(self) -> str:
         if not (Image is not None and ImageTk is not None):
@@ -541,6 +972,8 @@ class CameraFeedFrame(ttk.Frame):
         return "Waiting for camera URL..."
 
     def show_message(self, message: str) -> None:
+        if self._destroyed:
+            return
         self._label.configure(text=message, image="")
         self._photo = None
 
@@ -570,6 +1003,10 @@ class CameraFeedFrame(ttk.Frame):
         self._thread = None
         self._url = None
 
+    def close(self) -> None:
+        self._destroyed = True
+        self.stop()
+
     def _fetch_loop(self) -> None:
         if not self._url:
             return
@@ -589,15 +1026,21 @@ class CameraFeedFrame(ttk.Frame):
                 photo = ImageTk.PhotoImage(image)  # type: ignore[attr-defined]
                 image.close()
             except Exception as exc:
-                self.after(0, self.show_message, f"Camera error: {exc}")
+                try:
+                    self.after(0, self.show_message, f"Camera error: {exc}")
+                except (RuntimeError, tk.TclError):
+                    return
             else:
-                self.after(0, self._apply_photo, photo)
+                try:
+                    self.after(0, self._apply_photo, photo)
+                except (RuntimeError, tk.TclError):
+                    return
             wait_time = max(0.01, self._interval)
             if self._stop_event.wait(wait_time):
                 break
 
     def _apply_photo(self, photo: tk.PhotoImage) -> None:
-        if self._stop_event.is_set():
+        if self._stop_event.is_set() or self._destroyed:
             return
         self._photo = photo
         self._label.configure(image=self._photo, text="")
@@ -617,6 +1060,8 @@ class ControlStationGUI:
         self.telemetry = telemetry
         self._tx_tracker = tx_tracker or RateTracker()
         self._rx_tracker = rx_tracker or RateTracker()
+        self._closed = False
+        self._update_after_id: Optional[str] = None
         self.telemetry.register_rate_tracker(self._rx_tracker)
 
         self._style = ttk.Style()
@@ -787,9 +1232,13 @@ class ControlStationGUI:
         )
 
     def _schedule_update(self) -> None:
-        self.root.after(20, self._update)
+        if self._closed:
+            return
+        self._update_after_id = self.root.after(20, self._update)
 
     def _update(self) -> None:
+        if self._closed:
+            return
         snapshot = self.joystick.snapshot()
         telemetry = self.telemetry.snapshot()
         self._update_controller_panel(snapshot)
@@ -851,6 +1300,37 @@ class ControlStationGUI:
             return
 
         axes = (snapshot.axes + [0.0] * MAX_DISPLAY_AXES)[:MAX_DISPLAY_AXES]
+
+        def _maybe_send_packet(self, snapshot: ControllerSnapshot) -> None:
+            now = time.monotonic()
+            interval = 1.0 / (SEND_RATE_HZ if snapshot.connected else IDLE_RATE_HZ)
+            if now - self._last_tx < interval:
+                return
+
+            raw = (snapshot.axes + [0.0] * MAX_DISPLAY_AXES)[:MAX_DISPLAY_AXES]
+
+            axes = [0.0] * MAX_DISPLAY_AXES
+            axes[0] = raw[3]   # left X
+            axes[1] = raw[2]   # left Y
+            axes[2] = raw[0]   # right X
+            axes[3] = raw[1]   # right Y
+            axes[4] = raw[4]   # left trigger
+            axes[5] = raw[5]   # right trigger
+            axes[6] = raw[6]   # dpad X
+            axes[7] = raw[7]   # dpad Y
+
+            buttons = snapshot.buttons
+            armed = False
+            if HOLD_BUTTON_INDEX < len(buttons):
+                armed = bool(buttons[HOLD_BUTTON_INDEX])
+
+            axes_i8 = [quantize_axis(value, DEADZONE) for value in axes]
+            mask = 0
+            for i in range(min(16, len(buttons))):
+                if buttons[i]:
+                    mask |= 1 << i
+
+
         buttons = snapshot.buttons
         armed = False
         if HOLD_BUTTON_INDEX < len(buttons):
@@ -890,26 +1370,61 @@ class ControlStationGUI:
         return f"{bps:.0f} bps"
 
     def _on_close(self) -> None:
+        self._closed = True
+        if self._update_after_id is not None:
+            try:
+                self.root.after_cancel(self._update_after_id)
+            except tk.TclError:
+                pass
+            self._update_after_id = None
         self.joystick.stop()
         self.telemetry.stop()
         try:
-            self.camera_view.stop()
+            self.camera_view.close()
         except Exception:
+            pass
+        try:
+            self._udp_socket.close()
+        except OSError:
             pass
         try:
             self._command_socket.close()
         except OSError:
             pass
-        self.root.after(100, self.root.destroy)
+        try:
+            self.root.destroy()
+        except tk.TclError:
+            pass
 
 
 # --- Entrypoint ------------------------------------------------------------------
 
 def main() -> None:
+    global UDP_DESTINATION, COMMAND_DESTINATION, TELEMETRY_LISTEN, CAMERA_DEFAULT_URL
+    system = platform.system()
+    if not os.path.exists(password_file) and system != "Windows":
+        password=ask_password()
+        if not password: return
+        with open(password_file, "w") as f: f.write(password)
+        os.chmod(password_file, 0o600)
+
+
+    discovery = prompt_for_robot_selection()
+    if discovery:
+        host, udp_port, command_port, telemetry_port = discovery
+        #print(f"Discovered robot at {host} (udp={udp_port}, cmd={command_port})")
+        UDP_DESTINATION = (host, udp_port)
+        COMMAND_DESTINATION = (host, command_port)
+        TELEMETRY_LISTEN = ("0.0.0.0", telemetry_port)
+        CAMERA_DEFAULT_URL = f"http://{host}:{CAMERA_HTTP_PORT}/frame"
+    else:
+        print("Robot discovery canceled; exiting.")
+        return
+
     joystick = JoystickWorker()
     rx_tracker = RateTracker()
     tx_tracker = RateTracker()
-    telemetry = TelemetryListener(rx_tracker=rx_tracker)
+    telemetry = TelemetryListener(listen_addr=TELEMETRY_LISTEN, rx_tracker=rx_tracker)
     joystick.start()
     telemetry.start()
 
