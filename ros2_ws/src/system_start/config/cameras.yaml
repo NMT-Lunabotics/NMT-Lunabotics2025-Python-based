@@ -1,0 +1,21 @@
+cameras:
+  - name: camera0 # This camera should always be the overview camera 
+    video_device: /dev/video4 
+    pixle_format: "YUYV"
+    frame_rate: 24
+    width: 80
+    height: 60
+
+  - name: camera1 # This camera should be the bucket camera
+    video_device: /dev/video10
+    pixle_format: "YUYV"
+    frame_rate: 24
+    width: 80
+    height: 60
+
+  - name: camera2 # This camera should be the bridge camera
+    video_device: /dev/video16
+    pixle_format: "YUYV"
+    frame_rate: 24
+    width: 80
+    height: 60

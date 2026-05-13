@@ -21,12 +21,12 @@ arduino.compile_and_upload()
 
 
 while True:
-    serial.send_command("S", [180])
-    time.sleep(0.5)
-    serial.send_command("S", [0])
-    time.sleep(0.5)
+    #serial.send_command("S", [180])
+    #time.sleep(0.5)
+    #serial.send_command("S", [0])
+    #time.sleep(0.5)
 
 
 
-    #value = serial.read_serial()
-    #if value: print(value)
+    value = serial.read_serial()
+    if value: print(value)

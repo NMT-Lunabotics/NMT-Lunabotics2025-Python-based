@@ -1,0 +1,26 @@
+https://manuals.plus/asin/B09STCQCCF
+
+------------------------------------------------------------
+1. FS-iA6B binding
+------------------------------------------------------------
+
+The FS-iA6B reviver has 4 rows, one row of (6) and three rows of (7). Rows are layout as (TOP-SOURCE-POWER-GROUND), 
+Ignore the top row, below the (VCC/B) connect a wire between the SOURCE and GROUND pins.
+
+------------------------------------------------------------
+2. Power
+------------------------------------------------------------
+
+Power the POWER row using 5v.
+
+------------------------------------------------------------
+3. Bind controller
+------------------------------------------------------------
+
+Once the reviver is powered it will start rapidly flashing. Hold the bind button on the controller until led becomes solid. 
+
+------------------------------------------------------------
+3. Finsih setup
+------------------------------------------------------------
+
+Controller can now be turned off, binding wire removed, and everything replugged in. 

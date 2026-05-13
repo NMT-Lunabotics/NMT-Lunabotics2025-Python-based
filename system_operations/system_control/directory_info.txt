@@ -1,0 +1,27 @@
+------------------------------------------------------------
+arduino_cli
+------------------------------------------------------------
+This is a python package that allows uplouding code to the arduino.
+
+------------------------------------------------------------
+arduino_serial_commuication
+------------------------------------------------------------
+This is a python package that allows sending serial commands to run the robot system.
+
+------------------------------------------------------------
+component_tests
+------------------------------------------------------------
+This contains all saved test code. This mainly contains the code to run an indavidual component, but also some more advenced stuff.
+
+------------------------------------------------------------
+documents
+------------------------------------------------------------
+This lists a link or the direct documents for the diffrent eletrical components, and other system documents, 
+along with some helpful notes/images on thier wiring. This also list all of the systemclt files that the system runs for networking and other operations.
+
+------------------------------------------------------------
+system_control
+------------------------------------------------------------
+This stores the code that the arduino runs(system_control.ino, helpers.hpp, arduino_lib.hpp), 
+the code that the start_docker file uses to uploud code(arduino_updater.sh, Dockerfile.arduino, arduino.sketch_hash), 
+and uploud_code.py for manualy uploduing code and sending serial commands.

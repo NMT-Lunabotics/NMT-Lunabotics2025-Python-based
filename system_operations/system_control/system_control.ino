@@ -1,122 +1,232 @@
 #include "helpers.hpp"
-#define MAIN_ROBOT 1
+#include "config.h"
 
-//--------------- MAIN ROBOT SETTINGS ---------------
-#if MAIN_ROBOT==1
+//------------------------------------------------------------
+//             Nonessential component setup
+//------------------------------------------------------------
 
-// List of components flags to enable/disable for testing
-#define ERROR_LEDS_ENABLED           1
-#define MOTORS_ENABLED               0
-#define BUCKET_ACTUATOR_ENABLED      0
-#define ARM_ACTUATORS_ENABLED        0
-#define SERVO_MOTOR_ENABLED          1
-#define IMU_SENSOR_ENABLED           0
-#define IBUS_RECIVER_ENABLED         0
-
-// List of faults to disable
-#define SERIAL_COMM_TIMEOUT_FAULT    1
-#define COMPONENT_TIMEOUT_FAULTS     1
-
-// Debug mode flags
-#define DEBUG_MODE                   0
-#define SENSOR_OUTPUT                0  // 1: IMU, 2: IBUS, 3: IBUS raw
-
-#else
-//--------------- NUC TEST ROBOT SETTINGS ---------------
-#define ERROR_LEDS_ENABLED           1
-#define MOTORS_ENABLED               0
-#define BUCKET_ACTUATOR_ENABLED      0
-#define ARM_ACTUATORS_ENABLED        0
-#define SERVO_MOTOR_ENABLED          1
-#define IMU_SENSOR_ENABLED           0
-#define IBUS_RECIVER_ENABLED         0
-#define SERIAL_COMM_TIMEOUT_FAULT    1
-#define COMPONENT_TIMEOUT_FAULTS     0
-#define DEBUG_MODE                   0
-#define SENSOR_OUTPUT                0  
-#endif
-
-//--------------- Setup used classes ---------------
-#if IMU_SENSOR_ENABLED
-  #if MAIN_ROBOT==1
-    #define IMU_MANUAL_SCALER 1
-  #else
-    #define IMU_MANUAL_SCALER 0.6
-  #endif
-    MPU6050 IMU; 
-#endif
+// Ibus reciver setup
 #if IBUS_RECIVER_ENABLED
   IBusReader ibus(Serial1);
 #endif
 
-//--------------- Actuators ---------------
+// LEDs setup
 
-// Driver 1 pins
+// Pins
+#define LEDR_PIN 24
+#define LEDY_PIN 26
+#define LEDG_PIN 28
+#define LEDB_PIN 30
+// Saved states
+short int led_r = 0;
+short int led_y = 0;
+short int led_g = 0;
+short int led_b = 0;
+// Led error states
+enum LedState { OFF = 0, NONE = -1, ON = 1, BLINK = 2 };
+
+// IMU sensor setup
+#if IMU_SENSOR_ENABLED
+  #if MAIN_ROBOT==2
+    #define IMU_MANUAL_SCALER 1
+  #else
+    #define IMU_MANUAL_SCALER 0.6
+  #endif
+  MPU6050 IMU; 
+
+  #define IMU_offset_bias_samples 25
+  #define IMU_filter_constant 0.2
+  float IMU_offset_bias=0;
+  float IMU_rate = 0;
+  float IMU_yaw=0;
+  unsigned long last_IMU_time =0;
+  float IMU_raw_home_bias = 0;
+  float IMU_local_home_bias = 0;
+  bool reset_IMU_local_home=false;
+  bool update_IMU_raw_home=true;
+  float IMU_filter_rate=0;
+
+  #define IMU_angle_bias_samples 25
+  float IMU_yaw_scale=0;
+#endif
+
+//------------------------------------------------------------
+//                      Actuators setup
+//------------------------------------------------------------
+
+//--------------- PINS ---------------
+
+#if PCB_BOARD_SCHEMATIC == 0
+//REGULITH_PCD_BOARD
+  // Driver 1 pins
+  #define DRV11_PWM_PIN 6
+  #define DRV11_DIR1_PIN 34
+  #define DRV11_DIR2_PIN 36
+  #define DRV12_PWM_PIN 7
+  #define DRV12_DIR1_PIN 38
+  #define DRV12_DIR2_PIN 40
+
+  // Driver 2 pins
+  #define DRV21_PWM_PIN 9
+  #define DRV21_DIR1_PIN 44
+  #define DRV21_DIR2_PIN 42
+  #define DRV22_PWM_PIN 8
+  #define DRV22_DIR1_PIN 46
+  #define DRV22_DIR2_PIN 48
+#endif
+
+#if PCB_BOARD_SCHEMATIC == 1
+//LEFT
+#define DRV12_PWM_PIN 8
+#define DRV12_DIR1_PIN 38
+#define DRV12_DIR2_PIN 40
+#define POTL_PIN A0
+//35, 865
+
+//RIGHT
 #define DRV11_PWM_PIN 6
 #define DRV11_DIR1_PIN 34
 #define DRV11_DIR2_PIN 36
-#define DRV12_PWM_PIN 7
-#define DRV12_DIR1_PIN 38
-#define DRV12_DIR2_PIN 40
+#define POTR_PIN A2
+// 35, 876
 
-// Driver 2 pins
-#define DRV21_PWM_PIN 9
-#define DRV21_DIR1_PIN 44
-#define DRV21_DIR2_PIN 42
-#define DRV22_PWM_PIN 8
-#define DRV22_DIR1_PIN 46
-#define DRV22_DIR2_PIN 48
+//BUCKET
+#define DRV21_PWM_PIN 7
+#define DRV21_DIR1_PIN 48
+#define DRV21_DIR2_PIN 46
+#define POTB_PIN A1
+// 37 ,800
 
-// Actuator potentiometer read pins
-#define POTL_PIN A1
-#define POTR_PIN A0
-#define POTB_PIN A3
+
+#endif
+
+#if PCB_BOARD_SCHEMATIC == 0
+  // Actuator potentiometer read pins
+  #define POTL_PIN A1
+  #define POTR_PIN A0
+  #define POTB_PIN A3
+#endif
+
+#if PCB_BOARD_SCHEMATIC == 1
+  // Actuator potentiometer read pins
+  //#define POTL_PIN A0
+  //#define POTR_PIN A3
+  //#define POTB_PIN A1
+#endif
+
+//--------------- SETTINGS ---------------
 
 // Allowed actuator stroke lengths (mm)
-#define ALR_STROKE 191
-#define AB_STROKE 140
+#if MAIN_ROBOT==1
+  #define ALR_STROKE 191
+  #define AB_STROKE 100
+#else
+  #define ALR_STROKE 191
+  #define AB_STROKE 140
+#endif
 
 // Actuator potentiometer min and max values
-#define AL_POT_MIN 48   //47    OLD
-#define AL_POT_MAX 881  //893   OLD
-#define AR_POT_MIN 1    //0     OLD
-#define AR_POT_MAX 832  //840   OLD
-#define AB_POT_MIN 30
-#define AB_POT_MAX 782
+#if MAIN_ROBOT==1
+  #if PCB_BOARD_SCHEMATIC == 0
+    #define AL_POT_MIN 30   
+    #define AL_POT_MAX 868  
+    #define AR_POT_MIN 30   
+    #define AR_POT_MAX 878  
+    #define AB_POT_MIN 32          
+    #define AB_POT_MAX 799    
+  #elif PCB_BOARD_SCHEMATIC == 1
+    #define AL_POT_MIN 35  
+    #define AL_POT_MAX 865  
+    #define AR_POT_MIN 35 
+    #define AR_POT_MAX 876 
+    #define AB_POT_MIN 37     
+    #define AB_POT_MAX 800
+  #endif
+#else
+  #define AL_POT_MIN 48 
+  #define AL_POT_MAX 881  
+  #define AR_POT_MIN 1   
+  #define AR_POT_MAX 832 
+  #define AB_POT_MIN 30
+  #define AB_POT_MAX 782
+#endif     
 
-float bucket_min = 20;            // mm
-float bucket_max = 110;           // mm
-float bucket_absolute_max = 115;  // mm
-float act_end_tolerance = 1;      // mm
+// Correction system that limits the bucket angle if arms are lowered
+#if ARM_ACTUATORS_ENABLED==1 && BUCKET_ACTUATOR_ENABLED==1
+  #define BUCKET_END_CORRECTION 1 
+  #define BUCKET_AUTO_CORRECTION 1
+#endif
 
-float act_max_vel = 25;   // mm/s
-float act_fix_err = 3.0;  // mm
-float act_max_err = 5.0;  // mm
+// Actuator speed/error/tolerences
+#if MAIN_ROBOT==1
+  // Actuator soft bounds (mm) - Restricts movment when passed
+  float bucket_soft_min = 2;
+  float bucket_soft_max = 102;
+  float bucket_linear_soft_max = 50;
+  float arm_soft_min = 2;
+  float arm_soft_max = 173;
 
-// Actuator target position
-int aLR_tgt = -1;
-int aB_tgt = -1;
+  // Actuator hard bounds (mm) - Shuts down system if passed
+  float bucket_min = 0;           
+  float bucket_max = 110;  
+  float bucket_absolute_max = 115;  
+  float act_end_tolerance = 1;
+  
+  // Offset factor (mm) - Scales speed of one of the actuators
+  int aL_offset = 0;
+  int aR_offset = 1;
 
-// Offset factor to max sure actuators start/stop in same spots
-int aL_offset = 0; //mm
-int aR_offset = 3; //mm
+  // Velocity and error factors - Max velocity (mm/s) and allowed error tolerences (mm)
+  float act_max_vel = 25;   
+  float act_fix_err = 3.0;  
+  float act_max_err = 7.0; 
+#else
+  // Actuator soft bounds (mm) - Restricts movment when passed
+  float bucket_soft_min = 22;
+  float bucket_soft_max = 105;
+  float arm_soft_min = 15;
+  float arm_soft_max = 175;
 
-// Actuator speed and position variables
+  // Actuator hard bounds (mm) - Shuts down system if passed
+  float bucket_min = 20;           
+  float bucket_max = 110;   
+  float bucket_absolute_max = 115;
+  float act_end_tolerance = 1;
+  
+  // Offset factor (mm) - Scales speed of one of the actuators
+  int aL_offset = 0; 
+  int aR_offset = 3; 
+
+  // Velocity and error factors - Max velocity (mm/s) and allowed error tolerences (mm)
+  float act_max_vel = 25;   
+  float act_fix_err = 3.0;  
+  float act_max_err = 7.0;  
+#endif
+
+//--------------- USED VARIBLES ---------------
+// Speeds
 int aL_speed = 0;
 int aR_speed = 0;
 int aB_speed = 0;
 
+// Current positions
 float aL_pos = 0;
 float aR_pos = 0;
 float aB_pos = 0;
 
-//--------------- MOTORS ---------------
-#if MAIN_ROBOT==1
-const int DACL1_PIN = 2;
-const int DACL2_PIN = 3;
-const int DACR1_PIN = 4;
-const int DACR2_PIN = 5;
-const int EN_PIN = 32;  // Common for both motors
+// Target positions
+int aLR_tgt = -1;
+int aB_tgt = -1;
+
+//------------------------------------------------------------
+//                       Motors setup
+//------------------------------------------------------------
+#if MAIN_ROBOT==0 || MAIN_ROBOT==1
+  const int DACL1_PIN = 2;
+  const int DACL2_PIN = 3;
+  const int DACR1_PIN = 4;
+  const int DACR2_PIN = 5;
+  const int EN_PIN = 32;   // Common for both motors
 #endif
 
 // Max allowed motor velocity (rpm)
@@ -131,7 +241,9 @@ int mLR_rotation = 0;
 int mLR_arc_radius = 0;
 float robot_width = 7.276186; //m
 
-#if MAIN_ROBOT==1
+float bucket_dynamic_max=arm_soft_max;
+
+#if MAIN_ROBOT==0 || MAIN_ROBOT==1
   #define mL_speed_scale 1
   #define mR_speed_scale 1
 #else
@@ -140,44 +252,12 @@ float robot_width = 7.276186; //m
 #endif
 
 #if SERVO_MOTOR_ENABLED
-  #define SERVO_PIN 22
+  #define SERVO_PIN 9
 #endif
 
-//--------------- LEDS ---------------
-
-// LED pins 
-#define LEDR_PIN 24
-#define LEDY_PIN 26
-#define LEDG_PIN 28
-#define LEDB_PIN 30
-// LED saved states
-short int led_r = 0;
-short int led_y = 0;
-short int led_g = 0;
-short int led_b = 0;
-// Available LED states
-enum LedState { OFF = 0, NONE = -1, ON = 1, BLINK = 2 };
-
-//--------------- IMU ---------------
-// IMU gyroscope and accelerometer variables for robot rotations
-#if IMU_SENSOR_ENABLED
-#define IMU_offset_bias_samples 25
-#define IMU_filter_constant 0.2
-float IMU_offset_bias=0;
-float IMU_rate = 0;
-float IMU_yaw=0;
-unsigned long last_IMU_time =0;
-float IMU_raw_home_bias = 0;
-float IMU_local_home_bias = 0;
-bool reset_IMU_local_home=false;
-bool update_IMU_raw_home=true;
-float IMU_filter_rate=0;
-
-#define IMU_angle_bias_samples 25
-float IMU_yaw_scale=0;
-#endif
-
-//--------------- SYSTEM VARIABLES ---------------
+//------------------------------------------------------------
+//                      System Variables
+//------------------------------------------------------------
 
 // Timing
 int update_rate = 200;                // hz
@@ -197,12 +277,23 @@ int error_message_interval = 2000;
 bool emergency_stop = false;
 String system_fault_msg = "";
 bool system_started = false;
+//int rc_startup_state=0;
+
+#if SENSOR_OUTPUT == 7
+  unsigned long last_report_time = 0;
+  int count_A = 0;
+  int count_M = 0;
+  int count_A_zero = 0;
+  int count_A_nonzero = 0;
+  int count_M_zero = 0;
+  int count_M_nonzero = 0;
+#endif
 
 // Motor and actuator timeout variables, shutdown motors and actuators if a message is not reviced within timeout period
 unsigned long last_actuator_cmd_time = 0; 
 unsigned long last_motor_cmd_time = 0;
-int motor_timeout = 2000;
-int actuator_timeout = 2000;
+int motor_timeout = 300;
+int actuator_timeout = 300;
 
 // Serial and state
 bool serial_connection_established=false;
@@ -213,57 +304,71 @@ bool at_bucket_max = false;
 bool dual_actuator_correct = false;
 int serial_index = 0;
 int expected_length = -1;
+bool control_take_over=false;
 const int MY_SERIAL_BUFFER_SIZE = 128;
 byte serial_buffer[MY_SERIAL_BUFFER_SIZE];
 
 // Set up PID controllers velocity gain
 float vel_gain = 2.5;
 
-#if ARM_ACTUATORS_ENABLED
-// Set up arm actuators and PID controllers
-PID pidL(2.2, 0.0022, 0.34, 2.0);
-PID pidR(1.85, 0.0018, 0.31, 1.7);
+//------------------------------------------------------------
+//                       Class setups
+//------------------------------------------------------------
 
-PWM_Driver left_driver(DRV12_PWM_PIN, DRV12_DIR1_PIN, DRV12_DIR2_PIN, false);
-Actuator act_left(left_driver, pidL, POTL_PIN, AL_POT_MIN, AL_POT_MAX, ALR_STROKE, act_max_vel,20,150);
-PWM_Driver right_driver(DRV11_PWM_PIN, DRV11_DIR1_PIN, DRV11_DIR2_PIN, false);
-Actuator act_right(right_driver, pidR, POTR_PIN, AR_POT_MIN, AR_POT_MAX, ALR_STROKE, act_max_vel,20,150);
+// Set up arm actuators classes and PID controllers
+#if ARM_ACTUATORS_ENABLED
+  PID pidL(2.2, 0.0022, 0.34, 2.0);
+  PID pidR(1.85, 0.0018, 0.31, 1.7);
+
+  PWM_Driver left_driver(DRV12_PWM_PIN, DRV12_DIR1_PIN, DRV12_DIR2_PIN, false);
+  Actuator act_left(left_driver, pidL, POTL_PIN, AL_POT_MIN, AL_POT_MAX, ALR_STROKE, act_max_vel,20,150);
+  PWM_Driver right_driver(DRV11_PWM_PIN, DRV11_DIR1_PIN, DRV11_DIR2_PIN, false);
+  Actuator act_right(right_driver, pidR, POTR_PIN, AR_POT_MIN, AR_POT_MAX, ALR_STROKE, act_max_vel,20,150);
 #endif 
 
+// Set up bucket actuator class and PID controller
 #if BUCKET_ACTUATOR_ENABLED
-// Set up bucket actuator and PID controller
-PID pidB(3.0, 0.001, 0.4);
+  PID pidB(3.0, 0.001, 0.4);
 
-PWM_Driver bucket_driver(DRV21_PWM_PIN, DRV21_DIR1_PIN, DRV21_DIR2_PIN, true);
-Actuator act_bucket(bucket_driver, pidB, POTB_PIN, AB_POT_MIN, AB_POT_MAX, AB_STROKE, act_max_vel, bucket_min, bucket_max);
+  PWM_Driver bucket_driver(DRV21_PWM_PIN, DRV21_DIR1_PIN, DRV21_DIR2_PIN, true);
+  Actuator act_bucket(bucket_driver, pidB, POTB_PIN, AB_POT_MIN, AB_POT_MAX, AB_STROKE, act_max_vel, bucket_min, bucket_max);
 #endif
 
+// Initalize motor classes
 #if MOTORS_ENABLED
-// Set up motors
-#if MAIN_ROBOT==1
-OutPin motor_left_dac1(DACL1_PIN);
-OutPin motor_left_dac2(DACL2_PIN);
-OutPin motor_right_dac1(DACR1_PIN);
-OutPin motor_right_dac2(DACR2_PIN);
-OutPin motor_enable(EN_PIN);
-Motor motor_left(motor_left_dac1, motor_left_dac2, motor_enable, motor_max_vel, false);
-Motor motor_right(motor_right_dac1, motor_right_dac2, motor_enable, motor_max_vel, true);
-#else
-SimpleMotor simpleMotorRight(3, 4, 9, motor_max_vel);
-SimpleMotor simpleMotorLeft(6, 7, 8, motor_max_vel);
-#endif
+  // Set up motors
+  #if MAIN_ROBOT==0 || MAIN_ROBOT==1
+    OutPin motor_left_dac1(DACL1_PIN);
+    OutPin motor_left_dac2(DACL2_PIN);
+    OutPin motor_right_dac1(DACR1_PIN);
+    OutPin motor_right_dac2(DACR2_PIN);
+    OutPin motor_enable(EN_PIN);
+    Motor motor_left(motor_left_dac1, motor_left_dac2, motor_enable, motor_max_vel, false);
+    Motor motor_right(motor_right_dac1, motor_right_dac2, motor_enable, motor_max_vel, true);
+  #else
+    SimpleMotor simpleMotorRight(3, 4, 9, motor_max_vel);
+    SimpleMotor simpleMotorLeft(6, 7, 8, motor_max_vel);
+  #endif
 #endif
 
+// Initalize error leds
 #if ERROR_LEDS_ENABLED
-// Set up LEDs
-OutPin ledr_pin(LEDR_PIN);
-OutPin ledy_pin(LEDY_PIN);
-OutPin ledg_pin(LEDG_PIN);
-OutPin ledb_pin(LEDB_PIN);
+  // Set up LEDs
+  OutPin ledr_pin(LEDR_PIN);
+  OutPin ledy_pin(LEDY_PIN);
+  OutPin ledg_pin(LEDG_PIN);
+  OutPin ledb_pin(LEDB_PIN);
 #endif
 
+// Initalize servo class
 #if SERVO_MOTOR_ENABLED
   SimpleServo servo(SERVO_PIN);
+#endif
+
+// Initalize I2C class
+#if SCREEN_ENABLED
+  OLEDIIC_interface screen1(0x3C, 128, 64);
+  MessageStore messages(screen1);
 #endif
 
 // void processMessage(byte* data, int length);
@@ -271,109 +376,223 @@ void stop_all();
 void processSerialBuffer();
 void systemFault(bool criticalError = false,String fault_msg="", String error_msg="", LedState y =NONE, LedState g =NONE, LedState b=NONE);
 void processMessage(byte *data, int length);
+
 #if IMU_SENSOR_ENABLED
-void calibrateIMU();
-void calibrateIMUAngle();
-void updateIMUData(bool useHomeBias=false);
+  void calibrateIMU();
+  void calibrateIMUAngle();
+  void updateIMUData(bool useHomeBias=false);
 #endif
+
 void sendSerialFeedback(char command, uint8_t* data, size_t dataLen);
 
+//------------------------------------------------------------
+//                        void setup
+//------------------------------------------------------------
 void setup() {
   delay(5);
   Serial.begin(115200);
-  #if MAIN_ROBOT==0
+
+  #if MAIN_ROBOT==2
     #if MOTORS_ENABLED
       simpleMotorLeft.begin();
       simpleMotorRight.begin();
     #endif
   #endif
+
+  // Start IBUS
   #if IBUS_RECIVER_ENABLED
-  ibus.begin(115200);
+    ibus.begin(115200);
   #endif
   Serial.flush();
+
   // Set default led status
   systemFault(false,"","", NONE, BLINK, BLINK);
-  #if IMU_SENSOR_ENABLED
+
   // Calibrate the IMU sensors drift factor
-  calibrateIMU();
-  calibrateIMUAngle();
+  #if IMU_SENSOR_ENABLED
+    calibrateIMU();
+    calibrateIMUAngle();
   #endif
+
+  // Allow actuators to fix themselfs to prevent it from being permanently stuck
   for (int i = 0; i < 10; i++) {
     #if ARM_ACTUATORS_ENABLED
-    aL_pos = act_left.update_pos();
-    aR_pos = act_right.update_pos();
+      aL_pos = act_left.update_pos("Act L: ");
+      aR_pos = act_right.update_pos("Act R: ");
     #endif
     #if BUCKET_ACTUATOR_ENABLED
-    aB_pos = act_bucket.update_pos();
+      aB_pos = act_bucket.update_pos("Act B: ");
     #endif
   }
+
+  // Start servo motor
   #if SERVO_MOTOR_ENABLED
     servo.attach();
   #endif
+
+  // Reset attached screen display
+  #if SCREEN_ENABLED
+    delay(100);
+    screen1.begin();
+    screen1.clear(false);
+    screen1.setCursor(0, 0);
+  #endif
+
   Serial.println("Arduino system_control.ino started.");
 }
 
+//------------------------------------------------------------
+//                        void loop
+//------------------------------------------------------------
 void loop() {
   current_time = millis();
   processSerialBuffer();
+
+  #if SENSOR_OUTPUT == 7
+    if (current_time-last_report_time>=1000) {
+      Serial.print("A: ");
+      Serial.print(count_A);
+      Serial.print(" Zero: ");
+      Serial.print(count_A_zero);
+      Serial.print(" Not-zero: ");
+      Serial.print(count_A_nonzero);
+      Serial.print(" | M: ");
+      Serial.print(count_M);
+      Serial.print(" Zero: ");
+      Serial.print(count_M_zero);
+      Serial.print(" Not-zero: ");
+      Serial.println(count_M_nonzero);
+      count_A = 0;
+      count_M = 0;
+      count_A_zero = 0;
+      count_A_nonzero = 0;
+      count_M_zero = 0;
+      count_M_nonzero = 0;
+      last_report_time=current_time;
+    }
+  #endif
+
   #if IBUS_RECIVER_ENABLED
   // Read serial and process messages while being Non-blocking
-  if (ibus.update()) {
-    #if SENSOR_OUTPUT == 3
-    int16_t* joy = ibus.getJoystick(true);
-    Serial.print("Raw RC controller inputs: ");
-    for (int i = 0; i < 12; i++) {  
-      Serial.print(joy[i]);
-      Serial.print(" ");
-    }
-    Serial.println("");
-  #elif SENSOR_OUTPUT == 2
-    int16_t* joy = ibus.getJoystick();
-    Serial.print("RC controller inputs: ");
-    for (int i = 0; i < 6; i++) {  
-      Serial.print(joy[i]);
-      Serial.print(" ");
-    }
-    Serial.println("");
-  #else
-    int16_t* joy = ibus.getJoystick();
-    if(joy[4]==0) {
-      mL_speed=0;
-      mR_speed=0;
-      aL_speed=0;
-      aR_speed=0;
-      aB_speed=0;
-    }
+    if (ibus.update()) {
+      #if SENSOR_OUTPUT == 3
+        int16_t* joy = ibus.getJoystick(true);
+        Serial.print("Raw RC controller inputs: ");
+        for (int i = 0; i < 12; i++) {  
+          Serial.print(joy[i]);
+          Serial.print(" ");
+        }
+        Serial.println("");
+      #elif SENSOR_OUTPUT == 2
+        int16_t* joy = ibus.getJoystick();
+        Serial.print("RC controller inputs: ");
+        for (int i = 0; i < 6; i++) {  
+          Serial.print(joy[i]);
+          Serial.print(" ");
+        }
+        Serial.println("");
+      #else
+        int16_t* joy = ibus.getJoystick();
+        // if(joy[4]==0) rc_startup_state=1;
+        // else if(joy[4]==1 && rc_startup_state==1) rc_startup_state=2;
+        // else if(joy[4]==0 && rc_startup_state==2) rc_startup_state=1;
+        // && rc_startup_state==2
+        if(joy[4]==0) {
+          mL_speed=0;
+          mR_speed=0;
+          aL_speed=0;
+          aR_speed=0;
+          aB_speed=0;
+          control_take_over=true;
+        }
+        // && rc_startup_state!=0
+        else {
+          #if MAIN_ROBOT==1
+            int16_t steering = joy[2];
+            int16_t throttle = joy[3]; 
+            mR_speed = constrain(throttle - steering, -30, 30);
+            mL_speed = constrain(throttle + steering, -30, 30);
+            aLR_tgt = -1;
+            aB_tgt = -1;
+            aB_speed = -joy[0];
+            aL_speed = joy[1];
+            aR_speed = aL_speed;
+            last_actuator_cmd_time=current_time;
+            last_motor_cmd_time=current_time;
+          #else
+            int16_t steering = -joy[0];
+            int16_t throttle = -joy[1]; 
+            mR_speed = constrain(throttle - steering, -30, 30);
+            mL_speed = constrain(throttle + steering, -30, 30);
+            aLR_tgt = -1;
+            aB_tgt = -1;
+            aB_speed = joy[2];
+            aL_speed = -joy[3];
+            aR_speed = aL_speed;
+          #endif
+          #if SENSOR_OUTPUT == 4
+            Serial.print("Motor,Act values: ");
+            Serial.print(mL_speed);
+            Serial.print(" ");
+            Serial.print(mR_speed);
+            Serial.print(" ");
+            Serial.print(aR_speed);
+            Serial.print(" ");
+            Serial.println(aB_speed );
+          #endif
+          if(RC_connection_established==false){
+            RC_connection_established=true;
+            systemFault(false,"","", NONE, NONE, ON);
+          }
+        }
+      #endif
+    } 
     else{
-      int16_t throttle = -joy[1]; 
-      int16_t steering = -joy[0];
-      mR_speed = constrain(throttle - steering, -30, 30);
-      mL_speed = constrain(throttle + steering, -30, 30);
-      aLR_tgt = -1;
-      aB_tgt = -1;
-      aL_speed = -joy[3];
-      aR_speed = aL_speed;
-      aB_speed = joy[2];
-      if(RC_connection_established==false){
-        RC_connection_established=true;
-        systemFault(false,"","", NONE, NONE, ON);
+      control_take_over=false;
+      if(serial_connection_established==false) {
+        #if SERIAL_COMM_TIMEOUT_FAULT
+          systemFault(true,"Serial communication timeout.","", NONE, NONE, BLINK);
+        #else 
+          systemFault(false,"Serial communication timeout.","", NONE, NONE, BLINK);
+        #endif
       }
     }
-  #endif
-  } 
+    
+    
   #endif
   #if SERIAL_COMM_TIMEOUT_FAULT
-  if (current_time - last_message_time > estop_timeout && serial_connection_established==true) systemFault(true,"Serial communication timeout.","", NONE, NONE, NONE);
+    if (current_time - last_message_time > estop_timeout && serial_connection_established==true) {
+      systemFault(true,"Serial communication timeout.","", NONE, NONE, NONE);
+      //serial_connection_established=false;
+    }
   #endif
   // Update actuator saved positions
   if (current_time - last_update_actuator_time >= 1000 / update_actuator_feedback) {
     last_update_actuator_time = current_time;
+    #if SENSOR_OUTPUT == 5
+      Serial.print("Act pos: ");
+    #endif
     #if ARM_ACTUATORS_ENABLED
-    aL_pos = act_left.update_pos();
-    aR_pos = act_right.update_pos();
+      aL_pos = act_left.update_pos("Act L: ");
+      aR_pos = act_right.update_pos("Act R: ");
+      #if SENSOR_OUTPUT == 5
+          Serial.print("Arm=(");
+          Serial.print(aL_pos);     
+          Serial.print(","); 
+          Serial.print(aR_pos);  
+          Serial.print(") "); 
+      #endif
     #endif
     #if BUCKET_ACTUATOR_ENABLED
-    aB_pos = act_bucket.update_pos();
+      aB_pos = act_bucket.update_pos("Act B: ");
+      #if SENSOR_OUTPUT == 5
+          Serial.print("Bucket=(");
+          Serial.print(aB_pos); 
+          Serial.println(")");      
+      #endif
+    #endif
+    #if SENSOR_OUTPUT == 5
+      Serial.println("");
     #endif
   }
 
@@ -387,13 +606,13 @@ void loop() {
          stop_all();
          while (aB_pos < bucket_min) {
              act_bucket.vel_ctrl(5);
-             aB_pos = act_bucket.update_pos();
+             aB_pos = act_bucket.update_pos("Act B: ");
              delay(5);
              systemFault(false,"","Bucket past minimum. Fixing...", BLINK, NONE, NONE);
          }
          while (aB_pos > bucket_max) {
              act_bucket.vel_ctrl(-5);
-             aB_pos = act_bucket.update_pos();
+             aB_pos = act_bucket.update_pos("Act B: ");
              delay(5);
              systemFault(false,"","Bucket past maximum. Fixing...", BLINK, NONE, NONE);
          }
@@ -410,8 +629,8 @@ void loop() {
         #if BUCKET_ACTUATOR_ENABLED
           act_bucket.stop();
         #endif
-        aL_pos = act_left.update_pos();
-        aR_pos = act_right.update_pos();
+        aL_pos = act_left.update_pos("Act L: ");
+        aR_pos = act_right.update_pos("Act R: ");
         float factor = (aL_pos - aR_pos) * vel_gain;
 
         act_left.vel_ctrl(aL_speed - factor);
@@ -432,7 +651,7 @@ void loop() {
     if (!emergency_stop) {
       #if COMPONENT_TIMEOUT_FAULTS
       // Timeout motors and actuators if a command isn't recived within the timeout period
-      if(serial_connection_established==true){
+      //if(serial_connection_established==true){
         if(current_time-last_motor_cmd_time>=motor_timeout&&(mR_speed!=0||mL_speed!=0||mLR_rotation_speed!=0||mLR_rotation!=0)){
           mR_speed=0;
           mL_speed=0;
@@ -440,7 +659,7 @@ void loop() {
           mLR_rotation=0;
           systemFault(false,"","Motors timed out, no motor command received within "+ String(motor_timeout/1000)+"s", NONE, NONE, NONE);
         }
-        if(current_time-last_actuator_cmd_time>=actuator_timeout && (aL_speed!=0 || aR_speed !=0 || aB_speed!=0 || aLR_tgt != -1 || aB_tgt != -1 )){
+        if(current_time-last_actuator_cmd_time>=actuator_timeout && (aL_speed!=0 || aR_speed !=0 || aB_speed!=0)){
           aLR_tgt = -1;
           aB_tgt = -1;
           aL_speed = 0;
@@ -448,7 +667,7 @@ void loop() {
           aB_speed = 0;
           systemFault(false,"","Actuators timed out, no actuator command received within "+ String(actuator_timeout/1000)+"s", NONE, NONE, NONE);
         }
-      }
+      //}
       #endif
       #if ARM_ACTUATORS_ENABLED
       // Update actuator positions.
@@ -457,14 +676,23 @@ void loop() {
         act_left.tgt_ctrl(aLR_tgt);
         act_right.tgt_ctrl(aLR_tgt);
       } else {
-        aL_pos = act_left.update_pos();
-        aR_pos = act_right.update_pos();
+        aL_pos = act_left.update_pos("Act L: ");
+        aR_pos = act_right.update_pos("Act R: ");
         float factor = (aL_pos - aR_pos) * vel_gain;
         // Actuator bound chacks, softwere side stops
-        if (aL_speed < 0 && aL_pos >= 175) aL_speed = 0;  
-        if (aL_speed > 0 && aL_pos <= 15)  aL_speed = 0;
-        if (aR_speed < 0 && aR_pos >= 175) aR_speed = 0;
-        if (aR_speed > 0 && aR_pos <= 15)  aR_speed = 0;
+        #if PCB_BOARD_SCHEMATIC == 0
+          if ((aL_speed < 0 && aL_pos >= arm_soft_max) || (aR_speed > 0 && aR_pos <= arm_soft_min)) {
+            Serial.println(aL_speed);
+            aL_speed = 0;  
+            aR_speed = 0;  
+          }
+        #elif PCB_BOARD_SCHEMATIC == 1
+          if ((aL_speed > 0 && aL_pos >= arm_soft_max) || (aR_speed < 0 && aR_pos <= arm_soft_min)) {
+            Serial.println(aL_speed);
+            aL_speed = 0;  
+            aR_speed = 0;  
+          }
+        #endif
     
         act_left.curved_vel_ctrl(aL_speed, -factor);
         act_right.curved_vel_ctrl(aR_speed, factor);
@@ -472,10 +700,33 @@ void loop() {
     
       #endif
       #if BUCKET_ACTUATOR_ENABLED
+        #if BUCKET_END_CORRECTION==1
+          int avg_arm_pos=(aL_pos+aR_pos)/2;
+          int start_stroke=arm_soft_min+(arm_soft_max-arm_soft_min)/1.5;
+          if (avg_arm_pos <= start_stroke) bucket_dynamic_max = mapSegmentInt(avg_arm_pos, arm_soft_min, start_stroke, bucket_linear_soft_max, bucket_max);
+          else bucket_dynamic_max = bucket_max;
+        #endif
+
+        //Serial.println(aL_speed);
+        //Serial.println(aB_speed);
+        //Serial.println(aB_pos >= bucket_dynamic_max && aL_speed>0);
+      
       if (aB_tgt >= 0) act_bucket.tgt_ctrl(aB_tgt);
-      else if ((aB_speed > 0 && aB_pos < bucket_max) || (aB_speed < 0 && aB_pos > bucket_min)) {
-        if (aB_speed > 0 && aB_pos >= 105) aB_speed = 0;  
-        if (aB_speed < 0 && aB_pos <= 22)  aB_speed = 0;
+      else if (aB_pos < bucket_max || aB_pos > bucket_min) {
+        if (aB_speed > 0 && (aB_pos >= bucket_soft_max || aB_pos >= bucket_dynamic_max)) aB_speed = 0;  
+
+        #if BUCKET_AUTO_CORRECTION==1
+          if(aL_speed>0){
+            int speed = -aL_speed;
+            //aB_speed < speed && 
+            if(aB_pos >= bucket_dynamic_max) aB_speed = speed; 
+          }
+        #endif
+        
+        //Serial.println(aB_speed);
+
+        
+        if (aB_speed < 0 && aB_pos <= bucket_soft_min)  aB_speed = 0;
         act_bucket.curved_vel_ctrl(aB_speed, 0);
         //act_bucket.vel_ctrl(aB_speed);
       }
@@ -487,7 +738,7 @@ void loop() {
           if(mLR_arc_radius!=0){
             float mL_velocity=mLR_rotation_speed*(1-robot_width/mLR_arc_radius);
             float mR_velocity=mLR_rotation_speed*(1+robot_width/mLR_arc_radius);
-            #if MAIN_ROBOT==1
+            #if MAIN_ROBOT==0 || MAIN_ROBOT==1
             motor_left.motor_ctrl(mL_velocity);
             motor_right.motor_ctrl(mR_velocity);
             #else
@@ -496,7 +747,7 @@ void loop() {
             #endif
           }
           else if(mLR_rotation>0){
-            #if MAIN_ROBOT==1
+            #if MAIN_ROBOT==0 || MAIN_ROBOT==1
               motor_left.motor_ctrl(-mLR_rotation_speed);
               motor_right.motor_ctrl(mLR_rotation_speed);
             #else
@@ -505,7 +756,7 @@ void loop() {
             #endif
           }
           else if(mLR_rotation<0){
-            #if MAIN_ROBOT==1
+            #if MAIN_ROBOT==0 || MAIN_ROBOT==1
               motor_left.motor_ctrl(mLR_rotation_speed);
               motor_right.motor_ctrl(-mLR_rotation_speed);
             #else
@@ -515,7 +766,7 @@ void loop() {
           }
           #if IMU_SENSOR_ENABLED
           if((mLR_rotation<0&&IMU_yaw<=mLR_rotation)||(mLR_rotation>0&&IMU_yaw>=mLR_rotation)){
-            #if MAIN_ROBOT==1
+            #if MAIN_ROBOT==0 || MAIN_ROBOT==1
               motor_left.stop();
               motor_right.stop();
             #else
@@ -535,7 +786,7 @@ void loop() {
           #endif
         }
         else{
-          #if MAIN_ROBOT==1
+          #if MAIN_ROBOT==0 || MAIN_ROBOT==1
             motor_left.motor_ctrl(mL_speed*mL_speed_scale);
             motor_right.motor_ctrl(mR_speed*mR_speed_scale);
           #else
@@ -553,11 +804,11 @@ void loop() {
   if (current_time - last_reset_int_time >= 1000 / reset_int_rate) {
     last_reset_int_time = current_time;
     #if ARM_ACTUATORS_ENABLED
-    act_left.resetPIDIntegral();
-    act_right.resetPIDIntegral();
+      act_left.resetPIDIntegral();
+      act_right.resetPIDIntegral();
     #endif
     #if BUCKET_ACTUATOR_ENABLED
-    act_bucket.resetPIDIntegral();
+      act_bucket.resetPIDIntegral();
     #endif
   }
   #endif
@@ -578,6 +829,9 @@ void loop() {
     Serial.println(IMU_yaw,6);
   #endif
 }
+#if SCREEN_ENABLED
+  messages.systemMessageUpdate(current_time);
+#endif
 }
 
 // Read serial communication from autonomy computer and set system variables to output.
@@ -595,41 +849,51 @@ void processMessage(byte *data, int length) {
     // Chnage actuator speeds/positions
     case 'A':
       {      
+        if(control_take_over) break;
         #if BUCKET_ACTUATOR_ENABLED || ARM_ACTUATOR_ENABLED       
-        // (A, actuators) Recvived Arm and Bucket actuator speeds and positions.
-        aLR_tgt = (int16_t)((data[1] << 8) | data[2]);  // Adjusted index to skip the type byte
-        aB_tgt = (int16_t)((data[3] << 8) | data[4]);
-        aL_speed = -(int8_t)data[5];
-        aR_speed = aL_speed;
-        aB_speed = -(int8_t)data[6];
-        #if DEBUG_MODE
-          Serial.print("Arm Position: ");
-          Serial.println(aLR_tgt);
-          Serial.print("Bucket Position: ");
-          Serial.println(aB_tgt);
-          Serial.print("Arm Velocity: ");
-          Serial.println(aL_speed);
-          Serial.print("Bucket Velocity: ");
-          Serial.println(aB_speed);
-        #endif
-        last_actuator_cmd_time=current_time;
+          // (A, actuators) Recvived Arm and Bucket actuator speeds and positions.
+          aLR_tgt = (int16_t)((data[1] << 8) | data[2]);  // Adjusted index to skip the type byte
+          aB_tgt = (int16_t)((data[3] << 8) | data[4]);
+          aL_speed = -(int8_t)data[5];
+          aR_speed = aL_speed;
+          aB_speed = -(int8_t)data[6];
+          #if SENSOR_OUTPUT==7
+            if (aL_speed == 0 && aB_speed == 0) count_A_zero++;
+            else count_A_nonzero++;
+          #endif
+          #if DEBUG_MODE
+            Serial.print("Arm Position: ");
+            Serial.println(aLR_tgt);
+            Serial.print("Bucket Position: ");
+            Serial.println(aB_tgt);
+            Serial.print("Arm Velocity: ");
+            Serial.println(aL_speed);
+            Serial.print("Bucket Velocity: ");
+            Serial.println(aB_speed);
+          #endif
+          last_actuator_cmd_time=current_time;
         #endif
         break;
       }
     // Change motor speeds
     case 'M':
       {    
+        if(control_take_over) break;
         #if MOTORS_ENABLED
-        // (M, motors) Recvived left and right motor speeds
-        mR_speed = (int8_t)data[1];  
-        mL_speed = (int8_t)data[2];
-        #if DEBUG_MODE
-          Serial.print("Left Speed: ");
-          Serial.println(mL_speed);
-          Serial.print("Right Speed: ");
-          Serial.println(mR_speed);
-        #endif
-        last_motor_cmd_time=current_time;
+          // (M, motors) Recvived left and right motor speeds
+          mR_speed = (int8_t)data[1];  
+          mL_speed = (int8_t)data[2];
+          #if SENSOR_OUTPUT==7
+            if (mR_speed == 0 && mL_speed == 0) count_M_zero++;
+            else count_M_nonzero++;
+          #endif
+          #if DEBUG_MODE
+            Serial.print("Left Speed: ");
+            Serial.println(mL_speed);
+            Serial.print("Right Speed: ");
+            Serial.println(mR_speed);
+          #endif
+          last_motor_cmd_time=current_time;
         #endif
         break;
       }
@@ -662,9 +926,7 @@ void processMessage(byte *data, int length) {
     case 'S':    
       { 
         #if SERVO_MOTOR_ENABLED
-        // Invert direction to match physical orientation
-        int angle = constrain((int)data[1], 0, 180);
-        servo.write(180 - angle);
+        servo.write(data[1]);
         #if DEBUG_MODE
           Serial.print("Servo State: ");
           Serial.println(data[1]);
@@ -698,15 +960,36 @@ void processMessage(byte *data, int length) {
         #endif
         break;
       }*/
+    // Send data infomation
+    case 'D':
+      // IDs: 0-32 are saved for 
+      {
+        // Save interger first byte as payload: (0-64) reserved for now, rest are used for data.
+        int id=data[1];
+        //char id[4];                         
+        //sprintf(id, "%d", data[1]);  
+        
+        // Determine what to do with saved data
+        int operation=data[2];
+        //char operation[4];                         
+        //sprintf(operation, "%d", data[2]); 
+        
+        // Get data payload and have messages calss handle all farther message handling
+        uint8_t* payload = &data[3]; 
+        #if SCREEN_ENABLED
+          messages.addMessageToArduino(id, operation, payload);
+        #endif
+        break;
+      }
     default:
       Serial.println("Unknown message type");
       cmd_triggered=false;
-      break;
+    break;
   }
   last_message_time=current_time;
-  if(serial_connection_established==false&&cmd_triggered==true){
-  serial_connection_established=true;
-  systemFault(false,"","", NONE, NONE, ON);
+  if(serial_connection_established==false && cmd_triggered==true){
+    serial_connection_established=true;
+    systemFault(false,"","", NONE, NONE, ON);
   }
 }
 
@@ -720,7 +1003,7 @@ void stop_all() {
     act_bucket.stop();
   #endif
   #if MOTORS_ENABLED
-    #if MAIN_ROBOT==1
+    #if MAIN_ROBOT==0 || MAIN_ROBOT==1
       motor_right.stop();
       motor_left.stop();
     #else

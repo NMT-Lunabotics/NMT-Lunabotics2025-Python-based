@@ -1,0 +1,21 @@
+This system sends a heartbeat on repeate that the host can liston too, allowing the ip of the robot ip to be found. 
+A heartbeat system requires more data then a ping based system but has less chance of failure.
+
+----------------------------------------------------------------------
+1. Add script and startup files to jetson, and make py file execyable
+----------------------------------------------------------------------
+
+sudo nano /etc/systemd/system/heartbeat.service
+
+sudo nano /usr/local/bin/heartbeat.sh
+sudo chmod +x /usr/local/bin/heartbeat.sh
+
+----------------------------------------------------------------------
+2. Start the startup services
+----------------------------------------------------------------------
+
+sudo systemctl daemon-reload
+sudo systemctl enable heartbeat.service
+sudo systemctl start heartbeat.service
+
+sudo systemctl status heartbeat.service

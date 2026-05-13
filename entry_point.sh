@@ -1,21 +1,24 @@
 #!/bin/bash
-# entry_point.sh
+set -e
 
-# Environment variables expected:
-# HOST_USER - the username on the host machine
-# HOST_IP   - the IP of the host machine
-# HOST_PATH - path to NMT-Lunabotics2025-Python-based on the host
+# Fix camera
+[ -e /dev/video0 ] && sudo chmod 666 /dev/video0
 
-# Temporary directory for copying host files
-mkdir -p $HOME_DIR/NMT-Lunabotics2025-Python-based
+# Always source ROS 2 first
+source /opt/ros/humble/setup.bash
 
-echo "Copying host files into container..."
-rsync -avz --delete $HOST_USER@$HOST_IP:$HOST_PATH/ $HOME_DIR/NMT-Lunabotics2025-Python-based/
+# Then source workspace if built
+if [ -f /home/luna/NMT-Lunabotics2025-Python-based/ros2_ws/install/setup.bash ]; then
+    source /home/luna/NMT-Lunabotics2025-Python-based/ros2_ws/install/setup.bash
+fi
 
-echo "Files copied successfully."
+# Then bashrc if needed
+if [ -f /home/luna/.bashrc ]; then
+    source /home/luna/.bashrc
+fi
 
-# Start your normal container behavior
-cd $WORKING_DIR
+# Go to working directory (ensure WORKING_DIR is set in your docker/env)
+cd "${WORKING_DIR:-/home/luna/NMT-Lunabotics2025-Python-based}"
 
-# If you have additional commands to start your robot environment, put them here
+# Execute the command passed to the container
 exec "$@"

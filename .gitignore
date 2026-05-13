@@ -11,4 +11,9 @@ system_operations/system_control/arduino.sketch_hash
 .vscode/
 __pycache__/
 env_file.txt
+config_runtime
 userpassword
+ros2_ws/build/
+ros2_ws/install/
+ros2_ws/log/
+.tripwire

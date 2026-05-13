@@ -1,0 +1,41 @@
+
+
+Message operation [CMD BYTE, ID BYTE, OPERATION BYTE, MESSAGE]:
+
+-----Operations-----
+
+0: Push message to memery, auto assign id
+1: Start message cycling
+2: Stop message cycling
+3: Cycle to next section
+4: Push message to memery, set to id
+5: Delete message from memery
+
+Overide current message and show message for time period, before starting cycling again, persistent message will not start cycling.
+
+6: Show message (short timeframe: 10s)
+7: Show message (long timeframe: 60s)
+8: Show persistent message
+
+-----Ids-----
+
+[NO ID] 0
+No id, message is saved as single use message.
+
+[E-STOP] 1
+Critical fault, will shut down whole system (RED LED)
+
+[WARNING] 2 and 3
+Error, 2 are critical errors system is not allowed to run (BLINKING YELLOW) or system is fixing itself, 3 non-critical error system runs like normal (YELLOW LED)
+
+
+[COMMS] 4-7
+This stores communication data. (BLINKING BLUE) controller disconnected and not revicing commands, (BLUE LED) revicing commands. 
+17 stores robot ip address, 18 stores robot subnet
+
+
+[STATUS] 8
+System startup, (BLINKING GREEN) indicates that system is starting, (GREEN LED) indicates that system started
+
+[DATA] 9-12
+Display system data

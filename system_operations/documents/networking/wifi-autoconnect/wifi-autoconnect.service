@@ -1,0 +1,15 @@
+[Unit]
+Description=Auto Wi-Fi connect script
+After=NetworkManager-wait-online.service
+Wants=NetworkManager-wait-online.service
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/wifi-autoconnect.sh
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
