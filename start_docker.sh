@@ -307,12 +307,12 @@ start_container() {
 if [ "$INTERACTIVE_HOST" = true ]; then
     echo -e "\e[36m[STARTUP]\e[0m Running ros system on host..."
 
-    #[ -f /opt/ros/humble/setup.bash ] && source /opt/ros/humble/setup.bash
+    [ -f /opt/ros/humble/setup.bash ] && source /opt/ros/humble/setup.bash
     ROS_DIR_ABS="$WORKING_DIR_HOST/$ROS_DIR"
 
-    #if [ -f "$ROS_DIR_ABS/install/setup.bash" ]; then
-    #    source "$ROS_DIR_ABS/install/setup.bash"
-    #fi
+    if [ -f "$ROS_DIR_ABS/install/setup.bash" ]; then
+        source "$ROS_DIR_ABS/install/setup.bash"
+    fi
 
     if [ "$BUILD_IMAGE" = true ]; then
         cd "$ROS_DIR_ABS"
