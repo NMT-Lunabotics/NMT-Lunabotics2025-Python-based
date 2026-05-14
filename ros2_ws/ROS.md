@@ -105,6 +105,9 @@ arduino-cli compile --fqbn arduino:avr:mega --clean system_control/
 python3 system_control/uploud_code.py
 ```
 
+arduino-cli compile --fqbn arduino:avr:mega --clean actuator_calibrate/
+python3 actuator_calibrate/uploud_code.py
+
 
 
 

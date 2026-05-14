@@ -254,7 +254,7 @@ class ControllerNode(Node):
                 subprocess.Popen(["ros2", "param", "set","/waypoint", "nav_target_name", "berm"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 subprocess.Popen(["ros2", "service", "call","/navigation_goal_target","std_srvs/srv/SetBool","{data: true}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 return
-            
+
         # Motor velocity data
         motor=Twist()
         if self.motor_lateral_direction==1: vel=-vel
@@ -316,10 +316,10 @@ class ControllerNode(Node):
         self.automation_publisher.publish(msg)
     
     def publish_cmd_vel(self):
-        self.vel_publisher.publish(self.cmd_vel_msg)
+        if self.triggered_automation is None: self.vel_publisher.publish(self.cmd_vel_msg)
 
     def publish_actuators(self):
-        self.robot_command_publisher.publish(self.actuator_msg)
+        if self.triggered_automation is None: self.robot_command_publisher.publish(self.actuator_msg)
 
     def publish_extra(self):
         if self.servo_msg != None:

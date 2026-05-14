@@ -15,7 +15,7 @@
   #define MOTORS_ENABLED               1
   #define BUCKET_ACTUATOR_ENABLED      1
   #define ARM_ACTUATORS_ENABLED        1
-  #define SERVO_MOTOR_ENABLED          0
+  #define SERVO_MOTOR_ENABLED          1
   #define IMU_SENSOR_ENABLED           0
   #define IBUS_RECIVER_ENABLED         0
   #define SCREEN_ENABLED               0
@@ -26,7 +26,7 @@
 
   // Debug mode flags
   #define DEBUG_MODE                   0
-  #define SENSOR_OUTPUT                0 // 1: IMU, 2: IBUS, 3: IBUS raw, 4: Final IBUS commands, 5: Actuator positions, 6: Actuator pot values
+  #define SENSOR_OUTPUT                0 // 1: IMU, 2: IBUS, 3: IBUS raw, 4: Final IBUS commands, 5: Actuator positions, 6: Actuator pot values, 8: Servo angle
 
 #else
 //------------------------------------------------------------

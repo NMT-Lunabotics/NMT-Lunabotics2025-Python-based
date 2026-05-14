@@ -128,12 +128,19 @@ enum LedState { OFF = 0, NONE = -1, ON = 1, BLINK = 2 };
 // Actuator potentiometer min and max values
 #if MAIN_ROBOT==1
   #if PCB_BOARD_SCHEMATIC == 0
-    #define AL_POT_MIN 30   
-    #define AL_POT_MAX 868  
-    #define AR_POT_MIN 30   
-    #define AR_POT_MAX 878  
-    #define AB_POT_MIN 32          
-    #define AB_POT_MAX 799    
+    #define AL_POT_MIN 31  
+    #define AL_POT_MAX 861
+    #define AR_POT_MIN 31  
+    #define AR_POT_MAX 856
+
+    //#define AL_POT_MIN 30   
+    //#define AL_POT_MAX 868  
+    //#define AR_POT_MIN 30   
+    //#define AR_POT_MAX 878  
+
+
+    #define AB_POT_MIN 29         
+    #define AB_POT_MAX 801    
   #elif PCB_BOARD_SCHEMATIC == 1
     #define AL_POT_MIN 35  
     #define AL_POT_MAX 865  
@@ -673,8 +680,9 @@ void loop() {
       // Update actuator positions.
 
       if (aLR_tgt >= 0) {
-        act_left.tgt_ctrl(aLR_tgt);
-        act_right.tgt_ctrl(aLR_tgt);
+        //act_left.tgt_ctrl(aLR_tgt);
+        //act_right.tgt_ctrl(aLR_tgt);
+        Serial.println(aLR_tgt);
       } else {
         aL_pos = act_left.update_pos("Act L: ");
         aR_pos = act_right.update_pos("Act R: ");
@@ -711,8 +719,8 @@ void loop() {
         //Serial.println(aB_speed);
         //Serial.println(aB_pos >= bucket_dynamic_max && aL_speed>0);
       
-      if (aB_tgt >= 0) act_bucket.tgt_ctrl(aB_tgt);
-      else if (aB_pos < bucket_max || aB_pos > bucket_min) {
+      //if (aB_tgt >= 0) act_bucket.tgt_ctrl(aB_tgt);
+      if (aB_pos < bucket_max || aB_pos > bucket_min) {
         if (aB_speed > 0 && (aB_pos >= bucket_soft_max || aB_pos >= bucket_dynamic_max)) aB_speed = 0;  
 
         #if BUCKET_AUTO_CORRECTION==1
@@ -927,7 +935,7 @@ void processMessage(byte *data, int length) {
       { 
         #if SERVO_MOTOR_ENABLED
         servo.write(data[1]);
-        #if DEBUG_MODE
+        #if SENSOR_OUTPUT == 8
           Serial.print("Servo State: ");
           Serial.println(data[1]);
         #endif

@@ -233,7 +233,7 @@ class Motor {
   int motor_max_vel;
   bool reverse;
   float curved_speed = 0;
-  float ramp_speed_time = 0.75;
+  float ramp_speed_time = 1.5;
   unsigned long last_update = 0;
   unsigned long direction_change_block_until = 0;
 

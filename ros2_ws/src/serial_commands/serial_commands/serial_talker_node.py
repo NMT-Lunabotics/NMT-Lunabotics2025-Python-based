@@ -224,15 +224,18 @@ class SerialTalkerNode(Node):
 
     # Apply scaling to 'A' command
     def send_act_command(self, data, blocking_id):
-        arm_act_max_pos=data[0]
-        arm_act_min_pos=data[1]
-        bucket_act_max_pos=data[2]
-        bucket_act_min_pos=data[3]
+        arm_act_min_pos=data[0]
+        arm_act_max_pos=data[1]
+        bucket_act_min_pos=data[2]
+        bucket_act_max_pos=data[3]
         arm_velocity=data[4]
         bucket_velocity=data[5]
 
-        if arm_act_max_pos != -1 and arm_act_min_pos != -1: 
-            arm_velocity=1
+        #self.get_logger().error(f"{arm_velocity} {bucket_velocity} {arm_act_min_pos} {arm_act_max_pos} {bucket_act_min_pos} {bucket_act_max_pos}")
+
+        if arm_act_min_pos != -1 and arm_act_max_pos != -1: 
+            #arm_velocity=1
+            ...
         else: 
             # Scale speeds to actuator speed scale
             arm_velocity = int(arm_velocity*self.actuator_vel_scale)
@@ -240,8 +243,9 @@ class SerialTalkerNode(Node):
             arm_act_max_pos=-1
             arm_act_min_pos=-1
 
-        if bucket_act_max_pos != -1 and bucket_act_min_pos != -1:
-            bucket_velocity=1
+        if bucket_act_min_pos != -1 and bucket_act_max_pos != -1:
+            #bucket_velocity=1
+            ...
         else:
             # Scale speeds to actuator speed scale
             bucket_velocity = int(bucket_velocity*self.actuator_vel_scale)
@@ -249,7 +253,7 @@ class SerialTalkerNode(Node):
             bucket_act_max_pos=-1
             bucket_act_min_pos=-1
 
-        self.update_command('A', [arm_act_max_pos, arm_act_min_pos, bucket_act_max_pos, bucket_act_min_pos, arm_velocity, bucket_velocity], blocking_id)
+        self.update_command('A', [arm_act_min_pos, arm_act_max_pos, bucket_act_min_pos, bucket_act_max_pos, arm_velocity, bucket_velocity], blocking_id)
 
 def main(args=None):
     rclpy.init(args=args)
