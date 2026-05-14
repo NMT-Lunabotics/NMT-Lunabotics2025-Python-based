@@ -5,7 +5,7 @@ controller_input_node:
       B_BUTTON: none
       X_BUTTON: dig2
       Y_BUTTON: none
-      HORIZONTAL_DPAD_LEFT: auto_dig_1s
+      HORIZONTAL_DPAD_LEFT: dig3
       HORIZONTAL_DPAD_RIGHT: none
       VERTICAL_DPAD_UP: none
       VERTICAL_DPAD_DOWN: auto_dump_1s
