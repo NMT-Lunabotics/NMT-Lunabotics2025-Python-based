@@ -27,7 +27,7 @@ def generate_launch_description():
             'align_depth.enable':'false',
             'unite_imu_method':'2',
             'camera_name':'camera0',
-            'serial_no':'_311322301206',
+            'serial_no':'_306322300659',
         }.items(),
     )
 

@@ -20,7 +20,6 @@ install(PROGRAMS
   camera/camera_mux_node.py
   camera/simple_camera_stream_node.py
   camera/count_streams.py
-  camera/webhost_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

@@ -318,7 +318,7 @@ if [ "$INTERACTIVE_HOST" = true ]; then
         cd "$ROS_DIR_ABS"
         sudo rm -rf build/ install/ log/
         source /opt/ros/humble/setup.bash
-        colcon build --continue-on-error --packages-skip CURL nlohmann_json
+        colcon build --continue-on-error --packages-select automated_operations camera controller_input point_navigation robot_interfaces serial_commands system_monitor system_start
         source "$ROS_DIR_ABS/install/setup.bash"
         cd "$WORKING_DIR_HOST" 
     fi
@@ -349,7 +349,7 @@ if [ "$INTERACTIVE_HOST" = true ]; then
         elif [ "$LAUNCH_FILE_TYPE" == 1 ]; then
             ros2 launch system_start system_user_interface_launch.py
         elif [ "$LAUNCH_FILE_TYPE" == 2 ]; then
-            ros2 launch system_start system_navigation_launch.py nav_stream:=-1
+            ros2 launch system_start system_navigation_launch.py nav_stream:="true"
         fi
     elif [ "$RUN_SERIAL_LAUNCH" == true ]; then
         ros2 launch serial_commands serial_launch.py

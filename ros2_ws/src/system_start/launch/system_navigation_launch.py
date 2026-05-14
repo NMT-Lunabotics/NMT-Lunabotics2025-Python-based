@@ -1,14 +1,19 @@
 from launch import LaunchDescription
-from launch.actions import IncludeLaunchDescription, TimerAction
+from launch.actions import IncludeLaunchDescription, TimerAction, ExecuteProcess, OpaqueFunction
 from launch.launch_description_sources import PythonLaunchDescriptionSource
 from launch_ros.actions import Node
-from launch.actions import ExecuteProcess
 from launch.substitutions import LaunchConfiguration
 from ament_index_python.packages import get_package_share_directory
 import os
 
+
 def generate_launch_description():
-    nav_stream = LaunchConfiguration('nav_stream')
+    return LaunchDescription([
+        OpaqueFunction(function=launch_setup)
+    ])
+
+def launch_setup(context, *args, **kwargs):
+    nav_stream = LaunchConfiguration('nav_stream').perform(context).lower() == 'true'
     # Get file paths of diffrent packages
     camera_directory=get_package_share_directory('camera')
     system_start_directory=get_package_share_directory('system_start')
@@ -48,7 +53,8 @@ def generate_launch_description():
     waypoint_node = Node(
         package='point_navigation',
         executable='waypoint.py',
-        name='waypoint'
+        name='waypoint',
+        arguments=['--ros-args', '--log-level', 'error']
     )
 
     base_frame = Node(
@@ -112,11 +118,11 @@ def generate_launch_description():
         PythonLaunchDescriptionSource(camera_launch_file),
         launch_arguments={
             'camera_config': camera_config_file, 
-            'nav_stream': nav_stream
+            'nav_stream': str(nav_stream)
         }.items()
     )
 
-    return LaunchDescription([
+    return [
         realsense_launch,
         base_frame,
         rtabmap_launch,
@@ -126,4 +132,4 @@ def generate_launch_description():
         camera_launch,
         automated_operations,
         serial_talker_node
-    ])
+    ]

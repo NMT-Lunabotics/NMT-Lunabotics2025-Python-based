@@ -130,3 +130,14 @@ ros2 service call /save_target_location std_srvs/srv/SetBool "{data: true}"
 
 **Launch apriltag node with visuals**
 ros2 run camera camera_apriltag_node.py ros2 run camera camera_apriltag_node --ros-args -p publish_map:=true -p publish_processed:=true
+
+
+
+
+
+
+
+
+cd ~/Documents/NMT-Lunabotics2025-Python-based/ros2_ws
+colcon build --symlink-install
+source install/setup.bash
