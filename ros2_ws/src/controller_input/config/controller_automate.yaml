@@ -3,7 +3,7 @@ controller_input_node:
     automations:     
       A_BUTTON: dump
       B_BUTTON: none
-      X_BUTTON: dig
+      X_BUTTON: dig2
       Y_BUTTON: none
       HORIZONTAL_DPAD_LEFT: auto_dig_1s
       HORIZONTAL_DPAD_RIGHT: none
