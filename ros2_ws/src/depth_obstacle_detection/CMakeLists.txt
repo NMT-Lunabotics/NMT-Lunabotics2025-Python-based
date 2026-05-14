@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(system_monitor)
+project(depth_obstacle_detection)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -7,10 +7,12 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
-find_package(rosidl_default_generators REQUIRED)
+find_package(sensor_msgs REQUIRED)
+find_package(cv_bridge REQUIRED)
+find_package(std_msgs REQUIRED)
 
 install(PROGRAMS
-  system_monitor/bandwidth_node.py
+  depth_obstacle_detection/depth_obstacle_detection_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

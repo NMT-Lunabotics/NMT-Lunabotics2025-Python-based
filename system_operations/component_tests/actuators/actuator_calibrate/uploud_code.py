@@ -15,7 +15,7 @@ arduino.compile_and_upload()
 
 while True:
     #feedback = serial.read_command_feedback()
-    #if feedback:
+    #if feedback:192.168.0.157
     #    for packet in feedback: 
     #        print(packet)
 
