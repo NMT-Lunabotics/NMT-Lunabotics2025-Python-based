@@ -1,0 +1,8 @@
+<library path="gp_costmap_layer">
+  <class
+    name="gp_costmap_layer/GPCostmapLayer"
+    type="gp_costmap_layer::GPCostmapLayer"
+    base_class_type="nav2_costmap_2d::Layer">
+    <description>Overlays /gp_costmap OccupancyGrid into Nav2 costmaps.</description>
+  </class>
+</library>
