@@ -329,9 +329,9 @@ if [ "$INTERACTIVE_HOST" = true ]; then
         exit 0
     fi
 
-    if [ "$ARDUINO_UPDATER_IMAGE" = true ] || [ "$BUILD_IMAGE" = true ]; then
+    if [ "$ARDUINO_UPDATER_IMAGE" == true ] || [ "$BUILD_IMAGE" == true ]; then
         echo -e "\e[36m[STARTUP]\e[0m Updating arduino code..."
-        "$ARDUINO_IMAGE_UPDATER"
+        #"$ARDUINO_IMAGE_UPDATER"
     fi
 
     if [ "$RUN_TELEOP_LAUNCH" == true ]; then

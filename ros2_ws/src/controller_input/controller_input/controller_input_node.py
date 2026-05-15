@@ -14,6 +14,8 @@ class ControllerNode(Node):
         self.time=self.get_clock().now()
         self.last_camera_state_change=self.get_clock().now()
         self.last_msg_time = self.time
+        self.servo_timer = self.time
+        self.servo_direction=0
         self.controller_schematic=[]
         self.active_controller={}
         self.controller_name="None"
@@ -96,7 +98,7 @@ class ControllerNode(Node):
 
         self.create_timer(0.005, self.publish_cmd_vel)       
         self.create_timer(0.005, self.publish_actuators) 
-        self.create_timer(0.1, self.publish_extra)    
+        self.create_timer(0.05, self.publish_extra)    
 
         # Create publishers for robot commands
         self.robot_command_publisher = self.create_publisher(Command, '/robot_commands', 5)
@@ -120,6 +122,7 @@ class ControllerNode(Node):
     # Handle joystick logic
     def joy_callback(self, msg: Joy):
         self.time = self.get_clock().now()
+        armed=self.get_input_values(msg, "ARM")
         
         # Connection code that helps handle timeouts
         self.last_msg_time = self.get_clock().now()
@@ -155,8 +158,24 @@ class ControllerNode(Node):
         elif(bucket_act_vel > 0): bucket_act_vel=self.map_value(bucket_act_vel,self.deadzone,1.0,0.0,1.0)
         else: bucket_act_vel=self.map_value(bucket_act_vel,-1.0,-self.deadzone,-1.0,0.0)
 
+        if armed == 1:
+            if self.get_input_values(msg, 'X_BUTTON') == 1:
+                self.servo_timer=self.time
+                self.servo_direction=0
+            if self.get_input_values(msg, 'X_BUTTON') == 1:
+                self.servo_timer=self.time
+                self.servo_direction=1
+
+        if time.time()-self.servo_timer<=2.5:
+            servo_msg=Command()
+            servo_msg.command="S"
+            if self.servo_direction==0: servo_msg.data=[0]
+            elif self.servo_direction==1: servo_msg.data=[270]
+            servo_msg.blocking_id=0
+            self.servo_msg=servo_msg
+
         # If unarmed or controller is disconnected send a speed of 0, 
-        if self.triggered_automation != None and (self.get_input_values(msg, "ARM") == 0 or self.connected == False):
+        if self.triggered_automation != None and (armed == 0 or self.connected == False):
             if time.time()-self.triggered_automation>=self.automation_timeout: self.triggered_automation=None
             elif self.triggered_automation_type != None and self.triggered_automation_type<=3:
                 self.trigger_sequence("interrupt")
@@ -168,7 +187,7 @@ class ControllerNode(Node):
             self.triggered_automation=None
             self.triggered_automation_type=None
 
-        if(self.get_input_values(msg, "ARM") == 0 or self.connected == False): 
+        if(armed == 0 or self.connected == False): 
             vel=0.0
             ang_vel=0.0
             arm_act_vel=0.0
@@ -201,7 +220,7 @@ class ControllerNode(Node):
                     self.triggered_automation_type=7
                 self.triggered_automation=time.time()
 
-        if(self.get_input_values(msg, "ARM")==0 and self.get_input_values(msg, 'CAMERA_TOGGLE')==1 and self.get_input_values(msg, 'LEFT_STICK')==1):
+        if(armed==0 and self.get_input_values(msg, 'CAMERA_TOGGLE')==1 and self.get_input_values(msg, 'LEFT_STICK')==1):
             estop_msg = Command()
             estop_msg.command="B"
             estop_msg.data=[]
@@ -234,10 +253,10 @@ class ControllerNode(Node):
                 self.triggered_settings_update=time.time()
                 return
 
-            elif self.get_input_values(msg, 'MOTOR_X') != 0 and self.get_input_values(msg, "ARM") == 0:
-                servo_msg = Command()
+            elif self.get_input_values(msg, 'MOTOR_X') != 0 and armed == 0:
+                servo_msg=Command()
                 servo_msg.command="S"
-                angle=self.map_value(self.get_input_values(msg, "MOTOR_X"), -1, 1, 0, self.controller_config["servo_range"])
+                servo_msg.data=[self.map_value(self.get_input_values(msg, "MOTOR_X"), -1, 1, 0, self.controller_config["servo_range"])]
                 servo_msg.blocking_id=0
                 self.servo_msg=servo_msg
                 return
@@ -370,6 +389,7 @@ class ControllerNode(Node):
     
     # Map values to match range
     def map_value(self, x, in_min, in_max, out_min, out_max):
+        x = max(in_min, min(x, in_max))
         return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
     # Destory started sub-process

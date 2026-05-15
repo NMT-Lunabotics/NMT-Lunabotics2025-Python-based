@@ -350,7 +350,7 @@ class SimpleServo {
       int currentAngle;
   
   public:
-      SimpleServo(uint8_t pin, int minPulse = 500, int maxPulse = 2500)
+      SimpleServo(uint8_t pin, int minPulse = 400, int maxPulse = 2600)
           : pin(pin), minPulse(minPulse), maxPulse(maxPulse), currentAngle(90) {}
   
       void attach() {
@@ -376,7 +376,7 @@ class SimpleServo {
   
       void writeContinuous(int angle) {
           // continuous mode: run PWM forever
-          int pulseWidth = map(angle, 0, 270, minPulse, maxPulse);
+          int pulseWidth = map(angle, 0, 255, minPulse, maxPulse);
   
           digitalWrite(pin, HIGH);
           delayMicroseconds(pulseWidth);

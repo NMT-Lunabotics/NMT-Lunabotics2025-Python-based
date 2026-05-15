@@ -9,5 +9,5 @@ controller_input_node:
     config:     
       timeout: 1.0
       actuator_deadzone: 0.0
-      servo_range: 270
+      servo_range: 255
       device: /dev/input/by-id/*-event-joystick
