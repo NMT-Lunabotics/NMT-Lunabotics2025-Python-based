@@ -20,7 +20,7 @@ class ControllerNode(Node):
         self.triggered_automation=None
         self.triggered_automation_type=None
         self.automation_timeout=15
-        self.deadzone=0.4  # Deadzone of actuator joystick
+        self.deadzone=0.1  # Deadzone of actuator joystick
         self.timeout=1
         self.triggered_settings_update=0
         self.last_save_time=0
