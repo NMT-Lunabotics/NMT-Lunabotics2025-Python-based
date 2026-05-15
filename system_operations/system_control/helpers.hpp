@@ -359,11 +359,11 @@ class SimpleServo {
       }
   
       void write(int angle) {
-          angle = constrain(angle, 0, 180);
+          angle = constrain(angle, 0, 270);
           currentAngle = angle;
   
           // map angle to pulse width
-          int pulseWidth = map(angle, 0, 180, minPulse, maxPulse);
+          int pulseWidth = map(angle, 0, 270, minPulse, maxPulse);
   
           // generate one PWM frame
           digitalWrite(pin, HIGH);
@@ -376,7 +376,7 @@ class SimpleServo {
   
       void writeContinuous(int angle) {
           // continuous mode: run PWM forever
-          int pulseWidth = map(angle, 0, 180, minPulse, maxPulse);
+          int pulseWidth = map(angle, 0, 270, minPulse, maxPulse);
   
           digitalWrite(pin, HIGH);
           delayMicroseconds(pulseWidth);

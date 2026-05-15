@@ -11,6 +11,38 @@ http://tplinkwifi.net/
 ***
 <br>
 
+## Competition specific fixes
+
+**Reset SSH key of certain ip address:**
+```
+ssh-keygen -R 192.168.0.157
+```
+
+**Reset all SSH keys:**
+```
+rm ~/.ssh/known_hosts
+```
+
+**Clear ARP catce**
+```
+sudo ip neigh flush all
+```
+
+**Restart networking**
+```
+sudo systemctl restart NetworkManager
+```
+
+**Restart ethernet interface**
+```
+sudo ip link set eth0 down
+sudo ip link set eth0 up
+```
+
+
+
+
+
 ## Status tools
 **List status of network interfaces:**
 ```

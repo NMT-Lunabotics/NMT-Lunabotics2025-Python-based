@@ -259,7 +259,7 @@ float bucket_dynamic_max=arm_soft_max;
 #endif
 
 #if SERVO_MOTOR_ENABLED
-  #define SERVO_PIN 9
+  #define SERVO_PIN 22
 #endif
 
 //------------------------------------------------------------

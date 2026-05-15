@@ -152,6 +152,7 @@ class SerialTalkerNode(Node):
                     del self.command_states[command]
                     continue
                 self.serial.send_command(command, command_data["data"])
+                #self.get_logger().error(f"{command_data["data"]}")
             time.sleep(0.01)
 
     # Handle speical cmd cases, right now only the 'M' and 'A' speical cases exist

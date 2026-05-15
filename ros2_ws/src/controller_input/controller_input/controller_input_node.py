@@ -238,7 +238,6 @@ class ControllerNode(Node):
                 servo_msg = Command()
                 servo_msg.command="S"
                 angle=self.map_value(self.get_input_values(msg, "MOTOR_X"), -1, 1, 0, self.controller_config["servo_range"])
-                servo_msg.data=[angle]
                 servo_msg.blocking_id=0
                 self.servo_msg=servo_msg
                 return
@@ -371,7 +370,6 @@ class ControllerNode(Node):
     
     # Map values to match range
     def map_value(self, x, in_min, in_max, out_min, out_max):
-        x = max(min(x, in_max), in_min)
         return (x - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
 
     # Destory started sub-process

@@ -15,7 +15,7 @@
   #define MOTORS_ENABLED               1
   #define BUCKET_ACTUATOR_ENABLED      1
   #define ARM_ACTUATORS_ENABLED        1
-  #define SERVO_MOTOR_ENABLED          1
+  #define SERVO_MOTOR_ENABLED          0
   #define IMU_SENSOR_ENABLED           0
   #define IBUS_RECIVER_ENABLED         0
   #define SCREEN_ENABLED               0
