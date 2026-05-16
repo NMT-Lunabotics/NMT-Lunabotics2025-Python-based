@@ -189,7 +189,7 @@ class ControllerNode(Node):
             servo_msg=Command()
             servo_msg.command="S"
             if self.servo_direction==0: servo_msg.data=[100.0]
-            elif self.servo_direction==1: servo_msg.data=[240.0]
+            elif self.servo_direction==1: servo_msg.data=[250.0]
             servo_msg.blocking_id=0
             self.servo_msg=servo_msg
 
