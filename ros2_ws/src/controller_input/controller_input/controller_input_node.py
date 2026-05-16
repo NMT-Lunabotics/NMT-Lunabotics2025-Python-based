@@ -21,9 +21,9 @@ class ControllerNode(Node):
         self.controller_name="None"
         self.triggered_automation=None
         self.triggered_automation_type=None
-        self.automation_timeout=15
+        self.automation_timeout=20
         self.deadzone=0.0  # Deadzone of actuator joystick
-        self.timeout=1
+        self.timeout=0.5
         self.triggered_settings_update=0
         self.last_save_time=0
         self.remap_square=True
@@ -61,6 +61,7 @@ class ControllerNode(Node):
             "H_DPAD": "HORIZONTAL_DPAD",                  # H D-pad for automated functions
             "V_DPAD": "VERTICAL_DPAD",                    # V D-pad for automated functions
         }
+        self.control_map={}
 
         # Initalize used message types
         self.cmd_vel_msg = Twist()
@@ -110,6 +111,24 @@ class ControllerNode(Node):
 
         self.get_logger().info("\033[34mController input node started.\033[0m")
 
+    def build_input_table(self, msg: Joy):
+        table={}
+        remap=self.name_remapping
+        axes=self.active_controller.get("axes", {})
+        buttons=self.active_controller.get("buttons", {})
+        def read(key):
+            button=remap.get(key)
+            if button is None: return 0
+            if button in axes:
+                i = axes[button]
+                return msg.axes[i] if i < len(msg.axes) else 0.0
+            if button in buttons:
+                i = buttons[button]
+                return msg.buttons[i] if i < len(msg.buttons) else 0
+            return 0
+        for k in remap.keys(): table[k] = read(k)
+        return table
+
     def select_controller_schematic(self):
         for device in self.devices:
             name = device.lower()
@@ -122,6 +141,7 @@ class ControllerNode(Node):
     # Handle joystick logic
     def joy_callback(self, msg: Joy):
         self.time = self.get_clock().now()
+        self.control_map=self.build_input_table(msg)
         
         # Connection code that helps handle timeouts
         self.last_msg_time = self.get_clock().now()
@@ -132,12 +152,14 @@ class ControllerNode(Node):
             self.connected = True
 
         # Send x and y joystick inputs as linear and angular velocity
-        ang_vel=self.get_input_values(msg, "MOTOR_X")
-        vel=self.get_input_values(msg, "MOTOR_Y")
+        ang_vel=self.control_map["MOTOR_X"]
+        vel=self.control_map["MOTOR_Y"]
+        armed=self.control_map["ARM"]
+        auto=self.control_map["AUTOMATED"]
 
         # Deadzone mapping for actuator to prevent double inputs and movment issues
-        arm_act_vel=self.get_input_values(msg, "ACTUATOR_Y")
-        bucket_act_vel=self.get_input_values(msg, "ACTUATOR_X")
+        arm_act_vel=self.control_map["ACTUATOR_Y"]
+        bucket_act_vel=self.control_map["ACTUATOR_X"]
         if self.remap_square:
             x = bucket_act_vel
             y = arm_act_vel
@@ -155,11 +177,11 @@ class ControllerNode(Node):
         elif(bucket_act_vel > 0): bucket_act_vel=self.map_value(bucket_act_vel,self.deadzone,1.0,0.0,1.0)
         else: bucket_act_vel=self.map_value(bucket_act_vel,-1.0,-self.deadzone,-1.0,0.0)
 
-        if self.get_input_values(msg, "ARM") == 1 and self.get_input_values(msg, "AUTOMATED") == 0:
-            if self.get_input_values(msg, 'X_BUTTON') == 1:
+        if armed == 1 and auto == 0:
+            if self.control_map['X_BUTTON'] == 1:
                 self.servo_timer=time.time()
                 self.servo_direction=0
-            if self.get_input_values(msg, 'B_BUTTON') == 1:
+            if self.control_map['B_BUTTON'] == 1:
                 self.servo_timer=time.time()
                 self.servo_direction=1
 
@@ -172,105 +194,110 @@ class ControllerNode(Node):
             self.servo_msg=servo_msg
 
         # If unarmed or controller is disconnected send a speed of 0, 
-        if self.triggered_automation != None and (self.get_input_values(msg, "ARM") == 0 or self.connected == False):
+        if self.triggered_automation != None and (armed == 0 or self.connected == False):
             if time.time()-self.triggered_automation>=self.automation_timeout: self.triggered_automation=None
             elif self.triggered_automation_type != None and self.triggered_automation_type<=3:
                 self.trigger_sequence("interrupt")
                 self.triggered_automation=None
                 self.triggered_automation_type=None
         
-        if self.triggered_automation != None and self.get_input_values(msg, "POS1_SAVE") == 1:
+        if self.triggered_automation != None and self.control_map["POS1_SAVE"] == 1:
             self.trigger_sequence("interrupt")
             self.triggered_automation=None
             self.triggered_automation_type=None
 
-        if(self.get_input_values(msg, "ARM") == 0 or self.connected == False): 
+        if(armed == 0 or self.connected == False): 
             vel=0.0
             ang_vel=0.0
             arm_act_vel=0.0
             bucket_act_vel=0.0
-        elif self.get_input_values(msg, "AUTOMATED") == 1:
+        elif auto == 1:
                 # Triggers automated functions
-                if self.get_input_values(msg, 'X_BUTTON') == 1: 
+                if self.control_map['X_BUTTON'] == 1: 
                     self.trigger_sequence(self.controller_automations["X_BUTTON"])
                     self.triggered_automation_type=0
-                elif self.get_input_values(msg, 'A_BUTTON') == 1: 
+                    self.triggered_automation=time.time()
+                elif self.control_map['A_BUTTON'] == 1: 
                     self.trigger_sequence(self.controller_automations["A_BUTTON"])
                     self.triggered_automation_type=1
-                elif self.get_input_values(msg, 'B_BUTTON') == 1: 
+                    self.triggered_automation=time.time()
+                elif self.control_map['B_BUTTON'] == 1: 
                     self.trigger_sequence(self.controller_automations["B_BUTTON"])
                     self.triggered_automation_type=2
-                elif self.get_input_values(msg, 'Y_BUTTON') == 1: 
+                    self.triggered_automation=time.time()
+                elif self.control_map['Y_BUTTON'] == 1: 
                     self.trigger_sequence(self.controller_automations["Y_BUTTON"])
                     self.triggered_automation_type=3
-                elif self.get_input_values(msg, 'H_DPAD') == 1: 
+                    self.triggered_automation=time.time()
+                elif self.control_map['H_DPAD'] == 1: 
                     self.trigger_sequence(self.controller_automations["HORIZONTAL_DPAD_LEFT"])
-                    self.triggered_automation_type=3
-                elif self.get_input_values(msg, 'H_DPAD') == -1: 
+                    self.triggered_automation_type=4
+                    self.triggered_automation=time.time()
+                elif self.control_map['H_DPAD'] == -1: 
                     self.trigger_sequence(self.controller_automations["HORIZONTAL_DPAD_RIGHT"])
                     self.triggered_automation_type=5
-                elif self.get_input_values(msg, 'V_DPAD') == 1: 
+                    self.triggered_automation=time.time()
+                elif self.control_map['V_DPAD'] == 1: 
                     self.trigger_sequence(self.controller_automations["VERTICAL_DPAD_UP"])
                     self.triggered_automation_type=6
-                elif self.get_input_values(msg, 'V_DPAD') == -1: 
+                    self.triggered_automation=time.time()
+                elif self.control_map['V_DPAD'] == -1: 
                     self.trigger_sequence(self.controller_automations["VERTICAL_DPAD_DOWN"])
                     self.triggered_automation_type=7
-                self.triggered_automation=time.time()
+                    self.triggered_automation=time.time()
 
-        if(self.get_input_values(msg, "ARM")==0 and self.get_input_values(msg, 'CAMERA_TOGGLE')==1 and self.get_input_values(msg, 'LEFT_STICK')==1):
+        if(armed==0 and self.control_map['CAMERA_TOGGLE']==1 and self.control_map['LEFT_STICK']==1):
             estop_msg = Command()
             estop_msg.command="B"
             estop_msg.data=[]
             estop_msg.blocking_id=0
             self.estop_msg=estop_msg
 
-
-        if self.get_input_values(msg, "AUTOMATED") == 1 and time.time()-self.triggered_settings_update>0.3:
+        if auto == 1 and time.time()-self.triggered_settings_update>0.3:
             # Swaps indavidual controls
-            if self.get_input_values(msg, "CAMERA_SWITCH") == 1:
-                if self.get_input_values(msg, 'X_BUTTON') == 1: 
+            if self.control_map["CAMERA_SWITCH"] == 1:
+                if self.control_map['X_BUTTON'] == 1: 
                     self.motor_sideways_direction=1-self.motor_sideways_direction
                     self.triggered_settings_update=time.time()
                     return
-                elif self.get_input_values(msg, 'A_BUTTON') == 1: 
+                elif self.control_map['A_BUTTON'] == 1: 
                     self.arm_actuator_direction=1-self.arm_actuator_direction
                     self.triggered_settings_update=time.time()
                     return
-                elif self.get_input_values(msg, 'B_BUTTON') == 1: 
+                elif self.control_map['B_BUTTON'] == 1: 
                     self.bucket_actuator_direction=1-self.bucket_actuator_direction
                     self.triggered_settings_update=time.time()
                     return
-                elif self.get_input_values(msg, 'Y_BUTTON') == 1: 
+                elif self.control_map['Y_BUTTON'] == 1: 
                     self.motor_lateral_direction=1-self.motor_lateral_direction
                     self.triggered_settings_update=time.time()
                     return
 
             # Swaps motor directions for backwords driving
-            elif self.get_input_values(msg, 'CAMERA_TOGGLE') == 1:
+            elif self.control_map['CAMERA_TOGGLE'] == 1:
                 self.motor_lateral_direction=1-self.motor_lateral_direction
                 self.triggered_settings_update=time.time()
-                return
 
-            elif self.get_input_values(msg, 'MOTOR_X') != 0:
+            elif self.control_map['MOTOR_X'] != 0:
                 servo_msg=Command()
                 servo_msg.command="S"
-                range=self.map_value(self.get_input_values(msg, "MOTOR_X"), -1, 1, 0, self.controller_config["servo_range"])
+                range=self.map_value(self.control_map["MOTOR_X"], -1, 1, 0, self.controller_config["servo_range"])
                 if range < 100.0: range = 100.0
                 servo_msg.data=[range]
                 servo_msg.blocking_id=0
                 self.servo_msg=servo_msg
 
-            elif self.get_input_values(msg, 'POS1_SAVE') == 1 and time.time() - self.last_save_time > 0.5:
-                self.last_save_time = time.time()
-                subprocess.Popen(["ros2", "param", "set","/waypoint", "target_name", "berm"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                subprocess.Popen(["ros2", "service", "call","/save_target_location","std_srvs/srv/SetBool","{data: true}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                return
+            #elif self.control_map['POS1_SAVE'] == 1 and time.time() - self.last_save_time > 0.5:
+            #    self.last_save_time = time.time()
+                #subprocess.Popen(["ros2", "param", "set","/waypoint", "target_name", "berm"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                #subprocess.Popen(["ros2", "service", "call","/save_target_location","std_srvs/srv/SetBool","{data: true}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            #    return
 
-            elif self.get_input_values(msg, 'NAV_TRIGGER') == -1 and time.time() - self.last_save_time > 0.5:
-                self.last_save_time = time.time()
-                subprocess.Popen(["ros2", "param", "set","/waypoint", "nav_target_name", "berm"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                subprocess.Popen(["ros2", "service", "call","/navigation_goal_target","std_srvs/srv/SetBool","{data: true}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                return
+            #elif self.control_map['NAV_TRIGGER'] == -1 and time.time() - self.last_save_time > 0.5:
+            #    self.last_save_time = time.time()
+                #subprocess.Popen(["ros2", "param", "set","/waypoint", "nav_target_name", "berm"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                #subprocess.Popen(["ros2", "service", "call","/navigation_goal_target","std_srvs/srv/SetBool","{data: true}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            #    return
 
         # Motor velocity data
         motor=Twist()
@@ -292,9 +319,9 @@ class ControllerNode(Node):
         # Publish camera data
         camera_msg = Camera()
 
-        camera_state_active=self.get_input_values(msg, "CAMERA_TOGGLE")
-        camera_state_active2=self.get_input_values(msg, "LEFT_STICK")
-        camera_state = self.get_input_values(msg, "CAMERA_SWITCH")
+        camera_state_active=self.control_map["CAMERA_TOGGLE"]
+        camera_state_active2=self.control_map["LEFT_STICK"]
+        camera_state = self.control_map["CAMERA_SWITCH"]
 
         if(camera_state_active==0 and camera_state_active2==0 and self.toggle_activated==True): 
             if(self.toggle_state==1):

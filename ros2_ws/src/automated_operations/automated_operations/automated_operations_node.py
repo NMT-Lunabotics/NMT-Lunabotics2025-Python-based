@@ -90,6 +90,7 @@ class AutomationPublisher(Node):
                 if last_step and not sent_last_step_blocking: 
                     sent_last_step_blocking = True  
                     self.last_execute=time.time()
+                    self.get_logger().warn("\033[92mAutomated operation finished!\033[0m")
                 time.sleep(0.05)
 
             if self.interrupt: break
