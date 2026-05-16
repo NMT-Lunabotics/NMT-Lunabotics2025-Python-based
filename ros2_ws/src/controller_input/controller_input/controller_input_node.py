@@ -14,7 +14,7 @@ class ControllerNode(Node):
         self.time=self.get_clock().now()
         self.last_camera_state_change=self.get_clock().now()
         self.last_msg_time = self.time
-        self.servo_timer = self.time
+        self.servo_timer=None
         self.servo_direction=0
         self.controller_schematic=[]
         self.active_controller={}
@@ -122,7 +122,6 @@ class ControllerNode(Node):
     # Handle joystick logic
     def joy_callback(self, msg: Joy):
         self.time = self.get_clock().now()
-        armed=self.get_input_values(msg, "ARM")
         
         # Connection code that helps handle timeouts
         self.last_msg_time = self.get_clock().now()
@@ -148,8 +147,6 @@ class ControllerNode(Node):
                 bucket_act_vel=x*scale
                 arm_act_vel=y*scale
 
-
-
         if(arm_act_vel<self.deadzone and arm_act_vel>-self.deadzone): arm_act_vel=0.0
         elif(arm_act_vel > 0): arm_act_vel=self.map_value(arm_act_vel,self.deadzone,1.0,0.0,1.0)
         else: arm_act_vel=self.map_value(arm_act_vel,-1.0,-self.deadzone,-1.0,0.0)
@@ -158,24 +155,24 @@ class ControllerNode(Node):
         elif(bucket_act_vel > 0): bucket_act_vel=self.map_value(bucket_act_vel,self.deadzone,1.0,0.0,1.0)
         else: bucket_act_vel=self.map_value(bucket_act_vel,-1.0,-self.deadzone,-1.0,0.0)
 
-        if armed == 1:
+        if self.get_input_values(msg, "ARM") == 1 and self.get_input_values(msg, "AUTOMATED") == 0:
             if self.get_input_values(msg, 'X_BUTTON') == 1:
-                self.servo_timer=self.time
+                self.servo_timer=time.time()
                 self.servo_direction=0
-            if self.get_input_values(msg, 'X_BUTTON') == 1:
-                self.servo_timer=self.time
+            if self.get_input_values(msg, 'B_BUTTON') == 1:
+                self.servo_timer=time.time()
                 self.servo_direction=1
 
-        if time.time()-self.servo_timer<=2.5:
+        if self.servo_timer!=None and time.time()-self.servo_timer<=5:
             servo_msg=Command()
             servo_msg.command="S"
-            if self.servo_direction==0: servo_msg.data=[0]
-            elif self.servo_direction==1: servo_msg.data=[270]
+            if self.servo_direction==0: servo_msg.data=[100.0]
+            elif self.servo_direction==1: servo_msg.data=[240.0]
             servo_msg.blocking_id=0
             self.servo_msg=servo_msg
 
         # If unarmed or controller is disconnected send a speed of 0, 
-        if self.triggered_automation != None and (armed == 0 or self.connected == False):
+        if self.triggered_automation != None and (self.get_input_values(msg, "ARM") == 0 or self.connected == False):
             if time.time()-self.triggered_automation>=self.automation_timeout: self.triggered_automation=None
             elif self.triggered_automation_type != None and self.triggered_automation_type<=3:
                 self.trigger_sequence("interrupt")
@@ -187,7 +184,7 @@ class ControllerNode(Node):
             self.triggered_automation=None
             self.triggered_automation_type=None
 
-        if(armed == 0 or self.connected == False): 
+        if(self.get_input_values(msg, "ARM") == 0 or self.connected == False): 
             vel=0.0
             ang_vel=0.0
             arm_act_vel=0.0
@@ -220,12 +217,13 @@ class ControllerNode(Node):
                     self.triggered_automation_type=7
                 self.triggered_automation=time.time()
 
-        if(armed==0 and self.get_input_values(msg, 'CAMERA_TOGGLE')==1 and self.get_input_values(msg, 'LEFT_STICK')==1):
+        if(self.get_input_values(msg, "ARM")==0 and self.get_input_values(msg, 'CAMERA_TOGGLE')==1 and self.get_input_values(msg, 'LEFT_STICK')==1):
             estop_msg = Command()
             estop_msg.command="B"
             estop_msg.data=[]
             estop_msg.blocking_id=0
             self.estop_msg=estop_msg
+
 
         if self.get_input_values(msg, "AUTOMATED") == 1 and time.time()-self.triggered_settings_update>0.3:
             # Swaps indavidual controls
@@ -253,13 +251,14 @@ class ControllerNode(Node):
                 self.triggered_settings_update=time.time()
                 return
 
-            elif self.get_input_values(msg, 'MOTOR_X') != 0 and armed == 0:
+            elif self.get_input_values(msg, 'MOTOR_X') != 0:
                 servo_msg=Command()
                 servo_msg.command="S"
-                servo_msg.data=[self.map_value(self.get_input_values(msg, "MOTOR_X"), -1, 1, 0, self.controller_config["servo_range"])]
+                range=self.map_value(self.get_input_values(msg, "MOTOR_X"), -1, 1, 0, self.controller_config["servo_range"])
+                if range < 100.0: range = 100.0
+                servo_msg.data=[range]
                 servo_msg.blocking_id=0
                 self.servo_msg=servo_msg
-                return
 
             elif self.get_input_values(msg, 'POS1_SAVE') == 1 and time.time() - self.last_save_time > 0.5:
                 self.last_save_time = time.time()
