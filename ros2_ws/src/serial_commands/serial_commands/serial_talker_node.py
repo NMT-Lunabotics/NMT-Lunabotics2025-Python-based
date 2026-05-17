@@ -125,7 +125,7 @@ class SerialTalkerNode(Node):
         self.handle_special_cmd(msg.command, msg.data, msg.blocking_id)
     def cmd_vel_callback(self, msg):
         if self.navigation_mode==False:
-            linear=-msg.linear.x
+            linear=msg.linear.x
             angular=msg.angular.z
             #self.get_logger().info(f"Linear: {linear}\nAngular: {angular}\n---")
         else:
@@ -133,7 +133,7 @@ class SerialTalkerNode(Node):
             angular=msg.angular.z
             #linear=self.deadband(-self.scale(msg.linear.x, -1.0, 1.0, -1.0, 1.0), 0.1)
             #angular=self.deadband(self.scale(msg.angular.z, -2.0, 2.0, -1.0, 1.0), 0.1)
-        self.send_vel_command([-linear,angular],None,vel_source=True)
+        self.send_vel_command([linear,angular],None,vel_source=True)
 
     def scale(self, value, in_min, in_max, out_min, out_max):
         return (value - in_min) * (out_max - out_min) / (in_max - in_min) + out_min
@@ -188,7 +188,6 @@ class SerialTalkerNode(Node):
     # Apply diffrential driving to 'M' command
     def send_vel_command(self, data, blocking_id, vel_source):
         if vel_source:
-            # NOT CORRECTLY MAPPING
             velocity=data[0]
             angular_velocity=data[1]
 
@@ -200,27 +199,27 @@ class SerialTalkerNode(Node):
 
             left_motor = int((left_motor/max_val)*self.motor_vel_scale)
             right_motor = int((right_motor/max_val)*self.motor_vel_scale)
-            #self.get_logger().info(f"{left_motor} {right_motor}")
 
+            #self.get_logger().error(f"{left_motor} {right_motor}")
             self.update_command('M', [left_motor, right_motor], blocking_id)
         else:
-            left_input = data[0]
-            right_input = data[1]
+            left_input=data[0]
+            right_input=data[1]
 
             # Apply differential steering: compute linear and angular components
-            linear = (right_input + left_input) / 2
-            angular = (right_input - left_input) / self.wheel_base
+            linear=(right_input+left_input)/2
+            angular=(right_input-left_input)/self.wheel_base
 
             # Compute motor outputs using differential drive
-            left_motor = linear - (angular * self.wheel_base / 2)
-            right_motor = linear + (angular * self.wheel_base / 2)
+            left_motor=linear-(angular*self.wheel_base/2)
+            right_motor=linear+(angular*self.wheel_base/2)
 
             # Scale to actual motor range
-            max_val = max(abs(left_motor), abs(right_motor), 1)  # avoid div by zero
-            left_motor = int((left_motor / max_val) * self.motor_vel_scale)
-            right_motor = int((right_motor / max_val) * self.motor_vel_scale)
+            max_val=max(abs(left_motor), abs(right_motor), 1)  
+            left_motor=int((left_motor/max_val)*self.motor_vel_scale)
+            right_motor=int((right_motor/max_val)*self.motor_vel_scale)
 
-            # Send to motors
+            #self.get_logger().error(f"{left_motor} {right_motor}")
             self.update_command('M', [left_motor, right_motor], blocking_id)
 
     # Apply scaling to 'A' command

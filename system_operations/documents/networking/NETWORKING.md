@@ -237,16 +237,57 @@ sudo systemctl restart NetworkManager
 ```
 <br><br><br><br><br>
 
+# Testing guides
 
+## Add fake network latency for practice
+**Add a 2s network delay with 0.5s variation, curve: (uniform, normal, pareto, paretonormal), using 3% packet loss on eno1**
 
+```
+sudo tc qdisc replace dev eno1 root netem delay 2000ms 500ms distribution normal loss 3% 
+```
 
+**Check current interface status to ensure no emulation is enabled**
+```
+tc -s qdisc show dev eno1
+```
 
+**Reset all networking simulation**
+```
+sudo tc qdisc del dev eno1 root
+```
 
+**Check networking speeds**
+```
+ping 8.8.8.8
+```
+<br>
 
+## visual graph to monitor latency
+**Install gping**
+```
+curl https://sh.rustup.rs -sSf | sh
+source $HOME/.cargo/env
+cargo install gping
+```
 
+**Launch network monitor using robot's ip address**
+```
+gping 192.168.0.157
+```
+<br>
 
+## visual graph to monitor bandwidth
+**Install gping**
+```
+sudo apt install btop
+```
 
+**Run it to view bandwidth usage**
+```
+btop
+```
 
+<br><br><br><br><br>
 
 
 

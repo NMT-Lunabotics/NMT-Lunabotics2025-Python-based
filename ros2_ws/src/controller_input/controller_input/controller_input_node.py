@@ -97,8 +97,8 @@ class ControllerNode(Node):
         self.joy = self.create_subscription(Joy,'/joy',self.joy_callback,10)
         self.create_timer(0.1, self.check_connection)
 
-        self.create_timer(0.005, self.publish_cmd_vel)       
-        self.create_timer(0.005, self.publish_actuators) 
+        self.create_timer(0.02, self.publish_cmd_vel)       
+        self.create_timer(0.02, self.publish_actuators) 
         self.create_timer(0.05, self.publish_extra)    
 
         # Create publishers for robot commands
@@ -178,10 +178,10 @@ class ControllerNode(Node):
         else: bucket_act_vel=self.map_value(bucket_act_vel,-1.0,-self.deadzone,-1.0,0.0)
 
         if armed == 1 and auto == 0:
-            if self.control_map['X_BUTTON'] == 1:
+            if self.control_map['B_BUTTON'] == 1:
                 self.servo_timer=time.time()
                 self.servo_direction=0
-            if self.control_map['B_BUTTON'] == 1:
+            if self.control_map['X_BUTTON'] == 1:
                 self.servo_timer=time.time()
                 self.servo_direction=1
 

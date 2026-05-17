@@ -22,7 +22,7 @@ class CameraMux(Node):
         self.last_index = None
         
         # Create publisher settings, keep only newest images
-        publisher_qos = QoSProfile(reliability=QoSReliabilityPolicy.RELIABLE,history=QoSHistoryPolicy.KEEP_LAST,depth=1,durability=DurabilityPolicy.VOLATILE)
+        publisher_qos = QoSProfile(reliability=QoSReliabilityPolicy.BEST_EFFORT,history=QoSHistoryPolicy.KEEP_LAST,depth=1,durability=DurabilityPolicy.VOLATILE)
         self.pub = self.create_publisher(CompressedImage, '/camera/stream', publisher_qos)
         self.latest_frames = {}
         if self.direct_mode: self.camera_indexes = list(self.cameras.keys())
