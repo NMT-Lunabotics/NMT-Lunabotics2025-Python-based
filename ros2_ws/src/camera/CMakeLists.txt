@@ -19,7 +19,7 @@ install(PROGRAMS
   camera/camera_view_node.py
   camera/camera_mux_node.py
   camera/simple_camera_stream_node.py
-  camera/count_streams.py
+  camera/realsense_cameras_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

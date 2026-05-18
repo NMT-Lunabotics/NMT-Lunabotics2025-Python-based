@@ -30,7 +30,7 @@ class CameraMux(Node):
         self.declare_parameter('nav_stream', "-1")
         self.nav_stream = int(self.get_parameter('nav_stream').value)
         self.get_logger().error(f"\033[92m{self.nav_stream}\033[0m")
-        if self.nav_stream !=-1: self.cameras[self.nav_stream] = '/camera/camera/color/image_raw/compressed'
+        if self.nav_stream !=-1: self.cameras[self.nav_stream] = '/camera/camera/color/image_raw/compressed2'
         self.get_logger().error(f"\033[92m{str(self.cameras)}\033[0m")
 
         self.declare_parameter('output_fps', 5.0)

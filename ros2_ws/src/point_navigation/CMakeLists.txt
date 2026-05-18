@@ -19,6 +19,8 @@ install(PROGRAMS
   point_navigation/imu_tf_frame_mapper.py
   point_navigation/point_navigation.py
   point_navigation/waypoint.py
+  point_navigation/crop_camera_node.py
+  point_navigation/image_compressor_node.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

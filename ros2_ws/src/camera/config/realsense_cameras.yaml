@@ -1,0 +1,55 @@
+cameras:
+  - uuid: "311322301206"
+    id: 0
+    rgb: true
+    depth: true
+
+    stream:
+      width: 640
+      height: 480
+      fps: 30
+
+      crop:
+        x: 80
+        y: 0
+        width: 480
+        height: 480
+
+    rgb_compressed:
+      width: 320
+      height: 240
+      fps: 15
+      jpeg_quality: 85
+
+    imu:
+      gyro: true
+      accel: true
+      frequency: 200
+
+
+  - uuid: "306322300659"
+    id: 1
+    rgb: true
+    depth: true
+
+    stream:
+      width: 640
+      height: 480
+      fps: 30
+
+      crop:
+        x: 0
+        y: 0
+        width: 640
+        height: 480
+
+    rgb_compressed:
+      width: 320
+      height: 240
+      fps: 15
+      jpeg_quality: 80
+
+    imu:
+      gyro: true
+      accel: true
+      frequency: 200

@@ -11,6 +11,7 @@ class ControllerNode(Node):
     def __init__(self):
         super().__init__('controller_input_node')
         self.connected = False
+        self.nav_functions = True
         self.time=self.get_clock().now()
         self.last_camera_state_change=self.get_clock().now()
         self.last_msg_time = self.time
@@ -287,11 +288,11 @@ class ControllerNode(Node):
                 servo_msg.blocking_id=0
                 self.servo_msg=servo_msg
 
-            #elif self.control_map['POS1_SAVE'] == 1 and time.time() - self.last_save_time > 0.5:
-            #    self.last_save_time = time.time()
-                #subprocess.Popen(["ros2", "param", "set","/waypoint", "target_name", "berm"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                #subprocess.Popen(["ros2", "service", "call","/save_target_location","std_srvs/srv/SetBool","{data: true}"], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-            #    return
+            elif self.control_map['POS1_SAVE'] == 1 and time.time() - self.last_save_time > 0.5 and self.nav_functions==True:
+                self.last_save_time = time.time()
+                subprocess.Popen(["ros2","service","call","/rtabmap/rtabmap/reset","std_srvs/srv/Empty"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+                subprocess.Popen(["ros2","service","call","/rtabmap/reset_odom","std_srvs/srv/Empty"],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL)
+                return
 
             #elif self.control_map['NAV_TRIGGER'] == -1 and time.time() - self.last_save_time > 0.5:
             #    self.last_save_time = time.time()

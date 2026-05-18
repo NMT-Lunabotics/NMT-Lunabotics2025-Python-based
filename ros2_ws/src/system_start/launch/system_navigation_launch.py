@@ -57,6 +57,13 @@ def launch_setup(context, *args, **kwargs):
         arguments=['--ros-args', '--log-level', 'error']
     )
 
+    crop_node = Node(
+        package='point_navigation',
+        executable='crop_camera_node.py',
+        name='crop_camera_node',
+        arguments=['--ros-args', '--log-level', 'error']
+    )
+
     base_frame = Node(
         package='tf2_ros',
         executable='static_transform_publisher',
@@ -127,7 +134,7 @@ def launch_setup(context, *args, **kwargs):
         base_frame,
         rtabmap_launch,
         #rviz_node,
-        waypoint_node,
+        crop_node,
         nav2_launch,
         camera_launch,
         automated_operations,

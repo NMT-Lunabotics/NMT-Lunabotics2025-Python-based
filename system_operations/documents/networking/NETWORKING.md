@@ -243,7 +243,7 @@ sudo systemctl restart NetworkManager
 **Add a 2s network delay with 0.5s variation, curve: (uniform, normal, pareto, paretonormal), using 3% packet loss on eno1**
 
 ```
-sudo tc qdisc replace dev eno1 root netem delay 2000ms 500ms distribution normal loss 3% 
+sudo tc qdisc replace dev eno1 root netem delay 1000ms 300ms distribution normal loss 3% 
 ```
 
 **Check current interface status to ensure no emulation is enabled**

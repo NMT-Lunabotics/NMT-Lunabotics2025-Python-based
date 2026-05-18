@@ -141,3 +141,16 @@ ros2 run camera camera_apriltag_node.py ros2 run camera camera_apriltag_node --r
 cd ~/Documents/NMT-Lunabotics2025-Python-based/ros2_ws
 colcon build --symlink-install
 source install/setup.bash
+
+
+
+
+
+
+
+
+ros2 service call /rtabmap/rtabmap/reset std_srvs/srv/Empty
+
+ros2 service call /rtabmap/reset_odom std_srvs/srv/Empty
+
+ros2 topic pub /goal_pose geometry_msgs/msg/PoseStamped "{header: {frame_id: 'map'}, pose: {position: {x: 2.0, y: 1.5, z: 0.0}, orientation: {w: 1.0}}}"
