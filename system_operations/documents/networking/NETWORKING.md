@@ -23,9 +23,18 @@ ssh-keygen -R 192.168.0.157
 rm ~/.ssh/known_hosts
 ```
 
-**Clear ARP catce**
+**Clear ARP catce/Check status**
 ```
 sudo ip neigh flush all
+```
+
+```
+ip neigh show 192.168.0.157
+```
+
+**Check if port 22 is available**
+```
+nc -zv 192.168.0.157 22
 ```
 
 **Restart networking**
@@ -277,14 +286,26 @@ gping 192.168.0.157
 <br>
 
 ## visual graph to monitor bandwidth
-**Install gping**
+**Install nload**
 ```
-sudo apt install btop
+sudo apt install nload
 ```
 
 **Run it to view bandwidth usage**
 ```
 btop
+```
+<br>
+
+## Bandwidth monitor
+**Install gping**
+```
+sudo apt install btop
+```
+
+**Run monitor on eno1 interface (M=MBit/s, m=MByte/s)**
+```
+nload -u M eno1
 ```
 
 <br><br><br><br><br>

@@ -25,8 +25,8 @@ def generate_launch_description():
             'approx_sync': 'true',
             'rgbd_odometry': 'true',
             'Odom/Type': 'RGBD/IMU',
-            'Odom/IMU/Topic': '/imu/data',
-            'Odom/IMU/FrameId': 'camera_link',
+            'Odom/IMU/Topic': '/camera0/imu/data',
+            'Odom/IMU/FrameId': 'base_link',
 
             'Rtabmap/DetectionRate': '5',
             'RGBD/LinearUpdate': '0.2',
@@ -63,7 +63,7 @@ def generate_launch_description():
             'map_frame_id': 'map',
             'publish_tf_map': 'true',
 
-            'rtabmap_viz': 'false',
+            'rtabmap_viz': 'true',
             'log_level': 'error',
 
 

@@ -77,8 +77,8 @@ def launch_setup(context):
     nodes.append(
         Node(
             package='camera',
-            executable='camera_mux_node.py',
-            name='camera_mux_node',
+            executable='camera_mux_node_compressed.py',
+            name='camera_mux_node_compressed',
             parameters=[{
                 'output_fps': mux_fps,
                 'nav_stream': str(camera_id)

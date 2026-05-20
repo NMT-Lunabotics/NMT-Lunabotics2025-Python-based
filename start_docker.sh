@@ -88,7 +88,7 @@ usage() {
 # Parse input flags
 while [[ "$#" -gt 0 ]]; do
     case "$1" in
-        -s|--start) RUN_SYSTEM_CONTROL_LAUNCH=true; [[ -n "$2" && ( "$2" == "local" || "$2" == "l" ) ]] && { LAUNCH_FILE_TYPE=1; shift 2; } || { [[ -n "$2" && ( "$2" == "nav" || "$2" == "n" ) ]] && { LAUNCH_FILE_TYPE=2; shift 2; } || shift 1; } ;;                                          # Launches whole system 
+        -s|--start) RUN_SYSTEM_CONTROL_LAUNCH=true; [[ -n "$2" && ( "$2" == "local" || "$2" == "l" ) ]] && { LAUNCH_FILE_TYPE=1; shift 2; } || { [[ -n "$2" && ( "$2" == "nav" || "$2" == "n" ) ]] && { LAUNCH_FILE_TYPE=2; shift 2; } || { [[ -n "$2" && ( "$2" == "compressed" || "$2" == "c" ) ]] && { LAUNCH_FILE_TYPE=3; shift 2; } || shift 1; }; } ;;                                          # Launches whole system 
         -t|--teleop) RUN_TELEOP_LAUNCH=true; shift ;;                                                                                                                                                # Launches ros joystick (local)
         -u|--usb-cam) RUN_USB_CAMERA_NODE=true; shift ;;                                                                                                                                             # Launches all system cameras
         -ser|--serial) RUN_SERIAL_LAUNCH=true; shift ;;                                                                                                                                              # Launches serial talker
@@ -350,6 +350,8 @@ if [ "$INTERACTIVE_HOST" = true ]; then
             ros2 launch system_start system_user_interface_launch.py
         elif [ "$LAUNCH_FILE_TYPE" == 2 ]; then
             ros2 launch system_start system_navigation_launch.py nav_stream:="true"
+        elif [ "$LAUNCH_FILE_TYPE" == 3 ]; then
+            ros2 launch system_start system_launch_compressed.py
         fi
     elif [ "$RUN_SERIAL_LAUNCH" == true ]; then
         ros2 launch serial_commands serial_launch.py

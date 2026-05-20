@@ -1,38 +1,39 @@
 cameras:
-  - uuid: "311322301206"
+  - uuid: "213522253528"
     id: 0
     rgb: true
-    depth: true
+    depth: false
 
     stream:
-      width: 640
-      height: 480
+      enabled: false
+      width: 80
+      height: 60
       fps: 30
 
       crop:
         x: 80
         y: 0
-        width: 480
-        height: 480
+        width: 80
+        height: 60
 
     rgb_compressed:
-      width: 320
-      height: 240
-      fps: 15
-      jpeg_quality: 85
+      width: 80
+      height: 60
+      fps: 24
+      jpeg_quality: 30
 
     imu:
-      gyro: true
-      accel: true
+      enabled: true
       frequency: 200
 
 
-  - uuid: "306322300659"
+  - uuid: "311322301206"
     id: 1
     rgb: true
-    depth: true
+    depth: false
 
     stream:
+      enabled: false
       width: 640
       height: 480
       fps: 30
@@ -44,12 +45,38 @@ cameras:
         height: 480
 
     rgb_compressed:
-      width: 320
-      height: 240
-      fps: 15
-      jpeg_quality: 80
+      width: 80
+      height: 60
+      fps: 24
+      jpeg_quality: 30
 
     imu:
-      gyro: true
-      accel: true
+      enabled: false
+      frequency: 200
+
+  - uuid: "306322300659"
+    id: 1
+    rgb: true
+    depth: false
+
+    stream:
+      enabled: false
+      width: 640
+      height: 480
+      fps: 30
+
+      crop:
+        x: 0
+        y: 0
+        width: 640
+        height: 480
+
+    rgb_compressed:
+      width: 80
+      height: 60
+      fps: 24
+      jpeg_quality: 30
+
+    imu:
+      enabled: false
       frequency: 200

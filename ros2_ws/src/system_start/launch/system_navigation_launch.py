@@ -22,7 +22,7 @@ def launch_setup(context, *args, **kwargs):
     camera_launch_file=os.path.join(camera_directory,'launch','usb_camera_launch.py')
     camera_config_file=os.path.join(system_start_directory,'config','cameras.yaml')
 
-    realsense_launch = IncludeLaunchDescription(
+    realsense2_launch = IncludeLaunchDescription(
         PythonLaunchDescriptionSource(
             os.path.join(
                 get_package_share_directory('camera'),
@@ -30,6 +30,13 @@ def launch_setup(context, *args, **kwargs):
                 'realsense_launch.py'
             )
         )
+    )
+
+    realsense_launch = Node(
+        package='camera',
+        executable='realsense_cameras_node.py',
+        name='realsense_cameras_node',
+        arguments=['--ros-args', '--log-level', 'error']
     )
 
     apriltag_frame = Node(
@@ -68,6 +75,12 @@ def launch_setup(context, *args, **kwargs):
         package='tf2_ros',
         executable='static_transform_publisher',
         arguments=['0', '0', '0', '0', '0', '0', 'base_link', 'camera_link']
+    )
+
+    camera_frame = Node(
+        package='tf2_ros',
+        executable='static_transform_publisher',
+        arguments=['0','0','0','0','0','0','base_link','camera0']
     )
 
     rtabmap_launch = IncludeLaunchDescription(
@@ -130,13 +143,12 @@ def launch_setup(context, *args, **kwargs):
     )
 
     return [
-        realsense_launch,
         base_frame,
-        rtabmap_launch,
+        camera_frame,
+        #rtabmap_launch,
         #rviz_node,
-        crop_node,
-        nav2_launch,
-        camera_launch,
+        realsense_launch,
+        #nav2_launch,
         automated_operations,
         serial_talker_node
     ]

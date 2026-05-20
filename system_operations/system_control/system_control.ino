@@ -128,10 +128,10 @@ enum LedState { OFF = 0, NONE = -1, ON = 1, BLINK = 2 };
 // Actuator potentiometer min and max values
 #if MAIN_ROBOT==1
   #if PCB_BOARD_SCHEMATIC == 0
-    #define AL_POT_MIN 31  
-    #define AL_POT_MAX 861
+    #define AL_POT_MIN 28  
+    #define AL_POT_MAX 867
     #define AR_POT_MIN 31  
-    #define AR_POT_MAX 856
+    #define AR_POT_MAX 877
 
     //#define AL_POT_MIN 30   
     //#define AL_POT_MAX 868  
@@ -139,8 +139,8 @@ enum LedState { OFF = 0, NONE = -1, ON = 1, BLINK = 2 };
     //#define AR_POT_MAX 878  
 
 
-    #define AB_POT_MIN 29         
-    #define AB_POT_MAX 801    
+    #define AB_POT_MIN 33        
+    #define AB_POT_MAX 798    
   #elif PCB_BOARD_SCHEMATIC == 1
     #define AL_POT_MIN 35  
     #define AL_POT_MAX 865  
